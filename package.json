@@ -1,0 +1,47 @@
+{
+  "name": "grindery-nexus-connector-web3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "call": "node bin/local.js",
+    "build": "./build.sh",
+    "deploy": "./deploy.sh",
+    "server": "[ -f server.js ] && node server || ts-node src/server",
+    "server:dist": "cd dist && node server"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sentry/node": "^6.17.8",
+    "axios": "^0.26.1",
+    "body-parser": "^1.20.0",
+    "core-js": "^3.22",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.3",
+    "json-rpc-2.0": "^1.1.0",
+    "lodash": "^4.17.21",
+    "uuid": "^8.3.2",
+    "web3": "^1.7.3",
+    "ws": "^8.7.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.17.6",
+    "@babel/core": "^7.17.9",
+    "@babel/plugin-proposal-class-properties": "^7.16.7",
+    "@babel/plugin-proposal-optional-chaining": "^7.16.7",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/preset-typescript": "^7.16.7",
+    "@babel/register": "^7.17.7",
+    "@tsconfig/node16": "^1.0.2",
+    "@types/express": "^4.17.1",
+    "@types/lodash": "^4.14.182",
+    "@types/uuid": "^8.3.4",
+    "@types/ws": "^8.5.3",
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
+    "eslint": "^8.13",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.3"
+  }
+}
