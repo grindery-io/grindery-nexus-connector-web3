@@ -57,7 +57,7 @@ function parseEventDeclaration(eventDeclaration: string): AbiItem {
   };
 }
 function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
-  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)/.exec(functionDeclaration);
+  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*(.*)$/.exec(functionDeclaration);
   if (!m) {
     throw new Error("Invalid function declaration");
   }
@@ -72,9 +72,19 @@ function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
       name: parts[parts.length - 1],
     };
   });
+  const suffixes = m[4].trim().split(/\s+/);
   return {
     name,
     inputs,
+    constant: suffixes.includes("view"),
+    payable: suffixes.includes("payable"),
+    stateMutability: suffixes.includes("pure")
+      ? "pure"
+      : suffixes.includes("view")
+      ? "view"
+      : suffixes.includes("payable")
+      ? "payable"
+      : "nonpayable",
     type: "function",
   };
 }
@@ -188,13 +198,23 @@ export async function callSmartContract(
     }
     paramArray.push(input.fields.parameters[i.name]);
   }
-  const result = await web3.eth.sendTransaction({
+  const callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
+  const txConfig = {
     to: input.fields.contractAddress,
-    data: web3.eth.abi.encodeFunctionCall(functionInfo, paramArray),
+    data: callData,
     ...(input.fields.maxFeePerGas ? { maxFeePerGas: input.fields.maxFeePerGas } : {}),
     ...(input.fields.maxPriorityFeePerGas ? { maxPriorityFeePerGas: input.fields.maxPriorityFeePerGas } : {}),
     chainId: await web3.eth.getChainId(),
-  });
+  };
+  let result: unknown;
+  if (functionInfo.constant || functionInfo.stateMutability === "pure") {
+    result = {
+      returnValue: await web3.eth.call(txConfig),
+    };
+  } else {
+    result = await web3.eth.sendTransaction(txConfig);
+  }
+
   close();
   return {
     key: input.key,
