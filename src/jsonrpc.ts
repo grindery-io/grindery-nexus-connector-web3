@@ -1,6 +1,5 @@
 import { createJSONRPCErrorResponse, JSONRPCErrorCode, JSONRPCParams, JSONRPCServer } from "json-rpc-2.0";
 import { runAction, setupSignal } from "./connector";
-import { test } from "./web3";
 import * as Sentry from "@sentry/node";
 import WebSocket from "ws";
 
@@ -41,6 +40,5 @@ export function createJsonRpcServer() {
   server.addMethod("ping", () => "pong");
   server.addMethod("setupSignal", byObject(setupSignal));
   server.addMethod("runAction", byObject(runAction));
-  server.addMethod("test", byObject(test));
   return server;
 }

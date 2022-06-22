@@ -200,6 +200,7 @@ export async function callSmartContract(
   }
   const callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
   const txConfig = {
+    from: account.address,
     to: input.fields.contractAddress,
     data: callData,
     ...(input.fields.maxFeePerGas ? { maxFeePerGas: input.fields.maxFeePerGas } : {}),
@@ -221,10 +222,4 @@ export async function callSmartContract(
     sessionId: input.sessionId,
     payload: result,
   };
-}
-
-export async function test() {
-  const { web3, close } = getWeb3("eth");
-  console.log(web3.eth.accounts.create());
-  close();
 }
