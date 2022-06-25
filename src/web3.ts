@@ -2,14 +2,29 @@ import Web3 from "web3";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
 import { AbiItem } from "web3-utils";
 
+const CHAIN_MAPPING = {
+  "eip155:1": "eth",
+  "eip155:42161": "arbitrum",
+  "eip155:100": "gnosis",
+  "eip155:137": "polygon",
+  "eip155:42220": "celo",
+  "eip155:43114": "avalanche",
+  "eip155:56": "bsc",
+  "eip155:250": "fantom",
+  "eip155:245022934": "solana",
+};
+
 function getWeb3(chain = "eth") {
-  const provider = new Web3.providers.WebsocketProvider(`wss://rpc.ankr.com/${chain}/ws/${process.env.ANKR_KEY}`, {
-    reconnect: {
-      auto: true,
-      delay: 1000,
-      onTimeout: true,
-    },
-  });
+  const provider = new Web3.providers.WebsocketProvider(
+    `wss://rpc.ankr.com/${CHAIN_MAPPING[chain] || chain}/ws/${process.env.ANKR_KEY}`,
+    {
+      reconnect: {
+        auto: true,
+        delay: 1000,
+        onTimeout: true,
+      },
+    }
+  );
   const web3 = new Web3(provider);
   return {
     web3,
