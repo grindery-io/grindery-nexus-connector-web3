@@ -12,19 +12,21 @@ const CHAIN_MAPPING = {
   "eip155:56": "bsc",
   "eip155:250": "fantom",
   "eip155:245022934": "solana",
+
+  "eip155:80001": "wss://rpc-mumbai.matic.today/", // Polygon Mumbai testnet
 };
 
 function getWeb3(chain = "eth") {
-  const provider = new Web3.providers.WebsocketProvider(
-    `wss://rpc.ankr.com/${CHAIN_MAPPING[chain] || chain}/ws/${process.env.ANKR_KEY}`,
-    {
-      reconnect: {
-        auto: true,
-        delay: 1000,
-        onTimeout: true,
-      },
-    }
-  );
+  const url = CHAIN_MAPPING[chain]?.includes("://")
+    ? CHAIN_MAPPING[chain]
+    : `wss://rpc.ankr.com/${CHAIN_MAPPING[chain] || chain}/ws/${process.env.ANKR_KEY}`;
+  const provider = new Web3.providers.WebsocketProvider(url, {
+    reconnect: {
+      auto: true,
+      delay: 1000,
+      onTimeout: true,
+    },
+  });
   const web3 = new Web3(provider);
   return {
     web3,
