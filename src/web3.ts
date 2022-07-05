@@ -225,7 +225,8 @@ export async function callSmartContract(
     ...(input.fields.maxFeePerGas ? { maxFeePerGas: input.fields.maxFeePerGas } : {}),
     ...(input.fields.maxPriorityFeePerGas ? { maxPriorityFeePerGas: input.fields.maxPriorityFeePerGas } : {}),
     ...(input.fields.gasLimit ? { gas: input.fields.gasLimit } : {}),
-    chainId: await web3.eth.getChainId(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chainId: web3.utils.toHex(await web3.eth.getChainId()) as any, // This needs to be hex number
   };
   let result: unknown;
   if (functionInfo.constant || functionInfo.stateMutability === "pure") {
