@@ -1,6 +1,7 @@
 import Web3 from "web3";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
 import { AbiItem } from "web3-utils";
+import { TransactionConfig } from "web3-core";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -197,6 +198,7 @@ export async function callSmartContract(
     parameters: { [key: string]: unknown };
     maxFeePerGas?: string | number;
     maxPriorityFeePerGas?: string | number;
+    gasLimit?: string | number;
   }>
 ): Promise<ConnectorOutput> {
   const { web3, close } = getWeb3(input.fields.chain);
@@ -216,12 +218,13 @@ export async function callSmartContract(
     paramArray.push(input.fields.parameters[i.name]);
   }
   const callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
-  const txConfig = {
+  const txConfig: TransactionConfig = {
     from: account.address,
     to: input.fields.contractAddress,
     data: callData,
     ...(input.fields.maxFeePerGas ? { maxFeePerGas: input.fields.maxFeePerGas } : {}),
     ...(input.fields.maxPriorityFeePerGas ? { maxPriorityFeePerGas: input.fields.maxPriorityFeePerGas } : {}),
+    ...(input.fields.gasLimit ? { gas: input.fields.gasLimit } : {}),
     chainId: await web3.eth.getChainId(),
   };
   let result: unknown;
@@ -230,6 +233,10 @@ export async function callSmartContract(
       returnValue: await web3.eth.call(txConfig),
     };
   } else {
+    if (!txConfig.maxFeePerGas && !txConfig.maxPriorityFeePerGas && !txConfig.gas) {
+      const gas = await web3.eth.estimateGas(txConfig);
+      txConfig.gas = gas + 45000;
+    }
     result = await web3.eth.sendTransaction(txConfig);
   }
 
