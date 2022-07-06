@@ -199,6 +199,7 @@ export async function callSmartContract(
     maxFeePerGas?: string | number;
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
+    dryRun?: boolean;
   }>
 ): Promise<ConnectorOutput> {
   const { web3, close } = getWeb3(input.fields.chain);
@@ -229,15 +230,16 @@ export async function callSmartContract(
     chainId: web3.utils.toHex(await web3.eth.getChainId()) as any, // This needs to be hex number
   };
   let result: unknown;
-  if (functionInfo.constant || functionInfo.stateMutability === "pure") {
+  const gas = await web3.eth.estimateGas(txConfig);
+  if (!txConfig.maxFeePerGas && !txConfig.maxPriorityFeePerGas && !txConfig.gas) {
+    txConfig.gas = gas + 45000;
+  }
+  if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
     result = {
       returnValue: await web3.eth.call(txConfig),
+      estimatedGas: gas,
     };
   } else {
-    if (!txConfig.maxFeePerGas && !txConfig.maxPriorityFeePerGas && !txConfig.gas) {
-      const gas = await web3.eth.estimateGas(txConfig);
-      txConfig.gas = gas + 45000;
-    }
     result = await web3.eth.sendTransaction(txConfig);
   }
 
