@@ -236,7 +236,7 @@ export async function callSmartContract(
   };
   let result: unknown;
   const gas = await web3.eth.estimateGas(txConfig);
-  const block = await web3.eth.getBlock("latest");
+  const block = await web3.eth.getBlock("pending");
   const baseFee = Number(block.baseFeePerGas);
   const tip = web3.utils.toWei("50", "gwei");
   const max = baseFee + Number(tip) - 1;
