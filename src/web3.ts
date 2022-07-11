@@ -223,19 +223,26 @@ export async function callSmartContract(
     from: account.address,
     to: input.fields.contractAddress,
     data: callData,
+
+    /* Use hardcoded gas limit for now
     ...(input.fields.maxFeePerGas ? { maxFeePerGas: input.fields.maxFeePerGas } : {}),
     ...(input.fields.maxPriorityFeePerGas ? { maxPriorityFeePerGas: input.fields.maxPriorityFeePerGas } : {}),
     ...(input.fields.gasLimit ? { gas: input.fields.gasLimit } : {}),
+    */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     nonce: web3.utils.toHex(await web3.eth.getTransactionCount(account.address)) as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    chainId: web3.utils.toHex(await web3.eth.getChainId()) as any, // This needs to be hex number
+    // chainId: web3.utils.toHex(await web3.eth.getChainId()) as any, // This needs to be hex number
   };
   let result: unknown;
   const gas = await web3.eth.estimateGas(txConfig);
-  if (!txConfig.maxFeePerGas && !txConfig.maxPriorityFeePerGas && !txConfig.gas) {
-    txConfig.gas = gas + 45000;
-  }
+  const block = await web3.eth.getBlock("latest");
+  const baseFee = Number(block.baseFeePerGas);
+  const tip = web3.utils.toWei("50", "gwei");
+  const max = baseFee + Number(tip) - 1;
+  txConfig.gas = gas + 45000;
+  txConfig.maxFeePerGas = max;
+  txConfig.maxPriorityFeePerGas = tip;
   if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
     result = {
       returnValue: await web3.eth.call(txConfig),
