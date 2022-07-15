@@ -1,7 +1,7 @@
 import Web3 from "web3";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
 import { AbiItem } from "web3-utils";
-import { TransactionConfig } from "web3-core";
+import { TransactionConfig, Log } from "web3-core";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -110,32 +110,34 @@ function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
 export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; to?: string }> {
   async main() {
     const { web3, close } = getWeb3(this.fields.chain);
-    let lastBlock = -2;
+    let lastBlock = -1;
     const subscription = web3.eth
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
         if (!block.number) {
           return;
         }
-        if (lastBlock < 0) {
+        if (lastBlock <= 0) {
+          lastBlock = block.number;
+          return;
+        }
+        while (lastBlock < block.number - 2) {
           lastBlock++;
-          return;
-        }
-        lastBlock = block.number - 2;
-        const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
-        console.log("New block", blockWithTransactions.number, blockWithTransactions.hash);
-        if (!blockWithTransactions.transactions) {
-          console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
-          return;
-        }
-        for (const transaction of blockWithTransactions.transactions) {
-          if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
-            continue;
+          const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
+          console.log("New block", blockWithTransactions.number, blockWithTransactions.hash);
+          if (!blockWithTransactions.transactions) {
+            console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
+            return;
           }
-          if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
-            continue;
+          for (const transaction of blockWithTransactions.transactions) {
+            if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
+              continue;
+            }
+            if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
+              continue;
+            }
+            await this.sendNotification(transaction);
           }
-          await this.sendNotification(transaction);
         }
       })
       .on("error", (error) => {
@@ -165,6 +167,7 @@ export class NewEventTrigger extends TriggerBase<{
         );
       }
     }
+    let pendingLogs = [] as Log[];
     const subscription = web3.eth
       .subscribe("logs", {
         address: this.fields.contractAddress,
@@ -173,33 +176,56 @@ export class NewEventTrigger extends TriggerBase<{
       .on("data", async (logEntry) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((logEntry as any).removed) {
+          pendingLogs = pendingLogs.filter((x) => x.blockHash !== logEntry.blockHash);
           return;
         }
-        const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
-        const event = {} as { [key: string]: unknown };
-        for (const input of inputs) {
-          const name = input.name;
-          if (!(name in this.fields.parameterFilters)) {
+        pendingLogs.push(logEntry);
+      })
+      .on("error", (error) => {
+        console.error(error);
+      });
+    const subscriptionBlock = web3.eth
+      .subscribe("newBlockHeaders")
+      .on("data", async (block) => {
+        if (!block.number) {
+          return;
+        }
+        const logs = pendingLogs;
+        pendingLogs = [];
+        const newPendingLogs = [] as Log[];
+        for (const logEntry of logs) {
+          if (logEntry.blockNumber > block.number - 2) {
+            newPendingLogs.push(logEntry);
             continue;
           }
-          if (
-            web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
-            web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
-          ) {
-            return;
+          const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+          const event = {} as { [key: string]: unknown };
+          for (const input of inputs) {
+            const name = input.name;
+            if (!(name in this.fields.parameterFilters)) {
+              continue;
+            }
+            if (
+              web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
+              web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
+            ) {
+              return;
+            }
+            event[name] = decoded[name];
           }
-          event[name] = decoded[name];
+          await this.sendNotification({
+            _rawEvent: logEntry,
+            ...event,
+          });
         }
-        await this.sendNotification({
-          _rawEvent: logEntry,
-          ...event,
-        });
+        pendingLogs = pendingLogs.concat(newPendingLogs);
       })
       .on("error", (error) => {
         console.error(error);
       });
     await this.waitForStop();
     await subscription.unsubscribe();
+    await subscriptionBlock.unsubscribe();
     close();
   }
 }
