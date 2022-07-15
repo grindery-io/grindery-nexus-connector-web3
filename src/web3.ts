@@ -114,6 +114,10 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
         const blockWithTransactions = await web3.eth.getBlock(block.hash, true);
+        if (!blockWithTransactions.transactions) {
+          console.log("No transactions in block", block.number, block);
+          return;
+        }
         for (const transaction of blockWithTransactions.transactions) {
           if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
             continue;
@@ -203,59 +207,71 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
   const { web3, close } = getWeb3(input.fields.chain);
-  web3.eth.transactionConfirmationBlocks = 1;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
-  web3.eth.accounts.wallet.add(account);
-  web3.eth.defaultAccount = account.address;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const paramArray = [] as any[];
-  const functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
-  const inputs = functionInfo.inputs || [];
-  for (const i of inputs) {
-    if (!(i.name in input.fields.parameters)) {
-      throw new Error("Missing parameter " + i.name);
+  try {
+    web3.eth.transactionConfirmationBlocks = 1;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
+    web3.eth.accounts.wallet.add(account);
+    web3.eth.defaultAccount = account.address;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const paramArray = [] as any[];
+    const functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
+    const inputs = functionInfo.inputs || [];
+    for (const i of inputs) {
+      if (!(i.name in input.fields.parameters)) {
+        throw new Error("Missing parameter " + i.name);
+      }
+      paramArray.push(input.fields.parameters[i.name]);
     }
-    paramArray.push(input.fields.parameters[i.name]);
-  }
-  const callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
-  const txConfig: TransactionConfig = {
-    from: account.address,
-    to: input.fields.contractAddress,
-    data: callData,
-
-    /* Use hardcoded gas limit for now
-    ...(input.fields.maxFeePerGas ? { maxFeePerGas: input.fields.maxFeePerGas } : {}),
-    ...(input.fields.maxPriorityFeePerGas ? { maxPriorityFeePerGas: input.fields.maxPriorityFeePerGas } : {}),
-    ...(input.fields.gasLimit ? { gas: input.fields.gasLimit } : {}),
-    */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    nonce: web3.utils.toHex(await web3.eth.getTransactionCount(account.address)) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    // chainId: web3.utils.toHex(await web3.eth.getChainId()) as any, // This needs to be hex number
-  };
-  let result: unknown;
-  const gas = await web3.eth.estimateGas(txConfig);
-  const block = await web3.eth.getBlock("pending");
-  const baseFee = Number(block.baseFeePerGas);
-  const tip = web3.utils.toWei("50", "gwei");
-  const max = baseFee + Number(tip) - 1;
-  txConfig.gas = gas + 45000;
-  txConfig.maxFeePerGas = max;
-  txConfig.maxPriorityFeePerGas = tip;
-  if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
-    result = {
-      returnValue: await web3.eth.call(txConfig),
-      estimatedGas: gas,
+    const callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
+    const txConfig: TransactionConfig = {
+      from: account.address,
+      to: input.fields.contractAddress,
+      data: callData,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nonce: web3.utils.toHex(await web3.eth.getTransactionCount(account.address)) as any,
     };
-  } else {
-    result = await web3.eth.sendTransaction(txConfig);
-  }
+    let result: unknown;
+    for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
+      if (key in input.fields && typeof input.fields[key] === "string") {
+        input.fields[key] = web3.utils.toWei(input.fields[key], "ether");
+      }
+    }
+    const gas = await web3.eth.estimateGas(txConfig);
+    txConfig.gas = Math.ceil(gas * 1.1 + 1000);
+    const block = await web3.eth.getBlock("pending");
+    const baseFee = Number(block.baseFeePerGas);
+    const minFee = baseFee + Number(web3.utils.toWei("30", "gwei"));
+    const maxTip = input.fields.maxPriorityFeePerGas || web3.utils.toWei("75", "gwei");
+    const maxFee = input.fields.gasLimit
+      ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
+      : baseFee + Number(maxTip);
+    if (maxFee < minFee) {
+      throw new Error(
+        `Gas limit of ${web3.utils.fromWei(
+          String(input.fields.gasLimit),
+          "ether"
+        )} is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
+      );
+    }
+    txConfig.maxFeePerGas = maxFee;
+    txConfig.maxPriorityFeePerGas = Math.min(Number(maxTip), maxFee - baseFee - 1);
+    if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
+      result = {
+        returnValue: await web3.eth.call(txConfig),
+        estimatedGas: gas,
+        minFee,
+      };
+    } else {
+      result = await web3.eth.sendTransaction(txConfig);
+    }
 
-  close();
-  return {
-    key: input.key,
-    sessionId: input.sessionId,
-    payload: result,
-  };
+    return {
+      key: input.key,
+      sessionId: input.sessionId,
+      payload: result,
+    };
+  } finally {
+    close();
+  }
 }
