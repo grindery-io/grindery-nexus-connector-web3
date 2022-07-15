@@ -110,17 +110,22 @@ function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
 export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; to?: string }> {
   async main() {
     const { web3, close } = getWeb3(this.fields.chain);
+    let lastBlock = -2;
     const subscription = web3.eth
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
-        console.log("New block", block.number, block.hash);
-        if (!block.hash || !block.number) {
+        if (!block.number) {
           return;
         }
-        const blockWithTransactions =
-          (await web3.eth.getBlock(block.hash, true)) || (await web3.eth.getBlock(block.number, true));
+        if (lastBlock < 0) {
+          lastBlock++;
+          return;
+        }
+        lastBlock = block.number - 2;
+        const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
+        console.log("New block", blockWithTransactions.number, blockWithTransactions.hash);
         if (!blockWithTransactions.transactions) {
-          console.log("No transactions in block", block.number, block);
+          console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
           return;
         }
         for (const transaction of blockWithTransactions.transactions) {
