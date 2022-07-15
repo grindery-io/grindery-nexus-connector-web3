@@ -114,10 +114,11 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
         console.log("New block", block.number, block.hash);
-        if (!block.hash) {
+        if (!block.hash || !block.number) {
           return;
         }
-        const blockWithTransactions = await web3.eth.getBlock(block.hash, true);
+        const blockWithTransactions =
+          (await web3.eth.getBlock(block.hash, true)) || (await web3.eth.getBlock(block.number, true));
         if (!blockWithTransactions.transactions) {
           console.log("No transactions in block", block.number, block);
           return;
