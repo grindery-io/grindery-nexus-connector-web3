@@ -27,6 +27,10 @@ function getWeb3(chain = "eth") {
       delay: 1000,
       onTimeout: true,
     },
+    clientConfig: {
+      maxReceivedFrameSize: 4000000, // bytes - default: 1MiB, current: 4MiB
+      maxReceivedMessageSize: 16000000, // bytes - default: 8MiB, current: 16Mib
+    },
   });
   provider.on("error", ((e) => {
     console.error("WS provider error", e);
