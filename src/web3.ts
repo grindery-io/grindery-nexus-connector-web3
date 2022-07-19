@@ -124,6 +124,11 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
         while (lastBlock < block.number - 2) {
           lastBlock++;
           const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
+          if (!blockWithTransactions) {
+            console.log("No block", lastBlock);
+            lastBlock--;
+            return;
+          }
           if (!blockWithTransactions.transactions) {
             console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
             return;
