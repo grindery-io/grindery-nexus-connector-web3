@@ -13,11 +13,13 @@ export type ConnectorOutput = WebSocketPayloadCommon & {
   payload: unknown;
 };
 function createStopper() {
-  let resolve;
-  const promise: Promise<unknown> & { stop?: () => void } = new Promise((res) => {
+  let resolve, reject;
+  const promise: Promise<unknown> & { stop?: () => void; error?: (e) => void } = new Promise((res, rej) => {
     resolve = res;
+    reject = rej;
   });
   promise.stop = () => resolve();
+  promise.error = (e) => reject(e);
   return promise;
 }
 
@@ -44,6 +46,9 @@ export abstract class TriggerBase<T = unknown> {
     this.running = false;
     this.stopper.stop?.();
   }
+  interrupt(e) {
+    this.stopper.error?.(e);
+  }
   async waitForStop() {
     await this.stopper;
   }
@@ -61,10 +66,18 @@ export abstract class TriggerBase<T = unknown> {
   }
   start() {
     this.running = true;
-    this.main().catch((e) => {
-      console.error(e);
-      Sentry.captureException(e);
-    });
+    this.main()
+      .catch((e) => {
+        console.error(e);
+        Sentry.captureException(e);
+      })
+      .finally(() => {
+        try {
+          this.ws.close();
+        } catch (e) {
+          /* Ignore */
+        }
+      });
   }
   abstract main(): Promise<unknown>;
 }

@@ -129,35 +129,44 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
           lastBlock = block.number;
           return;
         }
-        while (lastBlock < block.number - 2) {
-          lastBlock++;
-          const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
-          if (!blockWithTransactions) {
-            console.log("No block", lastBlock);
-            lastBlock--;
-            return;
-          }
-          if (!blockWithTransactions.transactions) {
-            console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
-            return;
-          }
-          for (const transaction of blockWithTransactions.transactions) {
-            if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
-              continue;
+        try {
+          while (lastBlock < block.number - 2) {
+            lastBlock++;
+            const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
+            if (!blockWithTransactions) {
+              console.log("No block", lastBlock);
+              lastBlock--;
+              return;
             }
-            if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
-              continue;
+            if (!blockWithTransactions.transactions) {
+              console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
+              return;
             }
-            await this.sendNotification(transaction);
+            for (const transaction of blockWithTransactions.transactions) {
+              if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
+                continue;
+              }
+              if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
+                continue;
+              }
+              await this.sendNotification(transaction);
+            }
           }
+        } catch (e) {
+          this.interrupt(e);
         }
       })
       .on("error", (error) => {
         console.error(error);
       });
-    await this.waitForStop();
-    await subscription.unsubscribe();
-    close();
+    try {
+      await this.waitForStop();
+    } catch (e) {
+      console.error("Error while ", e);
+    } finally {
+      await subscription.unsubscribe();
+      close();
+    }
   }
 }
 export class NewEventTrigger extends TriggerBase<{
