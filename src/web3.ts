@@ -120,9 +120,12 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
   async main() {
     const { web3, close } = getWeb3(this.fields.chain);
     let lastBlock = -1;
+    let checking = false;
+    let latestBlock = -1;
     const subscription = web3.eth
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
+        latestBlock = block.number;
         if (!block.number) {
           return;
         }
@@ -130,8 +133,12 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
           lastBlock = block.number;
           return;
         }
+        if (checking) {
+          return;
+        }
+        checking = true;
         try {
-          while (lastBlock < block.number - 2) {
+          while (lastBlock < latestBlock - 2) {
             lastBlock++;
             const blockWithTransactions: BlockTransactionObject | undefined = await web3.eth
               .getBlock(lastBlock, true)
@@ -160,6 +167,8 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
           }
         } catch (e) {
           this.interrupt(e);
+        } finally {
+          checking = false;
         }
       })
       .on("error", (error) => {
