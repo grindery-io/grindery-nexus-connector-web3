@@ -162,7 +162,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
     try {
       await this.waitForStop();
     } catch (e) {
-      console.error("Error while ", e);
+      console.error("Error while monitoring transactions", e);
     } finally {
       await subscription.unsubscribe();
       close();
