@@ -2,6 +2,7 @@ import Web3 from "web3";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
 import { AbiItem } from "web3-utils";
 import { TransactionConfig, Log } from "web3-core";
+import { BlockTransactionObject } from "web3-eth";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -132,7 +133,12 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
         try {
           while (lastBlock < block.number - 2) {
             lastBlock++;
-            const blockWithTransactions = await web3.eth.getBlock(lastBlock, true);
+            const blockWithTransactions: BlockTransactionObject | undefined = await web3.eth
+              .getBlock(lastBlock, true)
+              .catch((e) => {
+                console.error("Error getting block:", e);
+                return new Promise((resolve) => setTimeout(() => resolve(undefined), 5000));
+              });
             if (!blockWithTransactions) {
               console.log("No block", lastBlock);
               lastBlock--;
@@ -162,7 +168,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
     try {
       await this.waitForStop();
     } catch (e) {
-      console.error("Error while monitoring transactions", e);
+      console.error("Error while monitoring transactions:", e);
     } finally {
       await subscription.unsubscribe();
       close();
