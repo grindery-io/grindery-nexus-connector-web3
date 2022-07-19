@@ -28,6 +28,10 @@ function getWeb3(chain = "eth") {
       onTimeout: true,
     },
   });
+  provider.on("error", ((e) => {
+    console.error("WS provider error", e);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }) as any);
   const web3 = new Web3(provider);
   return {
     web3,
