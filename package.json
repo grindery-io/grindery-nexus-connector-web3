@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "install": "./install.sh",
     "call": "node bin/local.js",
     "build": "./build.sh",
     "deploy": "./deploy.sh",
