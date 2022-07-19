@@ -125,10 +125,10 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
     const subscription = web3.eth
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
-        latestBlock = block.number;
         if (!block.number) {
           return;
         }
+        latestBlock = block.number;
         if (lastBlock <= 0) {
           lastBlock = block.number;
           return;
