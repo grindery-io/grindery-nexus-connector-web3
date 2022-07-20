@@ -205,6 +205,7 @@ export class NewEventTrigger extends TriggerBase<{
         );
       }
     }
+    console.log(this.fields);
     console.log("Topics:", topics);
     let pendingLogs = [] as Log[];
     const subscription = web3.eth
