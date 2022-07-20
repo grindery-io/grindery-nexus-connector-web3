@@ -205,6 +205,7 @@ export class NewEventTrigger extends TriggerBase<{
         );
       }
     }
+    console.log("Topics:", topics);
     let pendingLogs = [] as Log[];
     const subscription = web3.eth
       .subscribe("logs", {
@@ -218,6 +219,7 @@ export class NewEventTrigger extends TriggerBase<{
           return;
         }
         pendingLogs.push(logEntry);
+        console.log("Pending log", logEntry);
       })
       .on("error", (error) => {
         console.error(error);
@@ -226,6 +228,9 @@ export class NewEventTrigger extends TriggerBase<{
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
         if (!block.number) {
+          return;
+        }
+        if (!pendingLogs.length) {
           return;
         }
         const logs = pendingLogs;
