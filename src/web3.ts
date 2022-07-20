@@ -199,7 +199,9 @@ export class NewEventTrigger extends TriggerBase<{
       if (input.indexed) {
         const value = this.fields.parameterFilters[input.name];
         topics.push(
-          input.name in this.fields.parameterFilters ? web3.eth.abi.encodeParameter(input.type, value) : null
+          input.name in this.fields.parameterFilters && value !== ""
+            ? web3.eth.abi.encodeParameter(input.type, value)
+            : null
         );
       }
     }
@@ -238,7 +240,7 @@ export class NewEventTrigger extends TriggerBase<{
           const event = {} as { [key: string]: unknown };
           for (const input of inputs) {
             const name = input.name;
-            if (!(name in this.fields.parameterFilters)) {
+            if (!(name in this.fields.parameterFilters) || this.fields.parameterFilters[name] === "") {
               continue;
             }
             if (
