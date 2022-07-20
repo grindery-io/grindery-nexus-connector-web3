@@ -205,22 +205,24 @@ export class NewEventTrigger extends TriggerBase<{
         );
       }
     }
-    console.log(this.fields);
-    console.log("Topics:", topics);
+    while (topics[topics.length - 1] === null) {
+      topics.pop();
+    }
     let pendingLogs = [] as Log[];
     const subscription = web3.eth
       .subscribe("logs", {
         address: this.fields.contractAddress,
         topics,
+        fromBlock: "latest",
       })
       .on("data", async (logEntry) => {
+        console.log("Log:", logEntry);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((logEntry as any).removed) {
           pendingLogs = pendingLogs.filter((x) => x.blockHash !== logEntry.blockHash);
           return;
         }
         pendingLogs.push(logEntry);
-        console.log("Pending log", logEntry);
       })
       .on("error", (error) => {
         console.error(error);
@@ -246,6 +248,7 @@ export class NewEventTrigger extends TriggerBase<{
           const event = {} as { [key: string]: unknown };
           for (const input of inputs) {
             const name = input.name;
+            event[name] = decoded[name];
             if (!(name in this.fields.parameterFilters) || this.fields.parameterFilters[name] === "") {
               continue;
             }
@@ -255,7 +258,18 @@ export class NewEventTrigger extends TriggerBase<{
             ) {
               return;
             }
-            event[name] = decoded[name];
+          }
+          const indexedParameters = logEntry.topics.slice(1);
+          for (const input of inputs) {
+            if (!indexedParameters.length) {
+              break;
+            }
+            if (input.indexed) {
+              const value = indexedParameters.shift();
+              if (value) {
+                event[input.name] = web3.eth.abi.decodeParameter(input.type, value);
+              }
+            }
           }
           await this.sendNotification({
             _rawEvent: logEntry,

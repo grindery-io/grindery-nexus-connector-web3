@@ -21,7 +21,7 @@ app.use((_req, res) => res.type("text/plain").send(debugOutput));
 
 const port = parseInt(process.env.PORT || "", 10) || 3000;
 
-console.log(`Listening on port ${port}`);
+console.log(`Listening on http://0.0.0.0:${port}`);
 const server = app.listen(port);
 
 const wss = new Server({ server });
