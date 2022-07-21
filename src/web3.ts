@@ -3,6 +3,7 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon"
 import { AbiItem } from "web3-utils";
 import { TransactionConfig, Log } from "web3-core";
 import { BlockTransactionObject } from "web3-eth";
+import { InvalidParamsError } from "./jsonrpc";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -162,7 +163,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
               if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
                 continue;
               }
-              await this.sendNotification(transaction);
+              this.sendNotification(transaction);
             }
           }
         } catch (e) {
@@ -186,16 +187,23 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
 }
 export class NewEventTrigger extends TriggerBase<{
   chain: string;
-  contractAddress: string;
-  eventDeclaration: string;
+  contractAddress?: string;
+  eventDeclaration: string | string[];
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
+    const eventInfos =
+      typeof this.fields.eventDeclaration === "string"
+        ? [parseEventDeclaration(this.fields.eventDeclaration)]
+        : this.fields.eventDeclaration.map((e) => parseEventDeclaration(e));
     const { web3, close } = getWeb3(this.fields.chain);
-    const eventInfo = parseEventDeclaration(this.fields.eventDeclaration);
-    const topics = [web3.eth.abi.encodeEventSignature(eventInfo)] as (string | null)[];
-    const inputs = eventInfo.inputs || [];
-    for (const input of inputs) {
+    const eventInfoMap = Object.fromEntries(eventInfos.map((e) => [web3.eth.abi.encodeEventSignature(e), e]));
+    const topics = [Object.keys(eventInfoMap)] as (string | string[] | null)[];
+    if (topics[0]?.length === 1) {
+      topics[0] = topics[0][0];
+    }
+    const topicInputs = eventInfos[0].inputs || [];
+    for (const input of topicInputs) {
       if (input.indexed) {
         const value = this.fields.parameterFilters[input.name];
         topics.push(
@@ -208,15 +216,18 @@ export class NewEventTrigger extends TriggerBase<{
     while (topics[topics.length - 1] === null) {
       topics.pop();
     }
+    const hasContractAddress = this.fields.contractAddress && this.fields.contractAddress !== "0x0";
+    if (topics.length <= 1 && !hasContractAddress) {
+      throw new InvalidParamsError("No topics to filter on");
+    }
     let pendingLogs = [] as Log[];
     const subscription = web3.eth
       .subscribe("logs", {
-        address: this.fields.contractAddress,
+        ...(hasContractAddress ? { address: this.fields.contractAddress } : {}),
         topics,
         fromBlock: "latest",
       })
-      .on("data", async (logEntry) => {
-        console.log("Log:", logEntry);
+      .on("data", (logEntry) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((logEntry as any).removed) {
           pendingLogs = pendingLogs.filter((x) => x.blockHash !== logEntry.blockHash);
@@ -229,7 +240,7 @@ export class NewEventTrigger extends TriggerBase<{
       });
     const subscriptionBlock = web3.eth
       .subscribe("newBlockHeaders")
-      .on("data", async (block) => {
+      .on("data", (block) => {
         if (!block.number) {
           return;
         }
@@ -244,8 +255,15 @@ export class NewEventTrigger extends TriggerBase<{
             newPendingLogs.push(logEntry);
             continue;
           }
+          const eventInfo = eventInfoMap[logEntry.topics[0]];
+          if (!eventInfo) {
+            console.warn("Unknown event:", logEntry.topics[0], logEntry);
+            continue;
+          }
+          const inputs = eventInfo.inputs || [];
           const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
           const event = {} as { [key: string]: unknown };
+          event["_grinderyContractAddress"] = logEntry.address;
           for (const input of inputs) {
             const name = input.name;
             event[name] = decoded[name];
@@ -271,7 +289,7 @@ export class NewEventTrigger extends TriggerBase<{
               }
             }
           }
-          await this.sendNotification({
+          this.sendNotification({
             _rawEvent: logEntry,
             ...event,
           });
