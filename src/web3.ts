@@ -63,13 +63,17 @@ class Web3Wrapper extends EventEmitter {
   addRef() {
     this.ref++;
   }
-  private subscribeToNewBlockHeader() {
-    if (this.newBlockSubscription) {
+  private subscribeToNewBlockHeader(lastBlock = -1) {
+    if (this.isClosed()) {
       return;
     }
-    let lastBlock = -1;
+    if (this.newBlockSubscription) {
+      this.newBlockSubscription
+        .unsubscribe()
+        .catch((e) => console.error("Failed to unsubscribe from newBlockHeaders", e));
+    }
     let checking = false;
-    let latestBlock = -1;
+    let latestBlock = lastBlock;
     this.newBlockSubscription = this.web3.eth
       .subscribe("newBlockHeaders")
       .on("data", async (block) => {
@@ -99,7 +103,8 @@ class Web3Wrapper extends EventEmitter {
               .getBlock(lastBlock, true)
               .catch((e) => {
                 console.error("Error getting block:", e);
-                return new Promise((resolve) => setTimeout(() => resolve(undefined), 5000));
+                this.subscribeToNewBlockHeader(lastBlock - 1);
+                return undefined;
               });
             if (!blockWithTransactions) {
               console.log("No block", lastBlock);
@@ -301,7 +306,13 @@ export class NewEventTrigger extends TriggerBase<{
       .on("data", (logEntry) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((logEntry as any).removed) {
-          pendingLogs = pendingLogs.filter((x) => x.blockHash !== logEntry.blockHash);
+          pendingLogs = pendingLogs.filter((x) => {
+            const removed = x.blockHash !== logEntry.blockHash;
+            if (removed) {
+              console.log(`[${this.sessionId}] Removed log ${x.transactionHash} - ${x.logIndex}`);
+            }
+            return removed;
+          });
           return;
         }
         console.log(`[${this.sessionId}] NewEventTrigger: Received log ${logEntry.transactionHash}`);
