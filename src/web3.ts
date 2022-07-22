@@ -2,8 +2,10 @@ import Web3 from "web3";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
 import { AbiItem } from "web3-utils";
 import { TransactionConfig, Log } from "web3-core";
+import { Subscription } from "web3-core-subscriptions";
 import { BlockTransactionObject } from "web3-eth";
 import { InvalidParamsError } from "./jsonrpc";
+import { EventEmitter } from "node:events";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -19,33 +21,141 @@ const CHAIN_MAPPING = {
   "eip155:80001": "wss://rpc-mumbai.matic.today/", // Polygon Mumbai testnet
 };
 
+class Web3Wrapper extends EventEmitter {
+  private ref = 1;
+  public readonly web3: Web3;
+  private newBlockSubscription: null | Subscription<unknown> = null;
+  constructor(url: string) {
+    super();
+    console.log(`Creating web3 wrapper for ${url}`);
+    const provider = new Web3.providers.WebsocketProvider(url, {
+      reconnect: {
+        auto: true,
+        delay: 1000,
+        onTimeout: true,
+      },
+      clientConfig: {
+        maxReceivedFrameSize: 4000000, // bytes - default: 1MiB, current: 4MiB
+        maxReceivedMessageSize: 16000000, // bytes - default: 8MiB, current: 16Mib
+      },
+    });
+    provider.on("error", ((e) => {
+      console.error("WS provider error", e);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
+    this.web3 = new Web3(provider);
+  }
+  close() {
+    this.ref--;
+    if (this.ref <= 0) {
+      const provider = this.web3.currentProvider as InstanceType<typeof Web3.providers.WebsocketProvider>;
+      console.log("Closing web3 wrapper for", provider.connection.url);
+      this.removeAllListeners();
+      this.web3.setProvider(null);
+      provider.reset();
+      provider.disconnect();
+    }
+  }
+  isClosed() {
+    return this.ref <= 0;
+  }
+  addRef() {
+    this.ref++;
+  }
+  private subscribeToNewBlockHeader() {
+    if (this.newBlockSubscription) {
+      return;
+    }
+    let lastBlock = -1;
+    let checking = false;
+    let latestBlock = -1;
+    this.newBlockSubscription = this.web3.eth
+      .subscribe("newBlockHeaders")
+      .on("data", async (block) => {
+        if (this.listenerCount("newBlock") === 0) {
+          this.newBlockSubscription?.unsubscribe().catch((e) => {
+            console.error("Unable to unsubscribe from newBlockHeaders", e);
+          });
+          this.newBlockSubscription = null;
+          return;
+        }
+        if (!block.number) {
+          return;
+        }
+        latestBlock = block.number;
+        if (lastBlock <= 0) {
+          lastBlock = block.number;
+          return;
+        }
+        if (checking) {
+          return;
+        }
+        checking = true;
+        try {
+          while (lastBlock < latestBlock - 2) {
+            lastBlock++;
+            const blockWithTransactions: BlockTransactionObject | undefined = await this.web3.eth
+              .getBlock(lastBlock, true)
+              .catch((e) => {
+                console.error("Error getting block:", e);
+                return new Promise((resolve) => setTimeout(() => resolve(undefined), 5000));
+              });
+            if (!blockWithTransactions) {
+              console.log("No block", lastBlock);
+              lastBlock--;
+              return;
+            }
+            if (!blockWithTransactions.transactions) {
+              console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
+              return;
+            }
+            this.emit("newBlock", blockWithTransactions);
+          }
+        } catch (e) {
+          this.emit("error", e);
+        } finally {
+          checking = false;
+        }
+      })
+      .on("error", (error) => {
+        console.error(error);
+        this.emit("error", error);
+      });
+  }
+  onNewBlock(callback: (block: BlockTransactionObject) => void) {
+    if (this.isClosed()) {
+      throw new Error("Web3Wrapper is closed");
+    }
+    this.addListener("newBlock", callback);
+    if (this.listenerCount("newBlock") === 1) {
+      this.subscribeToNewBlockHeader();
+    }
+    return () => {
+      this.removeListener("newBlock", callback);
+    };
+  }
+}
+
+const web3Cache = new Map<string, Web3Wrapper>();
+
 function getWeb3(chain = "eth") {
   const url = CHAIN_MAPPING[chain]?.includes("://")
     ? CHAIN_MAPPING[chain]
     : `wss://rpc.ankr.com/${CHAIN_MAPPING[chain] || chain}/ws/${process.env.ANKR_KEY}`;
-  const provider = new Web3.providers.WebsocketProvider(url, {
-    reconnect: {
-      auto: true,
-      delay: 1000,
-      onTimeout: true,
-    },
-    clientConfig: {
-      maxReceivedFrameSize: 4000000, // bytes - default: 1MiB, current: 4MiB
-      maxReceivedMessageSize: 16000000, // bytes - default: 8MiB, current: 16Mib
-    },
-  });
-  provider.on("error", ((e) => {
-    console.error("WS provider error", e);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }) as any);
-  const web3 = new Web3(provider);
+  let wrapper = web3Cache.get(url);
+  if (!wrapper || wrapper.isClosed()) {
+    wrapper = new Web3Wrapper(url);
+    web3Cache.set(url, wrapper);
+  } else {
+    wrapper.addRef();
+  }
   return {
-    web3,
+    web3: wrapper.web3,
     close: () => {
-      web3.setProvider(null);
-      provider.reset();
-      provider.disconnect();
+      wrapper?.close();
+      wrapper = undefined;
     },
+    onNewBlock: wrapper?.onNewBlock.bind(wrapper),
   };
 }
 function isSameAddress(a, b) {
@@ -120,69 +230,25 @@ function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
 export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; to?: string }> {
   async main() {
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
-    const { web3, close } = getWeb3(this.fields.chain);
-    let lastBlock = -1;
-    let checking = false;
-    let latestBlock = -1;
-    const subscription = web3.eth
-      .subscribe("newBlockHeaders")
-      .on("data", async (block) => {
-        if (!block.number) {
-          return;
+    const { close, onNewBlock } = getWeb3(this.fields.chain);
+    const unsubscribe = onNewBlock((blockWithTransactions) => {
+      for (const transaction of blockWithTransactions.transactions) {
+        if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
+          continue;
         }
-        latestBlock = block.number;
-        if (lastBlock <= 0) {
-          lastBlock = block.number;
-          return;
+        if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
+          continue;
         }
-        if (checking) {
-          return;
-        }
-        checking = true;
-        try {
-          while (lastBlock < latestBlock - 2) {
-            lastBlock++;
-            const blockWithTransactions: BlockTransactionObject | undefined = await web3.eth
-              .getBlock(lastBlock, true)
-              .catch((e) => {
-                console.error("Error getting block:", e);
-                return new Promise((resolve) => setTimeout(() => resolve(undefined), 5000));
-              });
-            if (!blockWithTransactions) {
-              console.log("No block", lastBlock);
-              lastBlock--;
-              return;
-            }
-            if (!blockWithTransactions.transactions) {
-              console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
-              return;
-            }
-            for (const transaction of blockWithTransactions.transactions) {
-              if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
-                continue;
-              }
-              if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
-                continue;
-              }
-              console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
-              this.sendNotification(transaction);
-            }
-          }
-        } catch (e) {
-          this.interrupt(e);
-        } finally {
-          checking = false;
-        }
-      })
-      .on("error", (error) => {
-        console.error(error);
-      });
+        console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
+        this.sendNotification(transaction);
+      }
+    });
     try {
       await this.waitForStop();
     } catch (e) {
       console.error("Error while monitoring transactions:", e);
     } finally {
-      await subscription.unsubscribe();
+      unsubscribe();
       close();
     }
   }
@@ -199,7 +265,7 @@ export class NewEventTrigger extends TriggerBase<{
       typeof this.fields.eventDeclaration === "string"
         ? [parseEventDeclaration(this.fields.eventDeclaration)]
         : this.fields.eventDeclaration.map((e) => parseEventDeclaration(e));
-    const { web3, close } = getWeb3(this.fields.chain);
+    const { web3, close, onNewBlock } = getWeb3(this.fields.chain);
     const eventInfoMap = Object.fromEntries(eventInfos.map((e) => [web3.eth.abi.encodeEventSignature(e), e]));
     const topics = [Object.keys(eventInfoMap)] as (string | string[] | null)[];
     if (topics[0]?.length === 1) {
@@ -242,71 +308,66 @@ export class NewEventTrigger extends TriggerBase<{
       .on("error", (error) => {
         console.error(error);
       });
-    const subscriptionBlock = web3.eth
-      .subscribe("newBlockHeaders")
-      .on("data", (block) => {
-        if (!block.number) {
-          return;
+    const unsubscribeBlock = onNewBlock((block) => {
+      if (!block.number) {
+        return;
+      }
+      if (!pendingLogs.length) {
+        return;
+      }
+      const logs = pendingLogs;
+      pendingLogs = [];
+      const newPendingLogs = [] as Log[];
+      for (const logEntry of logs) {
+        if (logEntry.blockNumber > block.number - 2) {
+          newPendingLogs.push(logEntry);
+          continue;
         }
-        if (!pendingLogs.length) {
-          return;
+        const eventInfo = eventInfoMap[logEntry.topics[0]];
+        if (!eventInfo) {
+          console.warn("Unknown event:", logEntry.topics[0], logEntry);
+          continue;
         }
-        const logs = pendingLogs;
-        pendingLogs = [];
-        const newPendingLogs = [] as Log[];
-        for (const logEntry of logs) {
-          if (logEntry.blockNumber > block.number - 2) {
-            newPendingLogs.push(logEntry);
+        const inputs = eventInfo.inputs || [];
+        const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+        const event = {} as { [key: string]: unknown };
+        event["_grinderyContractAddress"] = logEntry.address;
+        for (const input of inputs) {
+          const name = input.name;
+          event[name] = decoded[name];
+          if (!(name in this.fields.parameterFilters) || this.fields.parameterFilters[name] === "") {
             continue;
           }
-          const eventInfo = eventInfoMap[logEntry.topics[0]];
-          if (!eventInfo) {
-            console.warn("Unknown event:", logEntry.topics[0], logEntry);
-            continue;
+          if (
+            web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
+            web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
+          ) {
+            return;
           }
-          const inputs = eventInfo.inputs || [];
-          const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
-          const event = {} as { [key: string]: unknown };
-          event["_grinderyContractAddress"] = logEntry.address;
-          for (const input of inputs) {
-            const name = input.name;
-            event[name] = decoded[name];
-            if (!(name in this.fields.parameterFilters) || this.fields.parameterFilters[name] === "") {
-              continue;
-            }
-            if (
-              web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
-              web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
-            ) {
-              return;
-            }
-          }
-          const indexedParameters = logEntry.topics.slice(1);
-          for (const input of inputs) {
-            if (!indexedParameters.length) {
-              break;
-            }
-            if (input.indexed) {
-              const value = indexedParameters.shift();
-              if (value) {
-                event[input.name] = web3.eth.abi.decodeParameter(input.type, value);
-              }
-            }
-          }
-          console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
-          this.sendNotification({
-            _rawEvent: logEntry,
-            ...event,
-          });
         }
-        pendingLogs = pendingLogs.concat(newPendingLogs);
-      })
-      .on("error", (error) => {
-        console.error(error);
-      });
+        const indexedParameters = logEntry.topics.slice(1);
+        for (const input of inputs) {
+          if (!indexedParameters.length) {
+            break;
+          }
+          if (input.indexed) {
+            const value = indexedParameters.shift();
+            if (value) {
+              event[input.name] = web3.eth.abi.decodeParameter(input.type, value);
+            }
+          }
+        }
+        console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
+        this.sendNotification({
+          _rawEvent: logEntry,
+          ...event,
+        });
+      }
+      pendingLogs = pendingLogs.concat(newPendingLogs);
+    });
     await this.waitForStop();
     await subscription.unsubscribe();
-    await subscriptionBlock.unsubscribe();
+    await unsubscribeBlock();
     close();
   }
 }
