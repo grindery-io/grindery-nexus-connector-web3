@@ -24,11 +24,13 @@ function createStopper() {
 }
 
 export abstract class TriggerBase<T = unknown> {
+  protected sessionId = "";
   private running = false;
   protected fields: T;
   private stopper = createStopper();
   constructor(private ws: WebSocket, private input: ConnectorInput) {
     this.fields = input.fields as T;
+    this.sessionId = input.sessionId;
     if (ws.readyState !== WebSocket.OPEN) {
       return;
     }

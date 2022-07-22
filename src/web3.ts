@@ -119,6 +119,7 @@ function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; to?: string }> {
   async main() {
+    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const { web3, close } = getWeb3(this.fields.chain);
     let lastBlock = -1;
     let checking = false;
@@ -163,6 +164,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
               if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
                 continue;
               }
+              console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
               this.sendNotification(transaction);
             }
           }
@@ -192,6 +194,7 @@ export class NewEventTrigger extends TriggerBase<{
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
+    console.log(`[${this.sessionId}] NewEventTrigger: ${this.fields.eventDeclaration}`);
     const eventInfos =
       typeof this.fields.eventDeclaration === "string"
         ? [parseEventDeclaration(this.fields.eventDeclaration)]
@@ -220,6 +223,7 @@ export class NewEventTrigger extends TriggerBase<{
     if (topics.length <= 1 && !hasContractAddress) {
       throw new InvalidParamsError("No topics to filter on");
     }
+    console.log(`[${this.sessionId}] Topics: ${topics}`);
     let pendingLogs = [] as Log[];
     const subscription = web3.eth
       .subscribe("logs", {
@@ -289,6 +293,7 @@ export class NewEventTrigger extends TriggerBase<{
               }
             }
           }
+          console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
           this.sendNotification({
             _rawEvent: logEntry,
             ...event,
