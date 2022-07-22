@@ -304,6 +304,7 @@ export class NewEventTrigger extends TriggerBase<{
           pendingLogs = pendingLogs.filter((x) => x.blockHash !== logEntry.blockHash);
           return;
         }
+        console.log(`[${this.sessionId}] NewEventTrigger: Received log ${logEntry.transactionHash}`);
         pendingLogs.push(logEntry);
       })
       .on("error", (error) => {
