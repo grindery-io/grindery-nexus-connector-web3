@@ -28,7 +28,7 @@ class Web3Wrapper extends EventEmitter {
   constructor(url: string) {
     super();
     this.setMaxListeners(1000);
-    console.log(`Creating web3 wrapper for ${url}`);
+    console.log("Creating web3 wrapper");
     const provider = new Web3.providers.WebsocketProvider(url, {
       reconnect: {
         auto: true,
@@ -50,7 +50,7 @@ class Web3Wrapper extends EventEmitter {
     this.ref--;
     if (this.ref <= 0) {
       const provider = this.web3.currentProvider as InstanceType<typeof Web3.providers.WebsocketProvider>;
-      console.log("Closing web3 wrapper for", provider.connection.url);
+      console.log("Closing web3 wrapper");
       this.removeAllListeners();
       this.web3.setProvider(null);
       provider.reset();
