@@ -27,6 +27,7 @@ class Web3Wrapper extends EventEmitter {
   private newBlockSubscription: null | Subscription<unknown> = null;
   constructor(url: string) {
     super();
+    this.setMaxListeners(1000);
     console.log(`Creating web3 wrapper for ${url}`);
     const provider = new Web3.providers.WebsocketProvider(url, {
       reconnect: {
