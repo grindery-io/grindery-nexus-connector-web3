@@ -178,7 +178,7 @@ class Web3Wrapper extends EventEmitter {
     this.web3 = new Web3(this.provider);
   }
   redactedUrl() {
-    return this.provider.connection.url.replace(/[0-9a-f]{8,}/i, "***");
+    return this.url.replace(/[0-9a-f]{8,}/i, "***");
   }
   close() {
     this.ref--;
