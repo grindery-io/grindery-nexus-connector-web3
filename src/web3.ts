@@ -1,5 +1,6 @@
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
 import { TransactionConfig } from "web3-core";
+import abi from "web3-eth-abi";
 import { InvalidParamsError } from "./jsonrpc";
 import { getWeb3, isSameAddress, parseEventDeclaration, parseFunctionDeclaration } from "./web3Utils";
 
@@ -47,8 +48,7 @@ export class NewEventTrigger extends TriggerBase<{
       typeof this.fields.eventDeclaration === "string"
         ? [parseEventDeclaration(this.fields.eventDeclaration)]
         : this.fields.eventDeclaration.map((e) => parseEventDeclaration(e));
-    const { web3, close, onNewBlock } = getWeb3(this.fields.chain);
-    const eventInfoMap = Object.fromEntries(eventInfos.map((e) => [web3.eth.abi.encodeEventSignature(e), e]));
+    const eventInfoMap = Object.fromEntries(eventInfos.map((e) => [abi.encodeEventSignature(e), e]));
     const topics = [Object.keys(eventInfoMap)] as (string | string[] | null)[];
     if (topics[0]?.length === 1) {
       topics[0] = topics[0][0];
@@ -59,7 +59,7 @@ export class NewEventTrigger extends TriggerBase<{
         const value = this.fields.parameterFilters[input.name];
         topics.push(
           input.name in this.fields.parameterFilters && value !== ""
-            ? web3.eth.abi.encodeParameter(input.type, value)
+            ? abi.encodeParameter(input.type, value)
             : null
         );
       }
@@ -73,6 +73,7 @@ export class NewEventTrigger extends TriggerBase<{
       throw new InvalidParamsError("No topics to filter on");
     }
     console.log(`[${this.sessionId}] Topics: ${topics}`);
+    const { web3, close, onNewBlock } = getWeb3(this.fields.chain);
     const unsubscribe = onNewBlock((blockWithTransactions) => {
       if (contractAddress && !web3.utils.isContractAddressInBloom(blockWithTransactions.logsBloom, contractAddress)) {
         return;
