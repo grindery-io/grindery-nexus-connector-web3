@@ -146,6 +146,7 @@ class Web3Wrapper extends EventEmitter {
     this.setMaxListeners(1000);
     console.log("Creating web3 wrapper");
     const provider = new Web3.providers.WebsocketProvider(url, {
+      timeout: 15000,
       reconnect: {
         auto: true,
         delay: 1000,
@@ -165,12 +166,12 @@ class Web3Wrapper extends EventEmitter {
   close() {
     this.ref--;
     if (this.ref <= 0) {
+      console.log("Closing web3 wrapper");
       if (this.newBlockSubscriber) {
         this.newBlockSubscriber.close();
         this.newBlockSubscriber = null;
       }
       const provider = this.web3.currentProvider as InstanceType<typeof Web3.providers.WebsocketProvider>;
-      console.log("Closing web3 wrapper");
       this.removeAllListeners();
       this.web3.setProvider(null);
       provider.reset();
@@ -194,6 +195,7 @@ class Web3Wrapper extends EventEmitter {
       this.newBlockSubscriber = new NewBlockSubscriber(this.web3);
       this.newBlockSubscriber.on("newBlock", (block) => {
         if (this.listenerCount("newBlock") === 0) {
+          console.log("No listeners for newBlock, closing subscription");
           this.newBlockSubscriber?.close();
           this.newBlockSubscriber = null;
           return;
