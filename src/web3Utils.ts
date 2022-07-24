@@ -54,6 +54,12 @@ class NewBlockSubscriber extends EventEmitter {
     if (this.closed) {
       return;
     }
+    let connectTimeout = setTimeout(() => {
+      connectTimeout = null;
+      console.error("Timeout when setting up subscription");
+      this.unsubscribe();
+      this.emit("subscriptionTimeout");
+    }, 10000) as ReturnType<typeof setTimeout> | null;
     this.newBlockSubscription = this.web3Full.eth
       .subscribe("newBlockHeaders")
       .on("data", (block) => {
@@ -68,6 +74,11 @@ class NewBlockSubscriber extends EventEmitter {
         console.error(error);
         this.emit("error", error);
         this.resetSubscription();
+      })
+      .on("connected", () => {
+        if (connectTimeout) {
+          clearTimeout(connectTimeout);
+        }
       });
   }
   async poll() {
@@ -223,6 +234,10 @@ class Web3Wrapper extends EventEmitter {
           return;
         }
         this.emit("newBlock", block);
+      });
+      this.newBlockSubscriber.on("subscriptionTimeout", () => {
+        this.provider.disconnect();
+        this.provider.reconnect();
       });
     }
   }
