@@ -12,13 +12,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
-    console.log(
-      `[${this.sessionId}] NewTransactionTrigger:`,
-      this.fields.chain,
-      this.fields.chain,
-      this.fields.from,
-      this.fields.to
-    );
+    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const { close, onNewBlock } = getWeb3(this.fields.chain);
     const unsubscribe = onNewBlock((blockWithTransactions) => {
       for (const transaction of blockWithTransactions.transactions) {
@@ -49,7 +43,7 @@ export class NewEventTrigger extends TriggerBase<{
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
-    console.log(`[${this.sessionId}] NewEventTrigger: ${this.fields.eventDeclaration}`);
+    console.log(`[${this.sessionId}] NewEventTrigger: ${this.fields.chain} ${this.fields.eventDeclaration}`);
     const eventInfos =
       typeof this.fields.eventDeclaration === "string"
         ? [parseEventDeclaration(this.fields.eventDeclaration)]
