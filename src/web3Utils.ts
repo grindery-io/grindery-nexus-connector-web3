@@ -14,6 +14,7 @@ const CHAIN_MAPPING = {
   "eip155:56": "bsc",
   "eip155:250": "fantom",
   "eip155:245022934": "solana",
+  "eip155:1666600000": "harmony",
 
   "eip155:80001": "wss://rpc-mumbai.matic.today/", // Polygon Mumbai testnet
 };
