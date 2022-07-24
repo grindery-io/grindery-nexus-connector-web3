@@ -75,7 +75,11 @@ class NewBlockSubscriber extends EventEmitter {
       return;
     }
     try {
+      const timeout = setTimeout(() => {
+        console.error("Timeout in poll, latest block:", this.latestBlock);
+      }, 30000);
       const latestBlock = await this.web3.eth.getBlockNumber();
+      clearTimeout(timeout);
       if (latestBlock > this.latestBlock) {
         this.latestBlock = latestBlock;
         console.log(`Got new block from polling: ${latestBlock}`);
