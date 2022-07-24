@@ -195,6 +195,7 @@ class Web3Wrapper extends EventEmitter {
       });
       this.removeAllListeners();
       this.web3.setProvider(null);
+      this.web3Full.setProvider(null);
       this.provider.reset();
       this.provider.disconnect();
     }
@@ -222,11 +223,6 @@ class Web3Wrapper extends EventEmitter {
           return;
         }
         this.emit("newBlock", block);
-      });
-      this.newBlockSubscriber.on("error", () => {
-        console.log(`[${this.redactedUrl()}] Reconnecting`);
-        this.provider.disconnect();
-        this.provider.reconnect();
       });
     }
   }
