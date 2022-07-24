@@ -16,7 +16,7 @@ const CHAIN_MAPPING = {
   "eip155:245022934": "solana",
   "eip155:1666600000": "harmony",
 
-  "eip155:80001": "wss://rpc-mumbai.matic.today/", // Polygon Mumbai testnet
+  "eip155:80001": "polygon_mumbai",
 };
 class NewBlockSubscriber extends EventEmitter {
   private newBlockSubscription: null | Subscription<unknown> = null;
@@ -25,7 +25,7 @@ class NewBlockSubscriber extends EventEmitter {
   private checking = false;
   private closed = false;
   private pollTimer: null | ReturnType<typeof setTimeout> = null;
-  constructor(private web3: Web3) {
+  constructor(private web3: Web3, private web3Full: Web3) {
     super();
     this.resetSubscription();
     this.resetPoller();
@@ -54,7 +54,7 @@ class NewBlockSubscriber extends EventEmitter {
     if (this.closed) {
       return;
     }
-    this.newBlockSubscription = this.web3.eth
+    this.newBlockSubscription = this.web3Full.eth
       .subscribe("newBlockHeaders")
       .on("data", (block) => {
         if (!block.number) {
@@ -153,9 +153,10 @@ class NewBlockSubscriber extends EventEmitter {
 class Web3Wrapper extends EventEmitter {
   private ref = 1;
   public readonly web3: Web3;
+  private readonly web3Full: Web3;
   private provider: InstanceType<typeof Web3.providers.WebsocketProvider>;
   private newBlockSubscriber: null | NewBlockSubscriber = null;
-  constructor(private url: string) {
+  constructor(private url: string, urlHttp = "") {
     super();
     this.setMaxListeners(1000);
     console.log(`[${this.redactedUrl()}] Creating web3 wrapper`);
@@ -175,7 +176,8 @@ class Web3Wrapper extends EventEmitter {
       console.error("WS provider error", e);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
-    this.web3 = new Web3(this.provider);
+    this.web3Full = new Web3(this.provider);
+    this.web3 = urlHttp ? new Web3(urlHttp) : this.web3Full;
   }
   redactedUrl() {
     return this.url.replace(/[0-9a-f]{8,}/i, "***");
@@ -211,7 +213,7 @@ class Web3Wrapper extends EventEmitter {
       return;
     }
     if (!this.newBlockSubscriber) {
-      this.newBlockSubscriber = new NewBlockSubscriber(this.web3);
+      this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full);
       this.newBlockSubscriber.on("newBlock", (block) => {
         if (this.listenerCount("newBlock") === 0) {
           console.log("No listeners for newBlock, closing subscription");
@@ -243,12 +245,14 @@ class Web3Wrapper extends EventEmitter {
 }
 const web3Cache = new Map<string, Web3Wrapper>();
 export function getWeb3(chain = "eth") {
-  const url = CHAIN_MAPPING[chain]?.includes("://")
+  const isRawUrl = CHAIN_MAPPING[chain]?.includes("://");
+  const url = isRawUrl
     ? CHAIN_MAPPING[chain]
     : `wss://rpc.ankr.com/${CHAIN_MAPPING[chain] || chain}/ws/${process.env.ANKR_KEY}`;
+  const urlHttp = isRawUrl ? "" : `https://rpc.ankr.com/${CHAIN_MAPPING[chain] || chain}/${process.env.ANKR_KEY}`;
   let wrapper = web3Cache.get(url);
   if (!wrapper || wrapper.isClosed()) {
-    wrapper = new Web3Wrapper(url);
+    wrapper = new Web3Wrapper(url, urlHttp);
     web3Cache.set(url, wrapper);
   } else {
     wrapper.addRef();
