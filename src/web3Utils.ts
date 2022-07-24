@@ -155,10 +155,10 @@ class Web3Wrapper extends EventEmitter {
   public readonly web3: Web3;
   private provider: InstanceType<typeof Web3.providers.WebsocketProvider>;
   private newBlockSubscriber: null | NewBlockSubscriber = null;
-  constructor(url: string) {
+  constructor(private url: string) {
     super();
     this.setMaxListeners(1000);
-    console.log("Creating web3 wrapper");
+    console.log(`[${this.redactedUrl()}] Creating web3 wrapper`);
     this.provider = new Web3.providers.WebsocketProvider(url, {
       timeout: 15000,
       reconnect: {
@@ -177,10 +177,13 @@ class Web3Wrapper extends EventEmitter {
     }) as any);
     this.web3 = new Web3(this.provider);
   }
+  redactedUrl() {
+    return this.provider.connection.url.replace(/[0-9a-f]{8,}/i, "***");
+  }
   close() {
     this.ref--;
     if (this.ref <= 0) {
-      console.log("Closing web3 wrapper");
+      console.log(`[${this.redactedUrl()}] Closing web3 wrapper`);
       if (this.newBlockSubscriber) {
         this.newBlockSubscriber.close();
         this.newBlockSubscriber = null;
@@ -219,6 +222,7 @@ class Web3Wrapper extends EventEmitter {
         this.emit("newBlock", block);
       });
       this.newBlockSubscriber.on("error", () => {
+        console.log(`[${this.redactedUrl()}] Reconnecting`);
         this.provider.disconnect();
         this.provider.reconnect();
       });
