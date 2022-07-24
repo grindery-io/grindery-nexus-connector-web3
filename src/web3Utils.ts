@@ -75,11 +75,19 @@ class NewBlockSubscriber extends EventEmitter {
       return;
     }
     try {
-      const timeout = setTimeout(() => {
+      let timeout = setTimeout(() => {
+        timeout = null;
         console.error("Timeout in poll, latest block:", this.latestBlock);
-      }, 30000);
+        this.emit("error", new Error("Timeout in poll"));
+        this.resetSubscription();
+        this.resetPoller();
+      }, 30000) as ReturnType<typeof setTimeout> | null;
       const latestBlock = await this.web3.eth.getBlockNumber();
-      clearTimeout(timeout);
+      if (timeout) {
+        clearTimeout(timeout);
+      } else {
+        return;
+      }
       if (latestBlock > this.latestBlock) {
         this.latestBlock = latestBlock;
         console.log(`Got new block from polling: ${latestBlock}`);
@@ -145,12 +153,13 @@ class NewBlockSubscriber extends EventEmitter {
 class Web3Wrapper extends EventEmitter {
   private ref = 1;
   public readonly web3: Web3;
+  private provider: InstanceType<typeof Web3.providers.WebsocketProvider>;
   private newBlockSubscriber: null | NewBlockSubscriber = null;
   constructor(url: string) {
     super();
     this.setMaxListeners(1000);
     console.log("Creating web3 wrapper");
-    const provider = new Web3.providers.WebsocketProvider(url, {
+    this.provider = new Web3.providers.WebsocketProvider(url, {
       timeout: 15000,
       reconnect: {
         auto: true,
@@ -162,11 +171,11 @@ class Web3Wrapper extends EventEmitter {
         maxReceivedMessageSize: 16000000, // bytes - default: 8MiB, current: 16Mib
       },
     });
-    provider.on("error", ((e) => {
+    this.provider.on("error", ((e) => {
       console.error("WS provider error", e);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
-    this.web3 = new Web3(provider);
+    this.web3 = new Web3(this.provider);
   }
   close() {
     this.ref--;
@@ -176,11 +185,13 @@ class Web3Wrapper extends EventEmitter {
         this.newBlockSubscriber.close();
         this.newBlockSubscriber = null;
       }
-      const provider = this.web3.currentProvider as InstanceType<typeof Web3.providers.WebsocketProvider>;
+      this.web3.eth.clearSubscriptions(() => {
+        /* Ignore */
+      });
       this.removeAllListeners();
       this.web3.setProvider(null);
-      provider.reset();
-      provider.disconnect();
+      this.provider.reset();
+      this.provider.disconnect();
     }
   }
   isClosed() {
@@ -206,6 +217,10 @@ class Web3Wrapper extends EventEmitter {
           return;
         }
         this.emit("newBlock", block);
+      });
+      this.newBlockSubscriber.on("error", () => {
+        this.provider.disconnect();
+        this.provider.reconnect();
       });
     }
   }
