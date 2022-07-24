@@ -78,6 +78,7 @@ class NewBlockSubscriber extends EventEmitter {
       .on("connected", () => {
         if (connectTimeout) {
           clearTimeout(connectTimeout);
+          connectTimeout = null;
         }
       });
   }
