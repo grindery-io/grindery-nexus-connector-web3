@@ -25,6 +25,7 @@ class NewBlockSubscriber extends EventEmitter {
   private checking = false;
   private closed = false;
   private pollTimer: null | ReturnType<typeof setTimeout> = null;
+  private numPolled = 0;
   constructor(private web3: Web3, private web3Full: Web3) {
     super();
     this.resetSubscription();
@@ -68,6 +69,7 @@ class NewBlockSubscriber extends EventEmitter {
         }
         this.latestBlock = block.number;
         this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
+        this.numPolled = 0;
         this.resetPoller();
       })
       .on("error", (error) => {
@@ -105,6 +107,11 @@ class NewBlockSubscriber extends EventEmitter {
         this.latestBlock = latestBlock;
         console.log(`Got new block from polling: ${latestBlock}`);
         this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
+        this.numPolled++;
+        if (this.numPolled > 10) {
+          this.resetSubscription();
+          this.numPolled = 0;
+        }
       }
     } catch (e) {
       console.error("Error in poll", e);
