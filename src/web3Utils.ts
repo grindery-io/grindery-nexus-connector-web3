@@ -77,6 +77,7 @@ class NewBlockSubscriber extends EventEmitter {
       })
       .on("connected", () => {
         if (connectTimeout) {
+          console.log("Connected to subscription");
           clearTimeout(connectTimeout);
           connectTimeout = null;
         }
