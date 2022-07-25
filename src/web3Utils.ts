@@ -237,8 +237,9 @@ class Web3Wrapper extends EventEmitter {
         this.emit("newBlock", block);
       });
       this.newBlockSubscriber.on("subscriptionTimeout", () => {
+        console.log("Trying to reconnect to WebSocket provider");
         this.provider.disconnect();
-        this.provider.reconnect();
+        setImmediate(() => this.provider.reconnect());
       });
     }
   }
