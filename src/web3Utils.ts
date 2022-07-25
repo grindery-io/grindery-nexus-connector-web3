@@ -73,6 +73,9 @@ class NewBlockSubscriber extends EventEmitter {
         this.resetPoller();
       })
       .on("error", (error) => {
+        if (this.closed) {
+          return;
+        }
         console.error(error);
         this.emit("error", error);
         this.resetSubscription();
@@ -93,6 +96,9 @@ class NewBlockSubscriber extends EventEmitter {
       let timeout = setTimeout(() => {
         timeout = null;
         console.error("Timeout in poll, latest block:", this.latestBlock);
+        if (this.closed) {
+          return;
+        }
         this.emit("error", new Error("Timeout in poll"));
         this.resetSubscription();
         this.resetPoller();
@@ -163,6 +169,9 @@ class NewBlockSubscriber extends EventEmitter {
         this.emit("newBlock", blockWithTransactions);
       }
     } catch (e) {
+      if (this.closed) {
+        return;
+      }
       console.error("Error in checkNewBlocks", e);
       this.emit("error", e);
     } finally {
