@@ -2,20 +2,25 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon"
 import { TransactionConfig } from "web3-core";
 import abi from "web3-eth-abi";
 import { InvalidParamsError } from "./jsonrpc";
-import { getWeb3, isSameAddress, parseEventDeclaration, parseFunctionDeclaration } from "./web3Utils";
+import {
+  getWeb3,
+  isSameAddress,
+  onNewBlockMultiChain,
+  parseEventDeclaration,
+  parseFunctionDeclaration,
+} from "./web3Utils";
 
-export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; to?: string }> {
+export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
-    if (!this.fields.chain) {
+    if (!this.fields.chain || !this.fields.chain.length) {
       throw new InvalidParamsError("chain is required");
     }
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
-    const { close, onNewBlock } = getWeb3(this.fields.chain);
-    const unsubscribe = onNewBlock((blockWithTransactions) => {
-      for (const transaction of blockWithTransactions.transactions) {
+    const unsubscribe = onNewBlockMultiChain(this.fields.chain, async ({ block, chain }) => {
+      for (const transaction of block.transactions) {
         if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
           continue;
         }
@@ -23,7 +28,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
           continue;
         }
         console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
-        this.sendNotification(transaction);
+        this.sendNotification({ ...transaction, _grinderyChain: chain });
       }
     });
     try {
@@ -32,17 +37,19 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: s
       console.error("Error while monitoring transactions:", e);
     } finally {
       unsubscribe();
-      close();
     }
   }
 }
 export class NewEventTrigger extends TriggerBase<{
-  chain: string;
+  chain: string | string[];
   contractAddress?: string;
   eventDeclaration: string | string[];
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
+    if (!this.fields.chain || !this.fields.chain.length) {
+      throw new InvalidParamsError("chain is required");
+    }
     console.log(`[${this.sessionId}] NewEventTrigger: ${this.fields.chain} ${this.fields.eventDeclaration}`);
     const eventInfos =
       typeof this.fields.eventDeclaration === "string"
@@ -71,9 +78,8 @@ export class NewEventTrigger extends TriggerBase<{
       throw new InvalidParamsError("No topics to filter on");
     }
     console.log(`[${this.sessionId}] Topics: ${topics}`);
-    const { web3, close, onNewBlock } = getWeb3(this.fields.chain);
-    const unsubscribe = onNewBlock((blockWithTransactions) => {
-      if (contractAddress && !web3.utils.isContractAddressInBloom(blockWithTransactions.logsBloom, contractAddress)) {
+    const unsubscribe = onNewBlockMultiChain(this.fields.chain, async ({ block, chain, web3 }) => {
+      if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
         return;
       }
       for (const topic of topics) {
@@ -81,14 +87,14 @@ export class NewEventTrigger extends TriggerBase<{
           continue;
         }
         if (typeof topic === "string") {
-          if (!web3.utils.isTopicInBloom(blockWithTransactions.logsBloom, topic)) {
+          if (!web3.utils.isTopicInBloom(block.logsBloom, topic)) {
             return;
           }
           continue;
         }
         let found = false;
         for (const singleTopic of topic) {
-          if (web3.utils.isTopicInBloom(blockWithTransactions.logsBloom, singleTopic)) {
+          if (web3.utils.isTopicInBloom(block.logsBloom, singleTopic)) {
             found = true;
             break;
           }
@@ -99,8 +105,8 @@ export class NewEventTrigger extends TriggerBase<{
       }
       web3.eth
         .getPastLogs({
-          fromBlock: blockWithTransactions.number,
-          toBlock: blockWithTransactions.number,
+          fromBlock: block.number,
+          toBlock: block.number,
           ...(contractAddress ? { address: contractAddress } : {}),
           topics,
         })
@@ -115,6 +121,7 @@ export class NewEventTrigger extends TriggerBase<{
             const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
             const event = {} as { [key: string]: unknown };
             event["_grinderyContractAddress"] = logEntry.address;
+            event["_grinderyChain"] = chain;
             for (const input of inputs) {
               const name = input.name;
               event[name] = decoded[name];
@@ -148,12 +155,11 @@ export class NewEventTrigger extends TriggerBase<{
           }
         })
         .catch((e) => {
-          console.error(`Error while getting logs for block ${blockWithTransactions.number}:`, e);
+          console.error(`Error while getting logs for block ${block.number}:`, e);
         });
     });
     await this.waitForStop();
-    await unsubscribe();
-    close();
+    unsubscribe();
   }
 }
 

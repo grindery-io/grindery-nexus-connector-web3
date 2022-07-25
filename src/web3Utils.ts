@@ -278,6 +278,34 @@ export function getWeb3(chain = "eth") {
     onNewBlock: wrapper?.onNewBlock.bind(wrapper),
   };
 }
+export function onNewBlockMultiChain(
+  chains: string | string[],
+  callback: (params: { chain: string; web3: Web3; block: BlockTransactionObject }) => Promise<void>
+): () => void {
+  if (chains.length === 0) {
+    throw new Error("No chains specified");
+  }
+  if (typeof chains === "string") {
+    chains = [chains];
+  }
+  const cleanUpFunctions = [] as (() => void)[];
+  for (const chain of chains) {
+    const { web3, close, onNewBlock } = getWeb3(chain);
+    cleanUpFunctions.push(
+      onNewBlock((block) =>
+        Promise.resolve(callback({ chain, web3, block })).catch((e) =>
+          console.error("Error in handler of onNewBlockMultiChain", e)
+        )
+      )
+    );
+    cleanUpFunctions.push(close);
+  }
+  return () => {
+    for (const cleanUpFunction of cleanUpFunctions) {
+      cleanUpFunction();
+    }
+  };
+}
 export function isSameAddress(a, b) {
   if (!a || !b) {
     return false;
