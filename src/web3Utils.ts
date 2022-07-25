@@ -249,6 +249,9 @@ class Web3Wrapper extends EventEmitter {
         this.provider.disconnect();
         setImmediate(() => this.provider.reconnect());
       });
+      this.newBlockSubscriber.on("error", (e) => {
+        console.error("Error in newBlockSubscriber", e);
+      });
     }
   }
   onNewBlock(callback: (block: BlockTransactionObject) => void) {
