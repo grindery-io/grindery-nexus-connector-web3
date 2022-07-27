@@ -5,7 +5,7 @@ set -eu
 INSTANCE=${INSTANCE:-$npm_package_name}
 
 # Linting and type-checking
-eslint src/*.{js,ts}
+eslint src/*.{js,ts} src/**/*.{js,ts}
 tsc -p tsconfig.json --noEmit
 
 # Build

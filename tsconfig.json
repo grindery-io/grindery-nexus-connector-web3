@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/node16/tsconfig.json",
-  "include": ["src/*.ts"],
+  "include": ["src/*.ts", "src/web3/web3.ts", "src/web3/web3Utils.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"],
   "compilerOptions": {
     "allowJs": true,

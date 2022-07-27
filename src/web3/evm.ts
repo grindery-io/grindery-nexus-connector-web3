@@ -1,7 +1,8 @@
-import { ConnectorInput, ConnectorOutput, TriggerBase } from "./connectorCommon";
+import WebSocket from "ws";
+import { ConnectorInput, ConnectorOutput, TriggerBase } from "../connectorCommon";
 import { TransactionConfig } from "web3-core";
 import abi from "web3-eth-abi";
-import { InvalidParamsError } from "./jsonrpc";
+import { InvalidParamsError } from "../jsonrpc";
 import {
   getWeb3,
   isSameAddress,
@@ -10,7 +11,7 @@ import {
   parseFunctionDeclaration,
 } from "./web3Utils";
 
-export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
+class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
     if (!this.fields.chain || !this.fields.chain.length) {
       throw new InvalidParamsError("chain is required");
@@ -40,7 +41,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     }
   }
 }
-export class NewEventTrigger extends TriggerBase<{
+class NewEventTrigger extends TriggerBase<{
   chain: string | string[];
   contractAddress?: string;
   eventDeclaration: string | string[];
@@ -162,6 +163,10 @@ export class NewEventTrigger extends TriggerBase<{
     unsubscribe();
   }
 }
+
+export const Triggers = new Map<string, (socket: WebSocket, params: ConnectorInput) => TriggerBase>();
+Triggers.set("newTransaction", (socket, params) => new NewTransactionTrigger(socket, params));
+Triggers.set("newEvent", (socket, params) => new NewEventTrigger(socket, params));
 
 export async function callSmartContract(
   input: ConnectorInput<{
