@@ -307,6 +307,7 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; 
         ...(this.fields.to ? { to: this.fields.to } : {}),
       },
       callback: (output) => {
+        console.log(`[${this.sessionId}] Sending notification:`, output._metadata.transactionId);
         this.sendNotification({
           _grinderyChain: this.fields.chain,
           _grinderyContractAddress: contract,
@@ -358,6 +359,7 @@ class NewEventTrigger extends TriggerBase<{
       callback: (output) => {
         output["_grinderyChain"] = this.fields.chain;
         output["_grinderyContractAddress"] = this.fields.contractAddress;
+        console.log(`[${this.sessionId}] Sending notification:`, output._metadata.transactionId);
         this.sendNotification(output);
       },
       onError: (e) => {
