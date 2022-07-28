@@ -8,6 +8,7 @@ import { InvalidParamsError } from "../jsonrpc";
 const CHAINS = {
   near,
   flow,
+  "flow:mainnet": flow,
 };
 
 export function createTrigger(socket: WebSocket, params: ConnectorInput<{ chain: string | string[] }>): TriggerBase {

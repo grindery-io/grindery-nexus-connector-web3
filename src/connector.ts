@@ -9,6 +9,13 @@ function sanitizeParameters(params: ConnectorInput<any>) {
     params.fields.chain = params.fields._grinderyChain;
     delete params.fields._grinderyChain;
   }
+  if ("parameterFilters" in params.fields) {
+    for (const key of Object.keys(params.fields.parameterFilters)) {
+      if (params.fields.parameterFilters[key] === "!!GRINDERY!!UNDEFINED!!") {
+        params.fields.parameterFilters[key] = undefined;
+      }
+    }
+  }
   return params;
 }
 
