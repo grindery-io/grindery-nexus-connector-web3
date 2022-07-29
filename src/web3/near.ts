@@ -1,7 +1,11 @@
+import { EventEmitter } from "node:events";
 import WebSocket from "ws";
-import { connect } from "near-api-js";
+import { connect, Near } from "near-api-js";
+import { base58_to_binary } from "base58-js";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "../connectorCommon";
 import { InvalidParamsError } from "../jsonrpc";
+import { TypedError } from "near-api-js/lib/providers";
+import { BlockResult } from "near-api-js/lib/providers/provider";
 
 type Receipt = {
   predecessor_id: string;
@@ -29,12 +33,27 @@ type Receipt = {
   receiver_id: string;
 };
 
-class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
-  async main() {
-    if (!this.fields.from && !this.fields.to) {
-      // throw new InvalidParamsError("from or to is required");
+class ReceiptSubscriber extends EventEmitter {
+  private running = false;
+  constructor() {
+    super();
+    this.setMaxListeners(1000);
+  }
+  async handleBlock(near: Near, block: BlockResult) {
+    for (const chunk of block.chunks) {
+      const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
+      // console.log(chunkDetails);
+      for (const receipt of chunkDetails.receipts as Receipt[]) {
+        for (const listener of this.listeners("process")) {
+          await listener(receipt);
+        }
+      }
     }
-    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+  }
+  async main() {
+    if (this.running) {
+      return;
+    }
     const config = {
       networkId: "mainnet",
       nodeUrl: "https://rpc.mainnet.near.org",
@@ -44,44 +63,117 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from
       headers: {},
     };
     const near = await connect(config);
-    let currentBlock = -1;
-    while (this.isRunning()) {
+    let currentHash = "";
+    this.running = true;
+    while (this.listenerCount("process") > 0) {
       try {
-        const response = await near.connection.provider.block(
-          currentBlock < 0
-            ? {
-                finality: "final",
-              }
-            : { blockId: currentBlock + 1 }
-        );
-        // console.log(response);
-        currentBlock = response.header.height;
-        for (const chunk of response.chunks) {
-          const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
-          for (const receipt of chunkDetails.receipts as Receipt[]) {
-            if (this.fields.from && this.fields.from !== receipt.receipt.Action?.signer_id) {
-              continue;
-            }
-            if (this.fields.to && this.fields.to !== receipt.receiver_id) {
-              continue;
-            }
-            for (const action of receipt.receipt.Action?.actions ?? []) {
-              if (!("Transfer" in action)) {
-                continue;
-              }
-              const transfer = action.Transfer;
-              this.sendNotification({
-                from: receipt.receipt.Action?.signer_id,
-                to: receipt.receiver_id,
-                value: transfer.deposit,
-                ...receipt,
-              });
-            }
-          }
+        const response = await near.connection.provider.block({
+          finality: "final",
+        });
+        if (currentHash === response.header.hash) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
         }
+        const pendingBlocks = [response];
+        while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
+          pendingBlocks.unshift(await near.connection.provider.block({ blockId: pendingBlocks[0].header.prev_hash }));
+        }
+        for (const block of pendingBlocks) {
+          await this.handleBlock(near, block);
+        }
+        currentHash = response.header.hash;
       } catch (e) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        console.error("Error in Near event loop:", e);
+        this.emit("error", e);
+        this.running = false;
+        return;
       }
+    }
+    this.running = false;
+  }
+  subscribe({ callback, onError }: { callback: (receipt: Receipt) => void; onError: (error: unknown) => void }) {
+    const handler = async (receipt: Receipt) => {
+      await callback(receipt);
+    };
+    const errorHandler = (error: unknown) => {
+      onError(error);
+    };
+    this.on("process", handler);
+    if (!this.running) {
+      this.main().catch((e) => {
+        console.error("Error in Near event main loop:", e);
+        onError(e);
+      });
+    }
+    return () => {
+      this.off("process", handler);
+      this.off("error", errorHandler);
+    };
+  }
+}
+
+const SUBSCRIBER = new ReceiptSubscriber();
+
+function normalizeAddress<T>(address: T): T {
+  if (!address) {
+    return address;
+  }
+  if (typeof address !== "string") {
+    return address;
+  }
+  if (/^0x[0-9a-f]+$/i.test(address)) {
+    return address.slice(2) as unknown as T;
+  }
+  const m = /^ed25519:([0-9a-z]+)$/i.exec(address);
+  if (!m) {
+    return address;
+  }
+  return base58_to_binary(m[1]).toString("hex");
+}
+
+class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
+  async main() {
+    if (!this.fields.from && !this.fields.to) {
+      throw new InvalidParamsError("from or to is required");
+    }
+    this.fields.from = normalizeAddress(this.fields.from);
+    this.fields.to = normalizeAddress(this.fields.to);
+    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    const unsubscribe = SUBSCRIBER.subscribe({
+      callback: async (receipt: Receipt) => {
+        // console.log(receipt);
+        if (
+          this.fields.from &&
+          this.fields.from !== normalizeAddress(receipt.receipt.Action?.signer_id) &&
+          this.fields.from !== normalizeAddress(receipt.receipt.Action?.signer_public_key)
+        ) {
+          return;
+        }
+        if (this.fields.to && this.fields.to !== normalizeAddress(receipt.receiver_id)) {
+          return;
+        }
+        for (const action of receipt.receipt.Action?.actions ?? []) {
+          if (!("Transfer" in action)) {
+            continue;
+          }
+          const transfer = action.Transfer;
+          this.sendNotification({
+            _grinderyChain: this.fields.chain,
+            from: receipt.receipt.Action?.signer_id,
+            to: receipt.receiver_id,
+            value: transfer.deposit,
+            ...receipt,
+          });
+        }
+      },
+      onError: (error: unknown) => {
+        this.interrupt(error);
+      },
+    });
+    try {
+      await this.waitForStop();
+    } finally {
+      unsubscribe();
     }
   }
 }
@@ -92,7 +184,72 @@ class NewEventTrigger extends TriggerBase<{
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
-    throw new Error("Method not implemented.");
+    console.log(
+      `[${this.sessionId}] NewEventTrigger:`,
+      this.fields.chain,
+      this.fields.contractAddress,
+      this.fields.eventDeclaration,
+      this.fields.parameterFilters
+    );
+    const unsubscribe = SUBSCRIBER.subscribe({
+      callback: async (receipt: Receipt) => {
+        if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
+          return;
+        }
+        for (const action of receipt.receipt.Action?.actions ?? []) {
+          if (typeof action !== "object" || !("FunctionCall" in action)) {
+            continue;
+          }
+          const functionCall = action.FunctionCall;
+          if (functionCall.method_name !== this.fields.eventDeclaration) {
+            continue;
+          }
+          let args;
+          try {
+            args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
+          } catch (e) {
+            // Fall through
+          }
+          if (!args) {
+            try {
+              args = {
+                _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
+              };
+            } catch (e) {
+              // Fall through
+            }
+          }
+          if (!args) {
+            args = {
+              _rawArgs: functionCall.args,
+            };
+          }
+          args._from = receipt.receipt.Action?.signer_id || normalizeAddress(receipt.receipt.Action?.signer_public_key);
+          console.log(args);
+          for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
+            if (key.startsWith("_grindery")) {
+              continue;
+            }
+            if (normalizeAddress(args[key]) !== normalizeAddress(value)) {
+              return;
+            }
+          }
+          this.sendNotification({
+            _grinderyChain: this.fields.chain,
+            _grinderyContractAddress: receipt.receiver_id,
+            ...args,
+          });
+        }
+      },
+      onError: (error: unknown) => {
+        this.interrupt(error);
+      },
+    });
+    try {
+      await this.waitForStop();
+    } finally {
+      unsubscribe();
+    }
   }
 }
 

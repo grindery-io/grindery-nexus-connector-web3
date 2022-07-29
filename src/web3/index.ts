@@ -7,6 +7,7 @@ import { InvalidParamsError } from "../jsonrpc";
 
 const CHAINS = {
   near,
+  "near:mainnet": near,
   flow,
   "flow:mainnet": flow,
 };

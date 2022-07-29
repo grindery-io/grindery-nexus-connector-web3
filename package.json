@@ -16,6 +16,7 @@
   "dependencies": {
     "@sentry/node": "^6.17.8",
     "axios": "^0.26.1",
+    "base58-js": "^1.0.4",
     "body-parser": "^1.20.0",
     "core-js": "^3.22",
     "dotenv": "^16.0.0",

@@ -1,4 +1,5 @@
-import WebSocket, { EventEmitter } from "ws";
+import { EventEmitter } from "node:events";
+import WebSocket from "ws";
 import axios from "axios";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "../connectorCommon";
 import { InvalidParamsError } from "../jsonrpc";
@@ -274,7 +275,10 @@ class ContractSubscriber extends EventEmitter {
     };
     this.on("process", handler);
     if (!this.running) {
-      this.main().catch((e) => console.error("Error in Flow event main loop:", e));
+      this.main().catch((e) => {
+        console.error("Error in Flow event main loop:", e);
+        onError(e);
+      });
     }
     return () => {
       this.off("process", handler);
