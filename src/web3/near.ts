@@ -227,7 +227,6 @@ class NewEventTrigger extends TriggerBase<{
             };
           }
           args._from = receipt.receipt.Action?.signer_id || normalizeAddress(receipt.receipt.Action?.signer_public_key);
-          console.log(args);
           for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
             if (key.startsWith("_grindery")) {
               continue;
