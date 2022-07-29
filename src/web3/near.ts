@@ -64,6 +64,7 @@ class ReceiptSubscriber extends EventEmitter {
     };
     const near = await connect(config);
     let currentHash = "";
+    let currentHeight = 0;
     this.running = true;
     while (this.listenerCount("process") > 0) {
       try {
@@ -76,12 +77,21 @@ class ReceiptSubscriber extends EventEmitter {
         }
         const pendingBlocks = [response];
         while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
+          if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
+            console.log("Last block was removed:", currentHeight, currentHash);
+            pendingBlocks.shift();
+            break;
+          }
           pendingBlocks.unshift(await near.connection.provider.block({ blockId: pendingBlocks[0].header.prev_hash }));
+        }
+        if (pendingBlocks.length > 10) {
+          console.warn(`Too many blocks in a row: ${pendingBlocks.length}`);
         }
         for (const block of pendingBlocks) {
           await this.handleBlock(near, block);
         }
         currentHash = response.header.hash;
+        currentHeight = response.header.height;
       } catch (e) {
         console.error("Error in Near event loop:", e);
         this.emit("error", e);
@@ -207,18 +217,20 @@ class NewEventTrigger extends TriggerBase<{
             continue;
           }
           let args;
-          try {
-            args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
-          } catch (e) {
-            // Fall through
-          }
-          if (!args) {
+          if (functionCall.args.length < 4096) {
             try {
-              args = {
-                _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
-              };
+              args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
             } catch (e) {
               // Fall through
+            }
+            if (!args) {
+              try {
+                args = {
+                  _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
+                };
+              } catch (e) {
+                // Fall through
+              }
             }
           }
           if (!args) {
@@ -234,6 +246,9 @@ class NewEventTrigger extends TriggerBase<{
             if (normalizeAddress(_.get(args, key)) !== normalizeAddress(value)) {
               return;
             }
+          }
+          if (args._rawArgs) {
+            delete args._rawArgs;
           }
           this.sendNotification({
             _grinderyChain: this.fields.chain,
