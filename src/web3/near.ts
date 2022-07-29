@@ -191,6 +191,8 @@ class NewEventTrigger extends TriggerBase<{
       this.fields.eventDeclaration,
       this.fields.parameterFilters
     );
+    const functions =
+      typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
         if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
@@ -201,7 +203,7 @@ class NewEventTrigger extends TriggerBase<{
             continue;
           }
           const functionCall = action.FunctionCall;
-          if (functionCall.method_name !== this.fields.eventDeclaration) {
+          if (!functions.includes(functionCall.method_name)) {
             continue;
           }
           let args;
