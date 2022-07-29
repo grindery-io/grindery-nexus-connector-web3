@@ -1,10 +1,10 @@
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
+import _ from "lodash";
 import { connect, Near } from "near-api-js";
 import { base58_to_binary } from "base58-js";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "../connectorCommon";
 import { InvalidParamsError } from "../jsonrpc";
-import { TypedError } from "near-api-js/lib/providers";
 import { BlockResult } from "near-api-js/lib/providers/provider";
 
 type Receipt = {
@@ -232,7 +232,7 @@ class NewEventTrigger extends TriggerBase<{
             if (key.startsWith("_grindery")) {
               continue;
             }
-            if (normalizeAddress(args[key]) !== normalizeAddress(value)) {
+            if (normalizeAddress(_.get(args, key)) !== normalizeAddress(value)) {
               return;
             }
           }
