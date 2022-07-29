@@ -75,14 +75,21 @@ class ReceiptSubscriber extends EventEmitter {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
         }
+        if (currentHeight && response.header.height < currentHeight) {
+          console.log("Last block was removed:", currentHeight, currentHash);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
         const pendingBlocks = [response];
         while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
+          pendingBlocks.unshift(await near.connection.provider.block({ blockId: pendingBlocks[0].header.prev_hash }));
           if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
             console.log("Last block was removed:", currentHeight, currentHash);
-            pendingBlocks.shift();
+            if (pendingBlocks[0].header.height < currentHeight) {
+              pendingBlocks.shift();
+            }
             break;
           }
-          pendingBlocks.unshift(await near.connection.provider.block({ blockId: pendingBlocks[0].header.prev_hash }));
         }
         if (pendingBlocks.length > 10) {
           console.warn(`Too many blocks in a row: ${pendingBlocks.length}`);
