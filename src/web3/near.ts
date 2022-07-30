@@ -97,7 +97,7 @@ class ReceiptSubscriber extends EventEmitter {
         currentHash = response.header.hash;
         currentHeight = response.header.height;
         for (const block of pendingBlocks) {
-          // console.log(block.header);
+          console.log("Processing block:", block.header.height, block.header.hash, block.header.prev_hash);
           await this.handleBlock(near, block);
         }
       } catch (e) {
