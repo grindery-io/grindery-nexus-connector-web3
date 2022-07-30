@@ -94,11 +94,12 @@ class ReceiptSubscriber extends EventEmitter {
         if (pendingBlocks.length > 10) {
           console.warn(`Too many blocks in a row: ${pendingBlocks.length}`);
         }
-        for (const block of pendingBlocks) {
-          await this.handleBlock(near, block);
-        }
         currentHash = response.header.hash;
         currentHeight = response.header.height;
+        for (const block of pendingBlocks) {
+          // console.log(block.header);
+          await this.handleBlock(near, block);
+        }
       } catch (e) {
         console.error("Error in Near event loop:", e);
         this.emit("error", e);
