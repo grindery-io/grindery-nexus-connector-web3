@@ -207,6 +207,9 @@ class NewEventTrigger extends TriggerBase<{
       this.fields.eventDeclaration,
       this.fields.parameterFilters
     );
+    if (this.fields.contractAddress === "0x0") {
+      this.fields.contractAddress = undefined;
+    }
     const functions =
       typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
