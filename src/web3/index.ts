@@ -3,6 +3,7 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "../connectorCommon
 import * as evm from "./evm";
 import * as near from "./near";
 import * as flow from "./flow";
+import * as algorand from "./algorand";
 import { InvalidParamsError } from "../jsonrpc";
 
 const CHAINS = {
@@ -10,6 +11,8 @@ const CHAINS = {
   "near:mainnet": near,
   flow,
   "flow:mainnet": flow,
+  algorand,
+  "algorand:mainnet": algorand,
 };
 
 export function createTrigger(socket: WebSocket, params: ConnectorInput<{ chain: string | string[] }>): TriggerBase {
