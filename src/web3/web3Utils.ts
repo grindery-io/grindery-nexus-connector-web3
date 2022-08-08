@@ -222,7 +222,7 @@ class Web3Wrapper extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
     this.web3Full = new Web3(this.provider);
-    this.web3 = urlHttp ? new Web3(urlHttp) : this.web3Full;
+    this.web3 = urlHttp ? new Web3(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 })) : this.web3Full;
   }
   redactedUrl() {
     return this.url.replace(/[0-9a-f]{8,}/i, "***");
