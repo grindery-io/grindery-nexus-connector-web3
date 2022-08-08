@@ -20,18 +20,22 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from
       throw new InvalidParamsError("from or to is required");
     }
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
-    const unsubscribe = onNewBlockMultiChain(this.fields.chain, async ({ block, chain }) => {
-      for (const transaction of block.transactions) {
-        if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
-          continue;
+    const unsubscribe = onNewBlockMultiChain(
+      this.fields.chain,
+      async ({ block, chain }) => {
+        for (const transaction of block.transactions) {
+          if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
+            continue;
+          }
+          if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
+            continue;
+          }
+          console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
+          this.sendNotification({ ...transaction, _grinderyChain: chain });
         }
-        if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
-          continue;
-        }
-        console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
-        this.sendNotification({ ...transaction, _grinderyChain: chain });
-      }
-    });
+      },
+      (e) => this.interrupt(e)
+    );
     try {
       await this.waitForStop();
     } catch (e) {
@@ -79,86 +83,90 @@ class NewEventTrigger extends TriggerBase<{
       throw new InvalidParamsError("No topics to filter on");
     }
     console.log(`[${this.sessionId}] Topics: ${topics}`);
-    const unsubscribe = onNewBlockMultiChain(this.fields.chain, async ({ block, chain, web3 }) => {
-      if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
-        return;
-      }
-      for (const topic of topics) {
-        if (!topic) {
-          continue;
-        }
-        if (typeof topic === "string") {
-          if (!web3.utils.isTopicInBloom(block.logsBloom, topic)) {
-            return;
-          }
-          continue;
-        }
-        let found = false;
-        for (const singleTopic of topic) {
-          if (web3.utils.isTopicInBloom(block.logsBloom, singleTopic)) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
+    const unsubscribe = onNewBlockMultiChain(
+      this.fields.chain,
+      async ({ block, chain, web3 }) => {
+        if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
           return;
         }
-      }
-      web3.eth
-        .getPastLogs({
-          fromBlock: block.number,
-          toBlock: block.number,
-          ...(contractAddress ? { address: contractAddress } : {}),
-          topics,
-        })
-        .then((logs) => {
-          for (const logEntry of logs) {
-            const eventInfo = eventInfoMap[logEntry.topics[0]];
-            if (!eventInfo) {
-              console.warn("Unknown event:", logEntry.topics[0], logEntry);
-              continue;
+        for (const topic of topics) {
+          if (!topic) {
+            continue;
+          }
+          if (typeof topic === "string") {
+            if (!web3.utils.isTopicInBloom(block.logsBloom, topic)) {
+              return;
             }
-            const inputs = eventInfo.inputs || [];
-            const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
-            const event = {} as { [key: string]: unknown };
-            event["_grinderyContractAddress"] = logEntry.address;
-            event["_grinderyChain"] = chain;
-            for (const input of inputs) {
-              const name = input.name;
-              event[name] = decoded[name];
-              if (!(name in this.fields.parameterFilters) || this.fields.parameterFilters[name] === "") {
+            continue;
+          }
+          let found = false;
+          for (const singleTopic of topic) {
+            if (web3.utils.isTopicInBloom(block.logsBloom, singleTopic)) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            return;
+          }
+        }
+        web3.eth
+          .getPastLogs({
+            fromBlock: block.number,
+            toBlock: block.number,
+            ...(contractAddress ? { address: contractAddress } : {}),
+            topics,
+          })
+          .then((logs) => {
+            for (const logEntry of logs) {
+              const eventInfo = eventInfoMap[logEntry.topics[0]];
+              if (!eventInfo) {
+                console.warn("Unknown event:", logEntry.topics[0], logEntry);
                 continue;
               }
-              if (
-                web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
-                web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
-              ) {
-                return;
-              }
-            }
-            const indexedParameters = logEntry.topics.slice(1);
-            for (const input of inputs) {
-              if (!indexedParameters.length) {
-                break;
-              }
-              if (input.indexed) {
-                const value = indexedParameters.shift();
-                if (value) {
-                  event[input.name] = web3.eth.abi.decodeParameter(input.type, value);
+              const inputs = eventInfo.inputs || [];
+              const decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+              const event = {} as { [key: string]: unknown };
+              event["_grinderyContractAddress"] = logEntry.address;
+              event["_grinderyChain"] = chain;
+              for (const input of inputs) {
+                const name = input.name;
+                event[name] = decoded[name];
+                if (!(name in this.fields.parameterFilters) || this.fields.parameterFilters[name] === "") {
+                  continue;
+                }
+                if (
+                  web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
+                  web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
+                ) {
+                  return;
                 }
               }
+              const indexedParameters = logEntry.topics.slice(1);
+              for (const input of inputs) {
+                if (!indexedParameters.length) {
+                  break;
+                }
+                if (input.indexed) {
+                  const value = indexedParameters.shift();
+                  if (value) {
+                    event[input.name] = web3.eth.abi.decodeParameter(input.type, value);
+                  }
+                }
+              }
+              console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
+              this.sendNotification({
+                _rawEvent: logEntry,
+                ...event,
+              });
             }
-            console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
-            this.sendNotification({
-              _rawEvent: logEntry,
-              ...event,
-            });
-          }
-        })
-        .catch((e) => {
-          console.error(`Error while getting logs for block ${block.number}:`, e);
-        });
-    });
+          })
+          .catch((e) => {
+            console.error(`Error while getting logs for block ${block.number}:`, e);
+          });
+      },
+      (e) => this.interrupt(e)
+    );
     await this.waitForStop();
     unsubscribe();
   }

@@ -106,6 +106,7 @@ class NewBlockSubscriber extends EventEmitter {
         this.resetSubscription();
         this.resetPoller();
       }, 30000) as ReturnType<typeof setTimeout> | null;
+      this.numPolled++;
       let latestBlock = null as number | null;
       try {
         latestBlock = await this.web3.eth.getBlockNumber();
@@ -119,7 +120,6 @@ class NewBlockSubscriber extends EventEmitter {
         this.latestBlock = latestBlock;
         console.log(`Got new block from polling: ${latestBlock}`);
         this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
-        this.numPolled++;
         if (this.numPolled > 10) {
           this.resetSubscription();
           this.numPolled = 0;
@@ -127,6 +127,11 @@ class NewBlockSubscriber extends EventEmitter {
       }
     } catch (e) {
       console.error("Error in poll", e);
+      if (this.numPolled > 10 && this.latestBlock < 0) {
+        console.log("Too many errors in poll, stopping");
+        this.emit("stop", e);
+        this.close();
+      }
     }
     this.resetPoller();
   }
@@ -221,6 +226,9 @@ class Web3Wrapper extends EventEmitter {
     return this.url.replace(/[0-9a-f]{8,}/i, "***");
   }
   close() {
+    if (this.ref <= 0) {
+      return;
+    }
     this.ref--;
     if (this.ref <= 0) {
       console.log(`[${this.redactedUrl()}] Closing web3 wrapper`);
@@ -270,18 +278,23 @@ class Web3Wrapper extends EventEmitter {
       this.newBlockSubscriber.on("error", (e) => {
         console.error("Error in newBlockSubscriber", e);
       });
+      this.newBlockSubscriber.on("stop", (e) => {
+        this.emit("error", e);
+      });
     }
   }
-  onNewBlock(callback: (block: BlockTransactionObject) => void) {
+  onNewBlock(callback: (block: BlockTransactionObject) => void, onError: (e: Error) => void) {
     if (this.isClosed()) {
       throw new Error("Web3Wrapper is closed");
     }
     this.addListener("newBlock", callback);
+    this.addListener("error", onError);
     if (!this.newBlockSubscriber) {
       this.subscribeToNewBlockHeader();
     }
     return () => {
       this.removeListener("newBlock", callback);
+      this.removeListener("error", onError);
     };
   }
 }
@@ -310,7 +323,8 @@ export function getWeb3(chain = "eth") {
 }
 export function onNewBlockMultiChain(
   chains: string | string[],
-  callback: (params: { chain: string; web3: Web3; block: BlockTransactionObject }) => Promise<void>
+  callback: (params: { chain: string; web3: Web3; block: BlockTransactionObject }) => Promise<void>,
+  onError: (e: Error) => void
 ): () => void {
   if (chains.length === 0) {
     throw new Error("No chains specified");
@@ -322,10 +336,12 @@ export function onNewBlockMultiChain(
   for (const chain of chains) {
     const { web3, close, onNewBlock } = getWeb3(chain);
     cleanUpFunctions.push(
-      onNewBlock((block) =>
-        Promise.resolve(callback({ chain, web3, block })).catch((e) =>
-          console.error("Error in handler of onNewBlockMultiChain", e)
-        )
+      onNewBlock(
+        (block) =>
+          Promise.resolve(callback({ chain, web3, block })).catch((e) =>
+            console.error("Error in handler of onNewBlockMultiChain", e)
+          ),
+        onError
       )
     );
     cleanUpFunctions.push(close);
