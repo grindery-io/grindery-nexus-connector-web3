@@ -25,6 +25,7 @@ class NewBlockSubscriber extends EventEmitter {
   private checking = false;
   private closed = false;
   private pollTimer: null | ReturnType<typeof setTimeout> = null;
+  private resetSubscriptionTimer: null | ReturnType<typeof setTimeout> = null;
   private numPolled = 0;
   constructor(private web3: Web3, private web3Full: Web3) {
     super();
@@ -55,38 +56,47 @@ class NewBlockSubscriber extends EventEmitter {
     if (this.closed) {
       return;
     }
-    let connectTimeout = setTimeout(() => {
-      connectTimeout = null;
-      console.error("Timeout when setting up subscription");
-      this.unsubscribe();
-      this.emit("subscriptionTimeout");
-    }, 10000) as ReturnType<typeof setTimeout> | null;
-    this.newBlockSubscription = this.web3Full.eth
-      .subscribe("newBlockHeaders")
-      .on("data", (block) => {
-        if (!block.number) {
-          return;
-        }
-        this.latestBlock = block.number;
-        this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
-        this.numPolled = 0;
-        this.resetPoller();
-      })
-      .on("error", (error) => {
-        if (this.closed) {
-          return;
-        }
-        console.error(error);
-        this.emit("error", error);
-        this.resetSubscription();
-      })
-      .on("connected", () => {
-        if (connectTimeout) {
-          console.log("Connected to subscription");
-          clearTimeout(connectTimeout);
-          connectTimeout = null;
-        }
-      });
+    if (this.resetSubscriptionTimer) {
+      clearTimeout(this.resetSubscriptionTimer);
+    }
+    this.resetSubscriptionTimer = setTimeout(() => {
+      this.resetSubscriptionTimer = null;
+      if (this.closed) {
+        return;
+      }
+      let connectTimeout = setTimeout(() => {
+        connectTimeout = null;
+        console.error("Timeout when setting up subscription");
+        this.unsubscribe();
+        this.emit("subscriptionTimeout");
+      }, 10000) as ReturnType<typeof setTimeout> | null;
+      this.newBlockSubscription = this.web3Full.eth
+        .subscribe("newBlockHeaders")
+        .on("data", (block) => {
+          if (!block.number) {
+            return;
+          }
+          this.latestBlock = block.number;
+          this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
+          this.numPolled = 0;
+          this.resetPoller();
+        })
+        .on("error", (error) => {
+          if (this.closed) {
+            return;
+          }
+          console.error(error);
+          this.emit("error", error);
+          this.unsubscribe();
+        })
+        .on("connected", () => {
+          if (connectTimeout) {
+            console.log("Connected to subscription");
+            clearTimeout(connectTimeout);
+            connectTimeout = null;
+          }
+        });
+    }, 1000);
   }
   async poll() {
     if (this.pollTimer) {
