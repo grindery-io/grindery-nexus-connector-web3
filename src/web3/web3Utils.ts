@@ -328,6 +328,8 @@ class Web3Wrapper extends EventEmitter {
       });
       this.newBlockSubscriber.on("stop", (e) => {
         this.emit("error", e);
+        this.newBlockSubscriber?.close();
+        this.newBlockSubscriber = null;
       });
     }
   }
@@ -398,6 +400,7 @@ export function onNewBlockMultiChain(
     for (const cleanUpFunction of cleanUpFunctions) {
       cleanUpFunction();
     }
+    cleanUpFunctions.splice(0, cleanUpFunctions.length);
   };
 }
 export function isSameAddress(a, b) {
