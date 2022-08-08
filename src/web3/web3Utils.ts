@@ -106,7 +106,7 @@ class NewBlockSubscriber extends EventEmitter {
         this.resetSubscription();
         this.resetPoller();
       }, 30000) as ReturnType<typeof setTimeout> | null;
-      let latestBlock;
+      let latestBlock = null as number | null;
       try {
         latestBlock = await this.web3.eth.getBlockNumber();
       } finally {
@@ -114,9 +114,6 @@ class NewBlockSubscriber extends EventEmitter {
           clearTimeout(timeout);
           timeout = null;
         }
-      }
-      if (!timeout) {
-        return;
       }
       if (latestBlock > this.latestBlock) {
         this.latestBlock = latestBlock;
