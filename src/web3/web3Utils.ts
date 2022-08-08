@@ -205,25 +205,28 @@ class Web3Wrapper extends EventEmitter {
     super();
     this.setMaxListeners(1000);
     console.log(`[${this.redactedUrl()}] Creating web3 wrapper`);
-    this.provider = new Web3.providers.WebsocketProvider(url, {
+    this.provider = this.createProvider();
+    this.web3Full = new Web3(this.provider);
+    this.web3 = urlHttp ? new Web3(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 })) : this.web3Full;
+  }
+  private createProvider() {
+    this.provider = new Web3.providers.WebsocketProvider(this.url, {
       timeout: 15000,
       reconnect: {
-        auto: true,
-        delay: 1000,
-        onTimeout: true,
+        auto: false,
       },
       clientConfig: {
         maxReceivedFrameSize: 4000000,
-        maxReceivedMessageSize: 16000000, // bytes - default: 8MiB, current: 16Mib
+        maxReceivedMessageSize: 16000000,
       },
     });
     this.provider.on("error", ((e) => {
       console.error("WS provider error", e);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any);
-    this.web3Full = new Web3(this.provider);
-    this.web3 = urlHttp ? new Web3(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 })) : this.web3Full;
+    return this.provider;
   }
+
   redactedUrl() {
     return this.url.replace(/[0-9a-f]{8,}/i, "***");
   }
@@ -271,8 +274,9 @@ class Web3Wrapper extends EventEmitter {
         return;
       }
       this.reconnectTimer = null;
-      this.provider.disconnect();
-      setTimeout(() => this.provider.reconnect(), 1000);
+      this.provider.reset();
+      this.createProvider();
+      this.web3Full.setProvider(this.provider);
     }, 1000 * Math.pow(2, this.reconnectCount));
   }
   private subscribeToNewBlockHeader() {
