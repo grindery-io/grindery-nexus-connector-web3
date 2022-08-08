@@ -3,6 +3,7 @@ import { AbiItem } from "web3-utils";
 import { Subscription } from "web3-core-subscriptions";
 import { BlockTransactionObject } from "web3-eth";
 import { EventEmitter } from "node:events";
+import { WebSocket } from "ws";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -269,14 +270,25 @@ class Web3Wrapper extends EventEmitter {
     }
     this.reconnectCount++;
     const reconnectCount = this.reconnectCount;
+    if (this.provider.connection && this.provider.connection.readyState === WebSocket.OPEN) {
+      this.provider.connection.close();
+    }
     this.reconnectTimer = setTimeout(() => {
       if (this.reconnectCount !== reconnectCount) {
         return;
       }
       this.reconnectTimer = null;
-      this.provider.reset();
-      this.createProvider();
-      this.web3Full.setProvider(this.provider);
+      if (this.provider.connection && this.provider.connection.readyState === WebSocket.OPEN) {
+        this.provider.connection.close();
+      }
+      setTimeout(() => {
+        if (this.reconnectCount !== reconnectCount) {
+          return;
+        }
+        this.provider.reset();
+        this.createProvider();
+        this.web3Full.setProvider(this.provider);
+      }, 1000);
     }, 1000 * Math.pow(2, this.reconnectCount));
   }
   private subscribeToNewBlockHeader() {
