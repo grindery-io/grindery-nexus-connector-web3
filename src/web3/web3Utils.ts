@@ -88,6 +88,10 @@ class NewBlockSubscriber extends EventEmitter {
       });
   }
   async poll() {
+    if (this.pollTimer) {
+      clearTimeout(this.pollTimer);
+      this.pollTimer = null;
+    }
     if (this.closed) {
       return;
     }
@@ -102,10 +106,16 @@ class NewBlockSubscriber extends EventEmitter {
         this.resetSubscription();
         this.resetPoller();
       }, 30000) as ReturnType<typeof setTimeout> | null;
-      const latestBlock = await this.web3.eth.getBlockNumber();
-      if (timeout) {
-        clearTimeout(timeout);
-      } else {
+      let latestBlock;
+      try {
+        latestBlock = await this.web3.eth.getBlockNumber();
+      } finally {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+      }
+      if (!timeout) {
         return;
       }
       if (latestBlock > this.latestBlock) {
@@ -130,7 +140,10 @@ class NewBlockSubscriber extends EventEmitter {
     if (this.closed) {
       return;
     }
-    this.pollTimer = setTimeout(() => this.poll(), 30000);
+    this.pollTimer = setTimeout(() => {
+      this.pollTimer = null;
+      this.poll();
+    }, 30000);
   }
   async checkNewBlocks() {
     if (this.nextBlock <= 0) {
