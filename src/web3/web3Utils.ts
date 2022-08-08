@@ -199,6 +199,8 @@ class Web3Wrapper extends EventEmitter {
   private readonly web3Full: Web3;
   private provider: InstanceType<typeof Web3.providers.WebsocketProvider>;
   private newBlockSubscriber: null | NewBlockSubscriber = null;
+  private reconnectTimer: null | ReturnType<typeof setTimeout> = null;
+  private reconnectCount = 0;
   constructor(private url: string, urlHttp = "") {
     super();
     this.setMaxListeners(1000);
@@ -255,9 +257,30 @@ class Web3Wrapper extends EventEmitter {
     }
     this.ref++;
   }
+  private reconnectProvider() {
+    if (this.isClosed()) {
+      return;
+    }
+    if (this.reconnectTimer) {
+      return;
+    }
+    this.reconnectCount++;
+    const reconnectCount = this.reconnectCount;
+    this.reconnectTimer = setTimeout(() => {
+      if (this.reconnectCount !== reconnectCount) {
+        return;
+      }
+      this.reconnectTimer = null;
+      this.provider.disconnect();
+      setTimeout(() => this.provider.reconnect(), 1000);
+    }, 1000 * Math.pow(2, this.reconnectCount));
+  }
   private subscribeToNewBlockHeader() {
     if (this.isClosed()) {
       return;
+    }
+    if (!this.reconnectTimer) {
+      this.reconnectCount = 0;
     }
     if (!this.newBlockSubscriber) {
       this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full);
@@ -272,8 +295,7 @@ class Web3Wrapper extends EventEmitter {
       });
       this.newBlockSubscriber.on("subscriptionTimeout", () => {
         console.log("Trying to reconnect to WebSocket provider");
-        this.provider.disconnect();
-        setImmediate(() => this.provider.reconnect());
+        this.reconnectProvider();
       });
       this.newBlockSubscriber.on("error", (e) => {
         console.error("Error in newBlockSubscriber", e);
