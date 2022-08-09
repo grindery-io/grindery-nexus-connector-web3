@@ -27,6 +27,7 @@ class NewBlockSubscriber extends EventEmitter {
   private pollTimer: null | ReturnType<typeof setTimeout> = null;
   private resetSubscriptionTimer: null | ReturnType<typeof setTimeout> = null;
   private numPolled = 0;
+  private lastNoBlockTimestamp = 0;
   constructor(private web3: Web3, private web3Full: Web3) {
     super();
     this.resetSubscription();
@@ -174,6 +175,9 @@ class NewBlockSubscriber extends EventEmitter {
     if (this.checking) {
       return;
     }
+    if (Date.now() - this.lastNoBlockTimestamp < 5000) {
+      return;
+    }
     this.checking = true;
     try {
       while (this.nextBlock < this.latestBlock - 3) {
@@ -192,6 +196,7 @@ class NewBlockSubscriber extends EventEmitter {
           });
         if (!blockWithTransactions) {
           console.log("No block", this.nextBlock);
+          this.lastNoBlockTimestamp = Date.now();
           return;
         }
         this.nextBlock++;
