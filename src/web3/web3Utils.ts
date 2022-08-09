@@ -28,7 +28,7 @@ class NewBlockSubscriber extends EventEmitter {
   private resetSubscriptionTimer: null | ReturnType<typeof setTimeout> = null;
   private numPolled = 0;
   private lastNoBlockTimestamp = 0;
-  constructor(private web3: Web3, private web3Full: Web3) {
+  constructor(private web3: Web3, private web3Full: Web3, private tag: string) {
     super();
     this.resetSubscription();
     this.resetPoller();
@@ -50,7 +50,7 @@ class NewBlockSubscriber extends EventEmitter {
     if (this.newBlockSubscription) {
       this.newBlockSubscription.unsubscribe((err) => {
         if (err) {
-          console.error("Failed to unsubscribe from newBlockHeaders", err);
+          console.error(`[${this.tag}] Failed to unsubscribe from newBlockHeaders`, err);
         }
       });
     }
@@ -71,7 +71,7 @@ class NewBlockSubscriber extends EventEmitter {
       }
       let connectTimeout = setTimeout(() => {
         connectTimeout = null;
-        console.error("Timeout when setting up subscription");
+        console.error(`[${this.tag}] Timeout when setting up subscription`);
         this.unsubscribe();
         this.emit("subscriptionTimeout");
       }, 10000) as ReturnType<typeof setTimeout> | null;
@@ -82,7 +82,7 @@ class NewBlockSubscriber extends EventEmitter {
             return;
           }
           this.latestBlock = block.number;
-          this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
+          this.checkNewBlocks().catch((e) => console.error(`[${this.tag}] Error in checkNewBlocks`, e));
           this.numPolled = 0;
           this.resetPoller();
         })
@@ -100,7 +100,7 @@ class NewBlockSubscriber extends EventEmitter {
         })
         .on("connected", () => {
           if (connectTimeout) {
-            console.log("Connected to subscription");
+            console.log(`[${this.tag}] Connected to subscription`);
             clearTimeout(connectTimeout);
             connectTimeout = null;
           }
@@ -118,7 +118,7 @@ class NewBlockSubscriber extends EventEmitter {
     try {
       let timeout = setTimeout(() => {
         timeout = null;
-        console.error("Timeout in poll, latest block:", this.latestBlock);
+        console.error(`[${this.tag}] Timeout in poll, latest block:`, this.latestBlock);
         if (this.closed) {
           return;
         }
@@ -138,7 +138,7 @@ class NewBlockSubscriber extends EventEmitter {
       }
       if (latestBlock > this.latestBlock) {
         this.latestBlock = latestBlock;
-        console.log(`Got new block from polling: ${latestBlock}`);
+        console.log(`[${this.tag}] Got new block from polling: ${latestBlock}`);
         this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
         if (this.numPolled > 10) {
           this.resetSubscription();
@@ -146,9 +146,9 @@ class NewBlockSubscriber extends EventEmitter {
         }
       }
     } catch (e) {
-      console.error("Error in poll", e);
+      console.error(`[${this.tag}] Error in poll`, e);
       if (this.numPolled > 10 && this.latestBlock < 0) {
-        console.log("Too many errors in poll, stopping");
+        console.log(`[${this.tag}] Too many errors in poll, stopping`);
         this.emit("stop", e);
         this.close();
       }
@@ -180,7 +180,9 @@ class NewBlockSubscriber extends EventEmitter {
     }
     this.checking = true;
     if (this.latestBlock - this.nextBlock > 500) {
-      console.log(`Too many blocks behind, skipping some blocks: ${this.nextBlock} -> ${this.latestBlock}`);
+      console.log(
+        `[${this.tag}] Too many blocks behind, skipping some blocks: ${this.nextBlock} -> ${this.latestBlock}`
+      );
       this.nextBlock = this.latestBlock;
     }
     try {
@@ -194,18 +196,18 @@ class NewBlockSubscriber extends EventEmitter {
             if (this.closed) {
               return;
             }
-            console.error("Error getting block:", e);
+            console.error(`[${this.tag}] Error getting block:`, e);
             this.resetSubscription();
             return undefined;
           });
         if (!blockWithTransactions) {
-          console.log("No block", this.nextBlock);
+          console.log(`[${this.tag}] No block`, this.nextBlock);
           this.lastNoBlockTimestamp = Date.now();
           return;
         }
         this.nextBlock++;
         if (!blockWithTransactions.transactions) {
-          console.log("No transactions in block", blockWithTransactions.number, blockWithTransactions);
+          console.log(`[${this.tag}] No transactions in block`, blockWithTransactions.number, blockWithTransactions);
           return;
         }
         this.emit("newBlock", blockWithTransactions);
@@ -214,7 +216,7 @@ class NewBlockSubscriber extends EventEmitter {
       if (this.closed) {
         return;
       }
-      console.error("Error in checkNewBlocks", e);
+      console.error(`[${this.tag}] Error in checkNewBlocks`, e);
       this.emit("error", e);
     } finally {
       this.checking = false;
@@ -337,10 +339,10 @@ class Web3Wrapper extends EventEmitter {
       this.reconnectCount = 0;
     }
     if (!this.newBlockSubscriber) {
-      this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full);
+      this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full, this.redactedUrl());
       this.newBlockSubscriber.on("newBlock", (block) => {
         if (this.listenerCount("newBlock") === 0) {
-          console.log("No listeners for newBlock, closing subscription");
+          console.log(`[${this.redactedUrl}] No listeners for newBlock, closing subscription`);
           this.newBlockSubscriber?.close();
           this.newBlockSubscriber = null;
           return;
@@ -348,11 +350,11 @@ class Web3Wrapper extends EventEmitter {
         this.emit("newBlock", block);
       });
       this.newBlockSubscriber.on("subscriptionTimeout", () => {
-        console.log("Trying to reconnect to WebSocket provider");
+        console.log(`[${this.redactedUrl}] Trying to reconnect to WebSocket provider`);
         this.reconnectProvider();
       });
       this.newBlockSubscriber.on("error", (e) => {
-        console.error("Error in newBlockSubscriber", e);
+        console.error(`[${this.redactedUrl}] Error in newBlockSubscriber`, e);
       });
       this.newBlockSubscriber.on("stop", (e) => {
         this.emit("error", e);
