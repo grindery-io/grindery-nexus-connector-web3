@@ -40,6 +40,10 @@ class NewBlockSubscriber extends EventEmitter {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
     }
+    if (this.resetSubscriptionTimer) {
+      clearTimeout(this.resetSubscriptionTimer);
+      this.resetSubscriptionTimer = null;
+    }
   }
   unsubscribe() {
     if (this.newBlockSubscription) {
@@ -82,6 +86,10 @@ class NewBlockSubscriber extends EventEmitter {
           this.resetPoller();
         })
         .on("error", (error) => {
+          if (connectTimeout) {
+            clearTimeout(connectTimeout);
+            connectTimeout = null;
+          }
           if (this.closed) {
             return;
           }
