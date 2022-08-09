@@ -267,11 +267,12 @@ class Web3Wrapper extends EventEmitter {
       this.web3.eth.clearSubscriptions(() => {
         /* Ignore */
       });
-      this.removeAllListeners();
       this.web3.setProvider(null);
       this.web3Full.setProvider(null);
       this.provider.reset();
       this.provider.disconnect();
+      this.emit("close");
+      this.removeAllListeners();
     }
   }
   isClosed() {
@@ -379,7 +380,7 @@ export function getWeb3(chain = "eth") {
   if (!wrapper || wrapper.isClosed()) {
     wrapper = new Web3Wrapper(url, urlHttp);
     web3Cache.set(url, wrapper);
-    wrapper.on("error", () => {
+    wrapper.on("close", () => {
       if (web3Cache.get(url) === wrapper) {
         web3Cache.delete(url);
       }
@@ -394,6 +395,7 @@ export function getWeb3(chain = "eth") {
       wrapper = undefined;
     },
     onNewBlock: wrapper?.onNewBlock.bind(wrapper),
+    web3Wrapper: wrapper,
   };
 }
 export function onNewBlockMultiChain(
@@ -409,7 +411,14 @@ export function onNewBlockMultiChain(
   }
   const cleanUpFunctions = [] as (() => void)[];
   for (const chain of chains) {
-    const { web3, close, onNewBlock } = getWeb3(chain);
+    const { web3, close, onNewBlock, web3Wrapper } = getWeb3(chain);
+    const onClose = () => {
+      onError(new Error(`Web3Wrapper for ${chain} closed`));
+    };
+    web3Wrapper.on("close", onClose);
+    cleanUpFunctions.push(() => {
+      web3Wrapper.off("close", onClose);
+    });
     cleanUpFunctions.push(
       onNewBlock(
         (block) =>
