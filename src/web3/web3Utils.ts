@@ -256,6 +256,10 @@ class Web3Wrapper extends EventEmitter {
     this.ref--;
     if (this.ref <= 0) {
       console.log(`[${this.redactedUrl()}] Closing web3 wrapper`);
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
       if (this.newBlockSubscriber) {
         this.newBlockSubscriber.close();
         this.newBlockSubscriber = null;
@@ -299,8 +303,14 @@ class Web3Wrapper extends EventEmitter {
       if (this.provider.connection && this.provider.connection.readyState === WebSocket.OPEN) {
         this.provider.connection.close();
       }
+      if (this.isClosed()) {
+        return;
+      }
       setTimeout(() => {
         if (this.reconnectCount !== reconnectCount) {
+          return;
+        }
+        if (this.isClosed()) {
           return;
         }
         this.provider.reset();
@@ -367,6 +377,11 @@ export function getWeb3(chain = "eth") {
   if (!wrapper || wrapper.isClosed()) {
     wrapper = new Web3Wrapper(url, urlHttp);
     web3Cache.set(url, wrapper);
+    wrapper.on("error", () => {
+      if (web3Cache.get(url) === wrapper) {
+        web3Cache.delete(url);
+      }
+    });
   } else {
     wrapper.addRef();
   }
