@@ -78,7 +78,7 @@ class NewBlockSubscriber extends EventEmitter {
       this.newBlockSubscription = this.web3Full.eth
         .subscribe("newBlockHeaders")
         .on("data", (block) => {
-          if (!block.number) {
+          if (!block.number || block.number <= this.latestBlock) {
             return;
           }
           this.latestBlock = block.number;
