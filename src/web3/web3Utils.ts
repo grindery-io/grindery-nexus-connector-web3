@@ -348,6 +348,8 @@ class Web3Wrapper extends EventEmitter {
         this.emit("error", e);
         this.newBlockSubscriber?.close();
         this.newBlockSubscriber = null;
+        this.ref = 1;
+        this.close();
       });
     }
   }
