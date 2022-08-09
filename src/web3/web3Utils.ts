@@ -73,7 +73,6 @@ class NewBlockSubscriber extends EventEmitter {
         connectTimeout = null;
         console.error(`[${this.tag}] Timeout when setting up subscription`);
         this.unsubscribe();
-        this.emit("subscriptionTimeout");
       }, 10000) as ReturnType<typeof setTimeout> | null;
       this.newBlockSubscription = this.web3Full.eth
         .subscribe("newBlockHeaders")
@@ -95,8 +94,8 @@ class NewBlockSubscriber extends EventEmitter {
             return;
           }
           console.error(error);
-          this.emit("error", error);
           this.unsubscribe();
+          this.emit("reconnectProvider");
         })
         .on("connected", () => {
           if (connectTimeout) {
@@ -123,7 +122,6 @@ class NewBlockSubscriber extends EventEmitter {
           return;
         }
         this.emit("error", new Error("Timeout in poll"));
-        this.resetSubscription();
         this.resetPoller();
       }, 30000) as ReturnType<typeof setTimeout> | null;
       this.numPolled++;
@@ -349,7 +347,7 @@ class Web3Wrapper extends EventEmitter {
         }
         this.emit("newBlock", block);
       });
-      this.newBlockSubscriber.on("subscriptionTimeout", () => {
+      this.newBlockSubscriber.on("reconnectProvider", () => {
         console.log(`[${this.redactedUrl}] Trying to reconnect to WebSocket provider`);
         this.reconnectProvider();
       });
