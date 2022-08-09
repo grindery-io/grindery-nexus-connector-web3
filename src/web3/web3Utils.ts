@@ -179,6 +179,10 @@ class NewBlockSubscriber extends EventEmitter {
       return;
     }
     this.checking = true;
+    if (this.latestBlock - this.nextBlock > 500) {
+      console.log(`Too many blocks behind, skipping some blocks: ${this.nextBlock} -> ${this.latestBlock}`);
+      this.nextBlock = this.latestBlock;
+    }
     try {
       while (this.nextBlock < this.latestBlock - 3) {
         if (this.closed) {
