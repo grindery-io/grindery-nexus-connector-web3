@@ -420,13 +420,7 @@ export function onNewBlockMultiChain(
       web3Wrapper.off("close", onClose);
     });
     cleanUpFunctions.push(
-      onNewBlock(
-        (block) =>
-          Promise.resolve(callback({ chain, web3, block })).catch((e) =>
-            console.error("Error in handler of onNewBlockMultiChain", e)
-          ),
-        onError
-      )
+      onNewBlock((block) => Promise.resolve(callback({ chain, web3, block })).catch(onError), onError)
     );
     cleanUpFunctions.push(close);
   }
