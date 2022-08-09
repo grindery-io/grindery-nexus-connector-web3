@@ -5,6 +5,12 @@ import { Server } from "ws";
 import { main } from "./app";
 import { Response } from "./utils";
 
+import { LoggerAdaptToConsole } from "console-log-json";
+
+if (process.env.LOG_JSON) {
+  LoggerAdaptToConsole();
+}
+
 const app = express();
 app.use(bodyParser.json());
 
