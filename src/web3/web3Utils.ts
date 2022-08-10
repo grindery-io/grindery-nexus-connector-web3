@@ -195,7 +195,6 @@ class NewBlockSubscriber extends EventEmitter {
               return;
             }
             console.error(`[${this.tag}] Error getting block:`, e);
-            this.resetSubscription();
             return undefined;
           });
         if (!blockWithTransactions) {
