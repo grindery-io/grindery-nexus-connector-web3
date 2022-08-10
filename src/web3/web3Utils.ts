@@ -95,7 +95,6 @@ class NewBlockSubscriber extends EventEmitter {
           }
           console.error(error);
           this.unsubscribe();
-          this.emit("reconnectProvider");
         })
         .on("connected", () => {
           if (connectTimeout) {
@@ -139,6 +138,7 @@ class NewBlockSubscriber extends EventEmitter {
         console.log(`[${this.tag}] Got new block from polling: ${latestBlock}`);
         this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
         if (this.numPolled > 10) {
+          this.emit("reconnectProvider");
           this.resetSubscription();
           this.numPolled = 0;
         }
