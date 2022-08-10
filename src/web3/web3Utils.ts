@@ -347,7 +347,7 @@ class Web3Wrapper extends EventEmitter {
       this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full, this.redactedUrl());
       this.newBlockSubscriber.on("newBlock", (block) => {
         if (this.listenerCount("newBlock") === 0) {
-          console.log(`[${this.redactedUrl}] No listeners for newBlock, closing subscription`);
+          console.log(`[${this.redactedUrl()}] No listeners for newBlock, closing subscription`);
           this.newBlockSubscriber?.close();
           this.newBlockSubscriber = null;
           return;
@@ -355,11 +355,11 @@ class Web3Wrapper extends EventEmitter {
         this.emit("newBlock", block);
       });
       this.newBlockSubscriber.on("reconnectProvider", () => {
-        console.log(`[${this.redactedUrl}] Trying to reconnect to WebSocket provider`);
+        console.log(`[${this.redactedUrl()}] Trying to reconnect to WebSocket provider`);
         this.reconnectProvider();
       });
       this.newBlockSubscriber.on("error", (e) => {
-        console.error(`[${this.redactedUrl}] Error in newBlockSubscriber`, e);
+        console.error(`[${this.redactedUrl()}] Error in newBlockSubscriber`, e);
       });
       this.newBlockSubscriber.on("stop", (e) => {
         this.emit("error", e);
