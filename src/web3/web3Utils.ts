@@ -325,8 +325,16 @@ class Web3Wrapper extends EventEmitter {
         this.provider.reset();
         this.createProvider();
         this.web3Full.setProvider(this.provider);
-      }, 1000);
-    }, 1000 * Math.pow(2, this.reconnectCount));
+        setTimeout(() => {
+          if (this.isClosed()) {
+            return;
+          }
+          if (this.reconnectCount === reconnectCount) {
+            this.reconnectCount = 0;
+          }
+        }, 60000);
+      }, 100);
+    }, 100 * Math.pow(2, this.reconnectCount));
   }
   private subscribeToNewBlockHeader() {
     if (this.isClosed()) {
