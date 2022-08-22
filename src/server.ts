@@ -5,10 +5,10 @@ import { Server } from "ws";
 import { main } from "./app";
 import { Response } from "./utils";
 
-import { LoggerAdaptToConsole } from "console-log-json";
+import { LoggerAdaptToConsole, LOG_LEVEL } from "console-log-json";
 
 if (process.env.LOG_JSON) {
-  LoggerAdaptToConsole();
+  LoggerAdaptToConsole({ logLevel: LOG_LEVEL.debug });
 }
 
 const app = express();
