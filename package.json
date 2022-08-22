@@ -21,6 +21,7 @@
     "console-log-json": "github:SAPikachu/console-log-json",
     "core-js": "^3.22",
     "dotenv": "^16.0.0",
+    "exponential-backoff": "^3.1.0",
     "express": "^4.17.3",
     "json-rpc-2.0": "^1.1.0",
     "lodash": "^4.17.21",

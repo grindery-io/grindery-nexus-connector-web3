@@ -1,11 +1,11 @@
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
 import _ from "lodash";
-import { connect, Near } from "near-api-js";
+import { connect } from "near-api-js";
 import { base58_to_binary } from "base58-js";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "../connectorCommon";
 import { InvalidParamsError } from "../jsonrpc";
-import { BlockResult } from "near-api-js/lib/providers/provider";
+import { backOff } from "exponential-backoff";
 
 type Receipt = {
   predecessor_id: string;
@@ -39,17 +39,6 @@ class ReceiptSubscriber extends EventEmitter {
     super();
     this.setMaxListeners(1000);
   }
-  async handleBlock(near: Near, block: BlockResult) {
-    for (const chunk of block.chunks) {
-      const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
-      // console.log(chunkDetails);
-      for (const receipt of chunkDetails.receipts as Receipt[]) {
-        for (const listener of this.listeners("process")) {
-          await listener(receipt);
-        }
-      }
-    }
-  }
   async main() {
     if (this.running) {
       return;
@@ -65,7 +54,9 @@ class ReceiptSubscriber extends EventEmitter {
     const near = await connect(config);
     let currentHash = "";
     let currentHeight = 0;
+    let lastErrorHeight = 0;
     this.running = true;
+    console.log("[Near] event main loop started");
     while (this.listenerCount("process") > 0) {
       try {
         const response = await near.connection.provider.block({
@@ -83,7 +74,7 @@ class ReceiptSubscriber extends EventEmitter {
         while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
           pendingBlocks.unshift(await near.connection.provider.block({ blockId: pendingBlocks[0].header.prev_hash }));
           if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
-            console.log("Last block was removed:", currentHeight, currentHash);
+            console.log("[Near] Last block was removed:", currentHeight, currentHash);
             if (pendingBlocks[0].header.height < currentHeight) {
               pendingBlocks.shift();
             }
@@ -91,21 +82,54 @@ class ReceiptSubscriber extends EventEmitter {
           }
         }
         if (pendingBlocks.length > 10) {
-          console.warn(`Too many blocks in a row: ${pendingBlocks.length}`);
+          console.warn(`[Near] Too many blocks in a row: ${pendingBlocks.length}`);
         }
-        currentHash = response.header.hash;
-        currentHeight = response.header.height;
+        pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const block of pendingBlocks) {
-          await this.handleBlock(near, block);
+          const receipts = [] as Receipt[];
+          for (const chunk of block.chunks) {
+            await backOff(
+              async () => {
+                const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
+                receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
+              },
+              {
+                maxDelay: 10000,
+                numOfAttempts: 5,
+                retry: (e, attemptNumber) => {
+                  console.error(
+                    `[Near] Failed to get chunk ${chunk.chunk_hash} for block ${block.header.height} (attempt ${attemptNumber}):`,
+                    e
+                  );
+                  return true;
+                },
+              }
+            );
+          }
+          for (const receipt of receipts as Receipt[]) {
+            for (const listener of this.listeners("process")) {
+              await listener(receipt);
+            }
+          }
+          currentHash = block.header.hash;
+          currentHeight = block.header.height;
         }
       } catch (e) {
-        console.error("Error in Near event loop:", e);
-        this.emit("error", e);
-        this.running = false;
-        return;
+        console.error("[Near] Error in Near event loop:", e);
+        if (lastErrorHeight === currentHeight) {
+          console.error("[Near] Possible non-recoverable error, stopping");
+          this.emit("error", e);
+          this.running = false;
+          break;
+        } else {
+          await new Promise((res) => setTimeout(res, 5000));
+          lastErrorHeight = currentHeight;
+          continue;
+        }
       }
     }
     this.running = false;
+    console.log("[Near] event main loop stopped");
   }
   subscribe({ callback, onError }: { callback: (receipt: Receipt) => void; onError: (error: unknown) => void }) {
     const handler = async (receipt: Receipt) => {
