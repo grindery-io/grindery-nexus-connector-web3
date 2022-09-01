@@ -10,6 +10,7 @@ import {
   parseEventDeclaration,
   parseFunctionDeclaration,
 } from "./web3Utils";
+import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 
 class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -195,17 +196,26 @@ export async function callSmartContract(
     const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
     web3.eth.accounts.wallet.add(account);
     web3.eth.defaultAccount = account.address;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const paramArray = [] as any[];
-    const functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
-    const inputs = functionInfo.inputs || [];
-    for (const i of inputs) {
-      if (!(i.name in input.fields.parameters)) {
-        throw new Error("Missing parameter " + i.name);
+    web3.defaultAccount = account.address;
+
+    let callData: string;
+    let functionInfo: ReturnType<typeof parseFunctionDeclaration>;
+    if (input.fields.functionDeclaration === "!gnosisSafeSimpleTransfer") {
+      functionInfo = execTransactionAbi;
+      callData = await encodeExecTransaction(web3, input.fields.contractAddress, input.fields.parameters);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const paramArray = [] as any[];
+      functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
+      const inputs = functionInfo.inputs || [];
+      for (const i of inputs) {
+        if (!(i.name in input.fields.parameters)) {
+          throw new Error("Missing parameter " + i.name);
+        }
+        paramArray.push(input.fields.parameters[i.name]);
       }
-      paramArray.push(input.fields.parameters[i.name]);
+      callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
-    const callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     const txConfig: TransactionConfig = {
       from: account.address,
       to: input.fields.contractAddress,
