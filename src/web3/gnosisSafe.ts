@@ -670,7 +670,7 @@ export async function encodeExecTransaction(web3: Web3, contractAddress: string,
     "0x0",
     "0x0",
     "0x0",
-    "0x0000000000000000000000000000000000000000",
+    parameters.gasToken || "0x0000000000000000000000000000000000000000",
     "0x0000000000000000000000000000000000000000",
     nonce,
   ];
