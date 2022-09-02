@@ -158,6 +158,7 @@ class NewEventTrigger extends TriggerBase<{
               console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
               this.sendNotification({
                 _rawEvent: logEntry,
+                __transactionHash: logEntry.transactionHash,
                 ...event,
               });
             }
