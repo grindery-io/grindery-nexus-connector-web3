@@ -192,11 +192,13 @@ export async function callSmartContract(
   const { web3, close } = getWeb3(input.fields.chain);
   try {
     web3.eth.transactionConfirmationBlocks = 1;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
-    web3.eth.accounts.wallet.add(account);
-    web3.eth.defaultAccount = account.address;
-    web3.defaultAccount = account.address;
+    if (!web3.defaultAccount) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
+      web3.eth.accounts.wallet.add(account);
+      web3.eth.defaultAccount = account.address;
+      web3.defaultAccount = account.address;
+    }
 
     let callData: string;
     let functionInfo: ReturnType<typeof parseFunctionDeclaration>;
@@ -217,11 +219,11 @@ export async function callSmartContract(
       callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
     const txConfig: TransactionConfig = {
-      from: account.address,
+      from: web3.defaultAccount,
       to: input.fields.contractAddress,
       data: callData,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      nonce: web3.utils.toHex(await web3.eth.getTransactionCount(account.address)) as any,
+      nonce: web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any,
     };
     let result: unknown;
     for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {

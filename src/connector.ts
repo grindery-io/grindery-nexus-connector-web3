@@ -1,26 +1,34 @@
 import WebSocket from "ws";
 import { ConnectorInput, ConnectorOutput } from "./connectorCommon";
 import { InvalidParamsError } from "./jsonrpc";
+import { convert } from "./unitConverter";
 import { callSmartContract, createTrigger } from "./web3";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeParameters(params: ConnectorInput<any>) {
-  if ("_grinderyChain" in params.fields) {
-    params.fields.chain = params.fields._grinderyChain;
-    delete params.fields._grinderyChain;
+async function sanitizeParameters(input: ConnectorInput<any>) {
+  if ("_grinderyChain" in input.fields) {
+    input.fields.chain = input.fields._grinderyChain;
+    delete input.fields._grinderyChain;
   }
-  if ("parameterFilters" in params.fields) {
-    for (const key of Object.keys(params.fields.parameterFilters)) {
-      if (params.fields.parameterFilters[key] === "!!GRINDERY!!UNDEFINED!!") {
-        params.fields.parameterFilters[key] = undefined;
+  for (const paramKey of ["parameterFilters", "parameters"]) {
+    if (paramKey in input.fields) {
+      const parameters = input.fields[paramKey];
+      for (const key of Object.keys(parameters)) {
+        if (parameters[key] === "!!GRINDERY!!UNDEFINED!!") {
+          parameters[key] = undefined;
+        }
+        const unitConversionMode = parameters["_grinderyUnitConversion_" + key];
+        if (unitConversionMode) {
+          parameters[key] = await convert(parameters[key], unitConversionMode, input.fields, parameters);
+        }
       }
     }
   }
-  return params;
+  return input;
 }
 
 export async function setupSignal(params: ConnectorInput, { socket }: { socket: WebSocket }) {
-  sanitizeParameters(params);
+  await sanitizeParameters(params);
   if (!("chain" in (params.fields as Record<string, unknown>))) {
     throw new InvalidParamsError("Missing chain parameter");
   }
@@ -33,7 +41,7 @@ export async function setupSignal(params: ConnectorInput, { socket }: { socket: 
   return {};
 }
 export async function runAction(params: ConnectorInput): Promise<ConnectorOutput> {
-  sanitizeParameters(params);
+  await sanitizeParameters(params);
   if (!("chain" in (params.fields as Record<string, unknown>))) {
     throw new InvalidParamsError("Missing chain parameter");
   }

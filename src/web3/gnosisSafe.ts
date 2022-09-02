@@ -657,20 +657,37 @@ const ABI = [
   { stateMutability: "payable", type: "receive" },
 ];
 
+const ERC20_TRANSFER = {
+  inputs: [
+    { internalType: "address", name: "recipient", type: "address" },
+    { internalType: "uint256", name: "amount", type: "uint256" },
+  ],
+  name: "transfer",
+  outputs: [{ internalType: "bool", name: "", type: "bool" }],
+  stateMutability: "nonpayable",
+  type: "function",
+};
+
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
 export async function encodeExecTransaction(web3: Web3, contractAddress: string, parameters: Record<string, unknown>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contract = new web3.eth.Contract(ABI as any, contractAddress);
   const nonce = await contract.methods.nonce.call().call();
   const params = [
-    parameters.to,
-    web3.utils.numberToHex(parameters.value as number),
-    "0x",
+    parameters.tokenContractAddress || parameters.to,
+    parameters.tokenContractAddress ? "0x0" : web3.utils.numberToHex(parameters.value as number),
+    parameters.tokenContractAddress
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        web3.eth.abi.encodeFunctionCall(ERC20_TRANSFER as any, [
+          parameters.to as string,
+          web3.utils.numberToHex(parameters.value as number),
+        ])
+      : "0x",
     "0x0",
     "0x0",
     "0x0",
     "0x0",
-    parameters.gasToken || "0x0000000000000000000000000000000000000000",
+    "0x0000000000000000000000000000000000000000",
     "0x0000000000000000000000000000000000000000",
     nonce,
   ];
