@@ -260,14 +260,19 @@ export async function callSmartContract(
       let returnValue;
       try {
         returnValue = await web3.eth.call(txConfig);
+        result = {
+          returnValue,
+          estimatedGas: gas,
+          minFee,
+        };
       } catch (e) {
-        returnValue = e.toString();
+        if (!input.fields.dryRun) {
+          throw e;
+        }
+        result = {
+          _grinderyDryRunError: "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
+        };
       }
-      result = {
-        returnValue,
-        estimatedGas: gas,
-        minFee,
-      };
     } else {
       result = await web3.eth.sendTransaction(txConfig);
     }
