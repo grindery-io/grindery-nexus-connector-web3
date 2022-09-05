@@ -669,7 +669,12 @@ const ERC20_TRANSFER = {
 };
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
-export async function encodeExecTransaction(web3: Web3, contractAddress: string, parameters: Record<string, unknown>) {
+export async function encodeExecTransaction(
+  web3: Web3,
+  contractAddress: string,
+  parameters: Record<string, unknown>,
+  dryRun: boolean
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contract = new web3.eth.Contract(ABI as any, contractAddress);
   const nonce = await contract.methods.nonce.call().call();
@@ -691,7 +696,15 @@ export async function encodeExecTransaction(web3: Web3, contractAddress: string,
     "0x0000000000000000000000000000000000000000",
     nonce,
   ];
-  const txHash = await contract.methods.getTransactionHash(...params).call();
+  let txHash: string;
+  try {
+    txHash = await contract.methods.getTransactionHash(...params).call();
+  } catch (e) {
+    if (!dryRun) {
+      throw e;
+    }
+    txHash = "0x0000000000000000000000000000000000000000";
+  }
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   let signature = await web3.eth.sign(txHash, web3.defaultAccount!);
   // https://github.com/safe-global/safe-contracts/blob/c36bcab46578a442862d043e12a83fec41143dec/contracts/GnosisSafe.sol#L293

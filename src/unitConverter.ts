@@ -118,7 +118,6 @@ const UNIT_CONVERTERS: [
       } finally {
         close();
       }
-      console.log(decimals);
       return scaleDecimals(String(value), decimals);
     },
   ],

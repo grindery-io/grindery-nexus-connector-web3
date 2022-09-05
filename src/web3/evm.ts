@@ -205,7 +205,12 @@ export async function callSmartContract(
     let functionInfo: ReturnType<typeof parseFunctionDeclaration>;
     if (input.fields.functionDeclaration === "!gnosisSafeSimpleTransfer") {
       functionInfo = execTransactionAbi;
-      callData = await encodeExecTransaction(web3, input.fields.contractAddress, input.fields.parameters);
+      callData = await encodeExecTransaction(
+        web3,
+        input.fields.contractAddress,
+        input.fields.parameters,
+        input.fields.dryRun ?? false
+      );
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const paramArray = [] as any[];
