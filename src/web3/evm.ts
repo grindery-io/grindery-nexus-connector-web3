@@ -252,8 +252,14 @@ export async function callSmartContract(
     txConfig.maxFeePerGas = maxFee;
     txConfig.maxPriorityFeePerGas = Math.min(Number(maxTip), maxFee - baseFee - 1);
     if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
+      let returnValue;
+      try {
+        returnValue = await web3.eth.call(txConfig);
+      } catch (e) {
+        returnValue = e.toString();
+      }
       result = {
-        returnValue: await web3.eth.call(txConfig),
+        returnValue,
         estimatedGas: gas,
         minFee,
       };
