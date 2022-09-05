@@ -677,7 +677,14 @@ export async function encodeExecTransaction(
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contract = new web3.eth.Contract(ABI as any, contractAddress);
-  const nonce = await contract.methods.nonce.call().call();
+  let nonce = "0";
+  try {
+    nonce = await contract.methods.nonce.call().call();
+  } catch (e) {
+    if (!dryRun) {
+      throw e;
+    }
+  }
   const params = [
     parameters.tokenContractAddress || parameters.to,
     parameters.tokenContractAddress ? "0x0" : web3.utils.numberToHex(parameters.value as number),
@@ -711,7 +718,7 @@ export async function encodeExecTransaction(
   signature =
     signature.slice(0, signature.length - 2) + (parseInt(signature.slice(signature.length - 2), 16) + 4).toString(16);
   params[params.length - 1] = signature;
-  await contract.methods.execTransaction(...params).call({ from: web3.defaultAccount });
   const result = await contract.methods.execTransaction(...params).encodeABI();
+
   return result;
 }
