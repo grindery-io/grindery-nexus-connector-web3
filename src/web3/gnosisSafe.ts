@@ -1,5 +1,9 @@
 import Web3 from "web3";
 import { AbiItem } from "web3-utils";
+import { ethers } from "ethers";
+import { joinSignature } from "@ethersproject/bytes";
+import { TypedDataUtils } from "ethers-eip712";
+import axios from "axios";
 
 const ABI = [
   {
@@ -669,25 +673,45 @@ const ERC20_TRANSFER = {
 };
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
-export async function encodeExecTransaction(
-  web3: Web3,
-  contractAddress: string,
-  parameters: Record<string, unknown>,
-  dryRun: boolean
-) {
+export async function encodeExecTransaction({
+  web3,
+  contractAddress,
+  parameters,
+  dryRun,
+}: {
+  web3: Web3;
+  contractAddress: string;
+  parameters: Record<string, unknown>;
+  dryRun: boolean;
+}): Promise<string | Record<string, unknown>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contract = new web3.eth.Contract(ABI as any, contractAddress);
-  let nonce = "0";
+  let nonce = "0" as string | number;
+  let threshold = 0;
+  let chainId = 1;
   try {
-    nonce = await contract.methods.nonce.call().call();
+    chainId = await contract.methods.getChainId().call();
+    threshold = await contract.methods.getThreshold().call();
+    if (threshold > 1) {
+      const nonceResp = await axios.post(
+        `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
+        { value: "0", operation: 0, to: parameters.to, data: "0x" }
+      );
+      nonce = nonceResp.data.recommendedNonce;
+    } else {
+      nonce = await contract.methods.nonce.call().call();
+    }
   } catch (e) {
     if (!dryRun) {
       throw e;
     }
   }
+  if (typeof nonce === "number") {
+    nonce = nonce.toString();
+  }
   const params = [
     parameters.tokenContractAddress || parameters.to,
-    parameters.tokenContractAddress ? "0x0" : web3.utils.numberToHex(parameters.value as number),
+    parameters.tokenContractAddress ? "0" : String(parameters.value),
     parameters.tokenContractAddress
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
         web3.eth.abi.encodeFunctionCall(ERC20_TRANSFER as any, [
@@ -695,10 +719,10 @@ export async function encodeExecTransaction(
           web3.utils.numberToHex(parameters.value as number),
         ])
       : "0x",
-    "0x0",
-    "0x0",
-    "0x0",
-    "0x0",
+    0,
+    "0",
+    "0",
+    "0",
     "0x0000000000000000000000000000000000000000",
     "0x0000000000000000000000000000000000000000",
     nonce,
@@ -711,6 +735,69 @@ export async function encodeExecTransaction(
       throw e;
     }
     txHash = "0x0000000000000000000000000000000000000000";
+  }
+  if (threshold > 1) {
+    const [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, nonce] = params;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const wallet = new ethers.Wallet(process.env.WEB3_PRIVATE_KEY!);
+    const message = {
+      to,
+      value,
+      data,
+      operation,
+      safeTxGas,
+      baseGas,
+      gasPrice,
+      gasToken,
+      refundReceiver,
+      nonce,
+    };
+    message.to = ethers.utils.getAddress(String(message.to));
+    const typedData = {
+      types: {
+        EIP712Domain: [
+          {
+            type: "uint256",
+            name: "chainId",
+          },
+          {
+            type: "address",
+            name: "verifyingContract",
+          },
+        ],
+        SafeTx: [
+          { type: "address", name: "to" },
+          { type: "uint256", name: "value" },
+          { type: "bytes", name: "data" },
+          { type: "uint8", name: "operation" },
+          { type: "uint256", name: "safeTxGas" },
+          { type: "uint256", name: "baseGas" },
+          { type: "uint256", name: "gasPrice" },
+          { type: "address", name: "gasToken" },
+          { type: "address", name: "refundReceiver" },
+          { type: "uint256", name: "nonce" },
+        ],
+      },
+      primaryType: "SafeTx",
+      domain: {
+        chainId,
+        verifyingContract: contractAddress,
+      },
+      message,
+    };
+    const digest = TypedDataUtils.encodeDigest(typedData);
+    const signature = joinSignature(wallet._signingKey().signDigest(digest));
+    if (dryRun) {
+      return {
+        digest: ethers.utils.hexlify(digest),
+        signature,
+      };
+    }
+    const resp = await axios.post(
+      `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
+      { origin: "Grindery Nexus", safeTxHash: txHash, signature, sender: await wallet.getAddress(), ...message }
+    );
+    return resp.data;
   }
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   let signature = await web3.eth.sign(txHash, web3.defaultAccount!);

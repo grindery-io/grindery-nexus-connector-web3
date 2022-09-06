@@ -205,12 +205,21 @@ export async function callSmartContract(
     let functionInfo: ReturnType<typeof parseFunctionDeclaration>;
     if (input.fields.functionDeclaration === "!gnosisSafeSimpleTransfer") {
       functionInfo = execTransactionAbi;
-      callData = await encodeExecTransaction(
+      const result = await encodeExecTransaction({
         web3,
-        input.fields.contractAddress,
-        input.fields.parameters,
-        input.fields.dryRun ?? false
-      );
+        contractAddress: input.fields.contractAddress,
+        parameters: input.fields.parameters,
+        dryRun: input.fields.dryRun ?? false,
+      });
+      if (typeof result === "string") {
+        callData = result;
+      } else {
+        return {
+          key: input.key,
+          sessionId: input.sessionId,
+          payload: result,
+        };
+      }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const paramArray = [] as any[];
@@ -270,7 +279,8 @@ export async function callSmartContract(
           throw e;
         }
         result = {
-          _grinderyDryRunError: "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
+          _grinderyDryRunError:
+            "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
         };
       }
     } else {
