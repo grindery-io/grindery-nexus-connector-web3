@@ -100,6 +100,9 @@ const UNIT_CONVERTERS: [
       fields: Record<string, unknown>,
       parameters: Record<string, unknown>
     ) => {
+      if (/^-?\d+,\d+$/.test(String(value).trim())) {
+        value = String(value).replace(",", ".");
+      }
       let contractAddress = m[1];
       if (contractAddress === "@") {
         contractAddress = fields.contractAddress as string;
