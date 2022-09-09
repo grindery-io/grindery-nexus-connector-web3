@@ -1,11 +1,12 @@
 {
   "extends": "@tsconfig/node16/tsconfig.json",
-  "include": ["src/*.ts", "src/web3/web3.ts", "src/web3/web3Utils.ts"],
+  "include": ["src/*.ts", "src/**/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"],
   "compilerOptions": {
     "allowJs": true,
-    "outDir": "./build",
+    "outDir": "./dist",
     "noImplicitAny": false,
+    "sourceMap": true,
     "useUnknownInCatchVariables": false
   }
 }

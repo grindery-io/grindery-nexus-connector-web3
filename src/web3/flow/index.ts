@@ -1,8 +1,7 @@
 import { EventEmitter } from "node:events";
-import WebSocket from "ws";
 import axios from "axios";
-import { ConnectorInput, ConnectorOutput, TriggerBase } from "../../connectorCommon";
-import { InvalidParamsError } from "../../jsonrpc";
+import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
+import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { sendTransaction } from "./send";
 
 type Block = {
@@ -379,9 +378,9 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-export const Triggers = new Map<string, (socket: WebSocket, params: ConnectorInput) => TriggerBase>();
-Triggers.set("newTransaction", (socket, params) => new NewTransactionTrigger(socket, params));
-Triggers.set("newEvent", (socket, params) => new NewEventTrigger(socket, params));
+export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
+Triggers.set("newTransaction", NewTransactionTrigger);
+Triggers.set("newEvent", NewEventTrigger);
 
 export async function callSmartContract(
   input: ConnectorInput<{

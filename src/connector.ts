@@ -1,8 +1,12 @@
-import WebSocket from "ws";
-import { ConnectorInput, ConnectorOutput } from "./connectorCommon";
-import { InvalidParamsError } from "./jsonrpc";
+import {
+  ConnectorInput,
+  ConnectorOutput,
+  TriggerBase,
+  ConnectorDefinition,
+} from "grindery-nexus-common-utils/dist/connector";
+import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { convert } from "./unitConverter";
-import { callSmartContract, createTrigger } from "./web3";
+import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sanitizeParameters(input: ConnectorInput<any>) {
@@ -27,27 +31,27 @@ async function sanitizeParameters(input: ConnectorInput<any>) {
   return input;
 }
 
-export async function setupSignal(params: ConnectorInput, { socket }: { socket: WebSocket }) {
+export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
   await sanitizeParameters(params);
   if (!("chain" in (params.fields as Record<string, unknown>))) {
     throw new InvalidParamsError("Missing chain parameter");
   }
-  const trigger = createTrigger(socket, params as ConnectorInput<{ chain: string | string[] }>);
+  const trigger = getTriggerClass(params as ConnectorInput<{ chain: string | string[] }>);
   if (trigger) {
-    trigger.start();
+    return new trigger(params);
   } else {
     throw new Error(`Invalid trigger: ${params.key}`);
   }
-  return {};
 }
-export async function runAction(params: ConnectorInput): Promise<ConnectorOutput> {
+export async function callSmartContract(params: ConnectorInput): Promise<ConnectorOutput> {
   await sanitizeParameters(params);
   if (!("chain" in (params.fields as Record<string, unknown>))) {
     throw new InvalidParamsError("Missing chain parameter");
   }
-  if (params.key === "callSmartContract") {
-    return await callSmartContract(params as Parameters<typeof callSmartContract>[0]);
-  } else {
-    throw new Error(`Invalid action: ${params.key}`);
-  }
+  return await _callSmartContract(params as ConnectorInput<{ chain: string }>);
 }
+
+export const CONNECTOR_DEFINITION: ConnectorDefinition = {
+  actions: { callSmartContract },
+  triggers: { newTransaction: { factory: setupSignal }, newEvent: { factory: setupSignal } },
+};
