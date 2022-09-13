@@ -702,11 +702,16 @@ export async function encodeExecTransaction({
       chainId = await contract.methods.getChainId().call();
       threshold = await contract.methods.getThreshold().call();
       if (threshold > 1) {
-        const nonceResp = await axios.post(
-          `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
-          { value: "0", operation: 0, to: parameters.to, data: "0x" }
-        );
-        nonce = nonceResp.data.recommendedNonce;
+        try {
+          const nonceResp = await axios.post(
+            `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
+            { value: "0", operation: 0, to: parameters.to, data: "0x" }
+          );
+          nonce = nonceResp.data.recommendedNonce;
+        } catch (e) {
+          console.error("Failed to get nonce from Gnosis Safe: ", e, e.response?.data, parameters);
+          throw e;
+        }
         console.debug(`[${contractAddress}] Nonce: ${nonce}`);
       } else {
         nonce = await contract.methods.nonce.call().call();
