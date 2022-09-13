@@ -698,27 +698,27 @@ export async function encodeExecTransaction({
   }
   const releaseLock = await nonceMutexes[contractAddress]();
   try {
-    chainId = await contract.methods.getChainId().call();
-    threshold = await contract.methods.getThreshold().call();
-    if (threshold > 1) {
-      const nonceResp = await axios.post(
-        `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
-        { value: "0", operation: 0, to: parameters.to, data: "0x" }
-      );
-      nonce = nonceResp.data.recommendedNonce;
-      console.debug(`[${contractAddress}] Nonce: ${nonce}`);
-    } else {
-      nonce = await contract.methods.nonce.call().call();
+    try {
+      chainId = await contract.methods.getChainId().call();
+      threshold = await contract.methods.getThreshold().call();
+      if (threshold > 1) {
+        const nonceResp = await axios.post(
+          `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
+          { value: "0", operation: 0, to: parameters.to, data: "0x" }
+        );
+        nonce = nonceResp.data.recommendedNonce;
+        console.debug(`[${contractAddress}] Nonce: ${nonce}`);
+      } else {
+        nonce = await contract.methods.nonce.call().call();
+      }
+    } catch (e) {
+      if (!dryRun) {
+        throw e;
+      }
     }
-  } catch (e) {
-    if (!dryRun) {
-      throw e;
+    if (typeof nonce === "number") {
+      nonce = nonce.toString();
     }
-  }
-  if (typeof nonce === "number") {
-    nonce = nonce.toString();
-  }
-  try {
     const params = [
       parameters.tokenContractAddress || parameters.to,
       parameters.tokenContractAddress ? "0" : String(parameters.value),
