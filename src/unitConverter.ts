@@ -101,7 +101,7 @@ const UNIT_CONVERTERS: [
       parameters: Record<string, unknown>
     ) => {
       if (/^([1-9]\d{0,2}(\.?\d{3})*|0)(,[0-9]{2})?$/.test(String(value).trim())) {
-        value = String(value).replace(/./g, "").replace(",", ".");
+        value = String(value).replace(/\./g, "").replace(",", ".");
       } else if (/^([1-9]\d{0,2}(,?\d{3})*|0)(\.[0-9]+)?$/.test(String(value).trim())) {
         value = String(value).replace(/,/g, "");
       }
