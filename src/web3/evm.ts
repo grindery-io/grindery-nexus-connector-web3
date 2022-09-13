@@ -155,9 +155,15 @@ class NewEventTrigger extends TriggerBase<{
                 }
               }
               console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
+              let chainId = chain;
+              const m = /^eip155:(\d+)$/.exec(chainId);
+              if (m) {
+                chainId = m[1];
+              }
               this.sendNotification({
                 _rawEvent: logEntry,
                 __transactionHash: logEntry.transactionHash,
+                __chainId: chainId,
                 ...event,
               });
             }
