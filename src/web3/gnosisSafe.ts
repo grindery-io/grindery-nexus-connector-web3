@@ -3,6 +3,7 @@ import { AbiItem } from "web3-utils";
 import { ethers } from "ethers";
 import { joinSignature } from "@ethersproject/bytes";
 import { TypedDataUtils } from "ethers-eip712";
+import mutexify from "mutexify/promise";
 import axios from "axios";
 
 const ABI = [
@@ -673,6 +674,9 @@ const ERC20_TRANSFER = {
 };
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
+
+const nonceMutex = mutexify();
+
 export async function encodeExecTransaction({
   web3,
   contractAddress,
@@ -689,15 +693,18 @@ export async function encodeExecTransaction({
   let nonce = "0" as string | number;
   let threshold = 0;
   let chainId = 1;
+  let releaseLock: ReturnType<typeof nonceMutex>;
   try {
     chainId = await contract.methods.getChainId().call();
     threshold = await contract.methods.getThreshold().call();
     if (threshold > 1) {
+      releaseLock = await nonceMutex();
       const nonceResp = await axios.post(
         `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
         { value: "0", operation: 0, to: parameters.to, data: "0x" }
       );
       nonce = nonceResp.data.recommendedNonce;
+      console.debug(`[${contractAddress}] Nonce: ${nonce}`);
     } else {
       nonce = await contract.methods.nonce.call().call();
     }
@@ -709,103 +716,109 @@ export async function encodeExecTransaction({
   if (typeof nonce === "number") {
     nonce = nonce.toString();
   }
-  const params = [
-    parameters.tokenContractAddress || parameters.to,
-    parameters.tokenContractAddress ? "0" : String(parameters.value),
-    parameters.tokenContractAddress
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        web3.eth.abi.encodeFunctionCall(ERC20_TRANSFER as any, [
-          parameters.to as string,
-          web3.utils.numberToHex(parameters.value as number),
-        ])
-      : "0x",
-    0,
-    "0",
-    "0",
-    "0",
-    "0x0000000000000000000000000000000000000000",
-    "0x0000000000000000000000000000000000000000",
-    nonce,
-  ];
-  let txHash: string;
   try {
-    txHash = await contract.methods.getTransactionHash(...params).call();
-  } catch (e) {
-    if (!dryRun) {
-      throw e;
-    }
-    txHash = "0x0000000000000000000000000000000000000000";
-  }
-  if (threshold > 1) {
-    const [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, nonce] = params;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const wallet = new ethers.Wallet(process.env.WEB3_PRIVATE_KEY!);
-    const message = {
-      to,
-      value,
-      data,
-      operation,
-      safeTxGas,
-      baseGas,
-      gasPrice,
-      gasToken,
-      refundReceiver,
+    const params = [
+      parameters.tokenContractAddress || parameters.to,
+      parameters.tokenContractAddress ? "0" : String(parameters.value),
+      parameters.tokenContractAddress
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          web3.eth.abi.encodeFunctionCall(ERC20_TRANSFER as any, [
+            parameters.to as string,
+            web3.utils.numberToHex(parameters.value as number),
+          ])
+        : "0x",
+      0,
+      "0",
+      "0",
+      "0",
+      "0x0000000000000000000000000000000000000000",
+      "0x0000000000000000000000000000000000000000",
       nonce,
-    };
-    message.to = ethers.utils.getAddress(String(message.to));
-    const typedData = {
-      types: {
-        EIP712Domain: [
-          {
-            type: "uint256",
-            name: "chainId",
-          },
-          {
-            type: "address",
-            name: "verifyingContract",
-          },
-        ],
-        SafeTx: [
-          { type: "address", name: "to" },
-          { type: "uint256", name: "value" },
-          { type: "bytes", name: "data" },
-          { type: "uint8", name: "operation" },
-          { type: "uint256", name: "safeTxGas" },
-          { type: "uint256", name: "baseGas" },
-          { type: "uint256", name: "gasPrice" },
-          { type: "address", name: "gasToken" },
-          { type: "address", name: "refundReceiver" },
-          { type: "uint256", name: "nonce" },
-        ],
-      },
-      primaryType: "SafeTx",
-      domain: {
-        chainId,
-        verifyingContract: contractAddress,
-      },
-      message,
-    };
-    const digest = TypedDataUtils.encodeDigest(typedData);
-    const signature = joinSignature(wallet._signingKey().signDigest(digest));
-    if (dryRun) {
-      return {
-        digest: ethers.utils.hexlify(digest),
-        signature,
-      };
+    ];
+    let txHash: string;
+    try {
+      txHash = await contract.methods.getTransactionHash(...params).call();
+    } catch (e) {
+      if (!dryRun) {
+        throw e;
+      }
+      txHash = "0x0000000000000000000000000000000000000000";
     }
-    const resp = await axios.post(
-      `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
-      { origin: "Grindery Nexus", safeTxHash: txHash, signature, sender: await wallet.getAddress(), ...message }
-    );
-    return resp.data;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  let signature = await web3.eth.sign(txHash, web3.defaultAccount!);
-  // https://github.com/safe-global/safe-contracts/blob/c36bcab46578a442862d043e12a83fec41143dec/contracts/GnosisSafe.sol#L293
-  signature =
-    signature.slice(0, signature.length - 2) + (parseInt(signature.slice(signature.length - 2), 16) + 4).toString(16);
-  params[params.length - 1] = signature;
-  const result = await contract.methods.execTransaction(...params).encodeABI();
+    if (threshold > 1) {
+      const [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, nonce] = params;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const wallet = new ethers.Wallet(process.env.WEB3_PRIVATE_KEY!);
+      const message = {
+        to,
+        value,
+        data,
+        operation,
+        safeTxGas,
+        baseGas,
+        gasPrice,
+        gasToken,
+        refundReceiver,
+        nonce,
+      };
+      message.to = ethers.utils.getAddress(String(message.to));
+      const typedData = {
+        types: {
+          EIP712Domain: [
+            {
+              type: "uint256",
+              name: "chainId",
+            },
+            {
+              type: "address",
+              name: "verifyingContract",
+            },
+          ],
+          SafeTx: [
+            { type: "address", name: "to" },
+            { type: "uint256", name: "value" },
+            { type: "bytes", name: "data" },
+            { type: "uint8", name: "operation" },
+            { type: "uint256", name: "safeTxGas" },
+            { type: "uint256", name: "baseGas" },
+            { type: "uint256", name: "gasPrice" },
+            { type: "address", name: "gasToken" },
+            { type: "address", name: "refundReceiver" },
+            { type: "uint256", name: "nonce" },
+          ],
+        },
+        primaryType: "SafeTx",
+        domain: {
+          chainId,
+          verifyingContract: contractAddress,
+        },
+        message,
+      };
+      const digest = TypedDataUtils.encodeDigest(typedData);
+      const signature = joinSignature(wallet._signingKey().signDigest(digest));
+      if (dryRun) {
+        return {
+          digest: ethers.utils.hexlify(digest),
+          signature,
+        };
+      }
+      const resp = await axios.post(
+        `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
+        { origin: "Grindery Nexus", safeTxHash: txHash, signature, sender: await wallet.getAddress(), ...message }
+      );
+      return resp.data;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    let signature = await web3.eth.sign(txHash, web3.defaultAccount!);
+    // https://github.com/safe-global/safe-contracts/blob/c36bcab46578a442862d043e12a83fec41143dec/contracts/GnosisSafe.sol#L293
+    signature =
+      signature.slice(0, signature.length - 2) + (parseInt(signature.slice(signature.length - 2), 16) + 4).toString(16);
+    params[params.length - 1] = signature;
+    const result = await contract.methods.execTransaction(...params).encodeABI();
 
-  return result;
+    return result;
+  } finally {
+    if (releaseLock) {
+      releaseLock();
+    }
+  }
 }
