@@ -675,7 +675,7 @@ const ERC20_TRANSFER = {
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
 
-const nonceMutex = mutexify();
+const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
 export async function encodeExecTransaction({
   web3,
@@ -693,12 +693,14 @@ export async function encodeExecTransaction({
   let nonce = "0" as string | number;
   let threshold = 0;
   let chainId = 1;
-  let releaseLock: ReturnType<typeof nonceMutex>;
+  if (!nonceMutexes[contractAddress]) {
+    nonceMutexes[contractAddress] = mutexify();
+  }
+  const releaseLock = await nonceMutexes[contractAddress]();
   try {
     chainId = await contract.methods.getChainId().call();
     threshold = await contract.methods.getThreshold().call();
     if (threshold > 1) {
-      releaseLock = await nonceMutex();
       const nonceResp = await axios.post(
         `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
         { value: "0", operation: 0, to: parameters.to, data: "0x" }
@@ -817,8 +819,6 @@ export async function encodeExecTransaction({
 
     return result;
   } finally {
-    if (releaseLock) {
-      releaseLock();
-    }
+    releaseLock();
   }
 }
