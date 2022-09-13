@@ -803,11 +803,16 @@ export async function encodeExecTransaction({
           signature,
         };
       }
-      const resp = await axios.post(
-        `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
-        { origin: "Grindery Nexus", safeTxHash: txHash, signature, sender: await wallet.getAddress(), ...message }
-      );
-      return resp.data;
+      try {
+        const resp = await axios.post(
+          `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
+          { origin: "Grindery Nexus", safeTxHash: txHash, signature, sender: await wallet.getAddress(), ...message }
+        );
+        return resp.data;
+      } catch (e) {
+        console.error("Failed to send transaction to Gnosis Safe: ", e, e.response?.data, message);
+        throw e;
+      }
     }
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     let signature = await web3.eth.sign(txHash, web3.defaultAccount!);
