@@ -690,6 +690,7 @@ export async function encodeExecTransaction({
 }): Promise<string | Record<string, unknown>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contract = new web3.eth.Contract(ABI as any, contractAddress);
+  parameters.to = String(parameters.to).trim();
   let nonce = "0" as string | number;
   let threshold = 0;
   let chainId = 1;
