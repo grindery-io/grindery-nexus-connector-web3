@@ -4,6 +4,7 @@ import { Subscription } from "web3-core-subscriptions";
 import { BlockTransactionObject } from "web3-eth";
 import { EventEmitter } from "node:events";
 import { WebSocket } from "ws";
+import { trackSingle } from "../metric";
 
 const CHAIN_MAPPING = {
   "eip155:1": "eth",
@@ -220,6 +221,24 @@ class NewBlockSubscriber extends EventEmitter {
     }
   }
 }
+function instrumentProvider<T extends { send: (payload, callback) => void }>(
+  provider: T,
+  extraTags: Record<string, string>
+): T {
+  const originalSend = provider.send;
+  provider.send = function (payload) {
+    for (const request of Array.isArray(payload) ? payload : [payload]) {
+      if (!request.method) {
+        console.log("instrumentProvider: Unexpected payload", { payload });
+        continue;
+      }
+      trackSingle("web3ApiCalls", { ...extraTags, method: request.method });
+    }
+    // eslint-disable-next-line prefer-rest-params, @typescript-eslint/no-explicit-any
+    return originalSend.apply(this, arguments as any);
+  };
+  return provider;
+}
 class Web3Wrapper extends EventEmitter {
   private ref = 1;
   public readonly web3: Web3;
@@ -234,19 +253,29 @@ class Web3Wrapper extends EventEmitter {
     console.log(`[${this.redactedUrl()}] Creating web3 wrapper`);
     this.provider = this.createProvider();
     this.web3Full = new Web3(this.provider);
-    this.web3 = urlHttp ? new Web3(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 })) : this.web3Full;
+    this.web3 = urlHttp
+      ? new Web3(
+          instrumentProvider(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 }), {
+            url: this.redactedUrl(),
+            type: "http",
+          })
+        )
+      : this.web3Full;
   }
   private createProvider() {
-    this.provider = new Web3.providers.WebsocketProvider(this.url, {
-      timeout: 15000,
-      reconnect: {
-        auto: false,
-      },
-      clientConfig: {
-        maxReceivedFrameSize: 4000000,
-        maxReceivedMessageSize: 16000000,
-      },
-    });
+    this.provider = instrumentProvider(
+      new Web3.providers.WebsocketProvider(this.url, {
+        timeout: 15000,
+        reconnect: {
+          auto: false,
+        },
+        clientConfig: {
+          maxReceivedFrameSize: 4000000,
+          maxReceivedMessageSize: 16000000,
+        },
+      }),
+      { url: this.redactedUrl(), type: "ws" }
+    );
     this.provider.on("error", ((e) => {
       console.error("WS provider error", e);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -454,8 +483,7 @@ export function onNewBlockMultiChain(
     });
     cleanUpFunctions.push(
       onNewBlock(
-        (block, callOnce) =>
-          Promise.resolve(callback({ chain, web3, block, callOnce })).catch(onError),
+        (block, callOnce) => Promise.resolve(callback({ chain, web3, block, callOnce })).catch(onError),
         onError
       )
     );
