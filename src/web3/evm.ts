@@ -130,15 +130,19 @@ class NewEventTrigger extends TriggerBase<{
               try {
                 decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
               } catch (e) {
-                console.error(`[${this.sessionId}] Failed to decode log`, {
-                  sessionId: this.sessionId,
-                  inputs,
-                  logEntry,
-                  contractAddress,
-                  eventDeclaration: this.fields.eventDeclaration,
-                  parameterFilters: this.fields.parameterFilters,
-                });
-                throw e;
+                console.error(
+                  `[${this.sessionId}] Failed to decode log`,
+                  {
+                    sessionId: this.sessionId,
+                    inputs,
+                    logEntry,
+                    contractAddress,
+                    eventDeclaration: this.fields.eventDeclaration,
+                    parameterFilters: this.fields.parameterFilters,
+                  },
+                  e
+                );
+                continue;
               }
               const event = {} as { [key: string]: unknown };
               event["_grinderyContractAddress"] = logEntry.address;
