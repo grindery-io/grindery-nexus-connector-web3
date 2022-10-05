@@ -85,7 +85,7 @@ class NewEventTrigger extends TriggerBase<{
     console.log(`[${this.sessionId}] Topics: ${topics}`);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
-      async ({ block, chain, web3 }) => {
+      async ({ block, chain, web3, callOnce }) => {
         if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
           return;
         }
@@ -110,15 +110,17 @@ class NewEventTrigger extends TriggerBase<{
             return;
           }
         }
-        web3.eth
-          .getPastLogs({
+        callOnce("getPastLogs", () =>
+          web3.eth.getPastLogs({
             fromBlock: block.number,
             toBlock: block.number,
-            ...(contractAddress ? { address: contractAddress } : {}),
-            topics,
           })
+        )
           .then((logs) => {
             for (const logEntry of logs) {
+              if (contractAddress && !isSameAddress(logEntry.address, contractAddress)) {
+                continue;
+              }
               const eventInfo = eventInfoMap[logEntry.topics[0]];
               if (!eventInfo) {
                 console.warn("Unknown event:", logEntry.topics[0], logEntry);

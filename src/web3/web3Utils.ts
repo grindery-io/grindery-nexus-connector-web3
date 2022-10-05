@@ -352,7 +352,16 @@ class Web3Wrapper extends EventEmitter {
           this.newBlockSubscriber = null;
           return;
         }
-        this.emit("newBlock", block);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const callOnceMemo = new Map<string, any>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const callOnce = function (key: string, call: () => any) {
+          if (!callOnceMemo.has(key)) {
+            callOnceMemo.set(key, call());
+          }
+          return callOnceMemo.get(key);
+        };
+        this.emit("newBlock", block, callOnce);
       });
       this.newBlockSubscriber.on("reconnectProvider", () => {
         console.log(`[${this.redactedUrl()}] Trying to reconnect to WebSocket provider`);
@@ -370,7 +379,10 @@ class Web3Wrapper extends EventEmitter {
       });
     }
   }
-  onNewBlock(callback: (block: BlockTransactionObject) => void, onError: (e: Error) => void) {
+  onNewBlock(
+    callback: (block: BlockTransactionObject, callOnce: <T>(key: string, call: () => T) => T) => void,
+    onError: (e: Error) => void
+  ) {
     if (this.isClosed()) {
       throw new Error("Web3Wrapper is closed");
     }
@@ -416,7 +428,12 @@ export function getWeb3(chain = "eth") {
 }
 export function onNewBlockMultiChain(
   chains: string | string[],
-  callback: (params: { chain: string; web3: Web3; block: BlockTransactionObject }) => Promise<void>,
+  callback: (params: {
+    chain: string;
+    web3: Web3;
+    block: BlockTransactionObject;
+    callOnce: <T>(key: string, call: () => T) => T;
+  }) => Promise<void>,
   onError: (e: Error) => void
 ): () => void {
   if (chains.length === 0) {
@@ -436,7 +453,11 @@ export function onNewBlockMultiChain(
       web3Wrapper.off("close", onClose);
     });
     cleanUpFunctions.push(
-      onNewBlock((block) => Promise.resolve(callback({ chain, web3, block })).catch(onError), onError)
+      onNewBlock(
+        (block, callOnce) =>
+          Promise.resolve(callback({ chain, web3, block, callOnce })).catch(onError),
+        onError
+      )
     );
     cleanUpFunctions.push(close);
   }
