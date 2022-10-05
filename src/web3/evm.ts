@@ -123,7 +123,6 @@ class NewEventTrigger extends TriggerBase<{
               }
               const eventInfo = eventInfoMap[logEntry.topics[0]];
               if (!eventInfo) {
-                console.warn("Unknown event:", logEntry.topics[0], logEntry);
                 continue;
               }
               const inputs = eventInfo.inputs || [];
@@ -176,7 +175,7 @@ class NewEventTrigger extends TriggerBase<{
             }
           })
           .catch((e) => {
-            console.error(`Error while getting logs for block ${block.number}:`, e);
+            console.error(`[${this.sessionId}] Error while getting logs for block ${block.number}:`, e);
           });
       },
       (e) => this.interrupt(e)
