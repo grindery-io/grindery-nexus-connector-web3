@@ -110,14 +110,29 @@ class NewEventTrigger extends TriggerBase<{
             return;
           }
         }
-        callOnce("getPastLogs", () =>
-          web3.eth.getPastLogs({
-            fromBlock: block.number,
-            toBlock: block.number,
-          })
+        callOnce("getPastLogsMap", () =>
+          web3.eth
+            .getPastLogs({
+              fromBlock: block.number,
+              toBlock: block.number,
+            })
+            .then((logs) => {
+              const map = new Map<string, typeof logs>();
+              for (const logEntry of logs) {
+                const eventSignature = logEntry.topics[0];
+                if (!map.has(eventSignature)) {
+                  map.set(eventSignature, []);
+                }
+                map.get(eventSignature)?.push(logEntry);
+              }
+              return map;
+            })
         )
-          .then((logs) => {
-            for (const logEntry of logs) {
+          .then((logsMap) => {
+            for (const logEntry of Array.prototype.concat.apply(
+              [],
+              Object.keys(eventInfoMap).map((x) => logsMap.get(x) || [])
+            )) {
               if (contractAddress && !isSameAddress(logEntry.address, contractAddress)) {
                 continue;
               }
