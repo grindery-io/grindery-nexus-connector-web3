@@ -135,6 +135,7 @@ class NewEventTrigger extends TriggerBase<{
                   contractAddress,
                   eventDeclaration: this.fields.eventDeclaration,
                   parameterFilters: this.fields.parameterFilters,
+                  chain,
                 });
                 continue;
               }
@@ -151,6 +152,7 @@ class NewEventTrigger extends TriggerBase<{
                     contractAddress,
                     eventDeclaration: this.fields.eventDeclaration,
                     parameterFilters: this.fields.parameterFilters,
+                    chain,
                   },
                   e
                 );
