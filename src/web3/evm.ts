@@ -129,6 +129,7 @@ class NewEventTrigger extends TriggerBase<{
               const event = {} as { [key: string]: unknown };
               event["_grinderyContractAddress"] = logEntry.address;
               event["_grinderyChain"] = chain;
+              let match = true;
               for (const input of inputs) {
                 const name = input.name;
                 event[name] = decoded[name];
@@ -139,8 +140,12 @@ class NewEventTrigger extends TriggerBase<{
                   web3.eth.abi.encodeParameter(input.type, decoded[name]) !==
                   web3.eth.abi.encodeParameter(input.type, this.fields.parameterFilters[name])
                 ) {
-                  return;
+                  match = false;
+                  break;
                 }
+              }
+              if (!match) {
+                continue;
               }
               const indexedParameters = logEntry.topics.slice(1);
               for (const input of inputs) {
