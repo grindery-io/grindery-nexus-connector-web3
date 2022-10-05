@@ -126,6 +126,18 @@ class NewEventTrigger extends TriggerBase<{
                 continue;
               }
               const inputs = eventInfo.inputs || [];
+              const numIndexedInputs = inputs.filter((x) => x.indexed).length;
+              if (numIndexedInputs !== logEntry.topics.length - 1) {
+                console.debug(`[${this.sessionId}] Number of indexed inputs doesn't match event declaration`, {
+                  sessionId: this.sessionId,
+                  inputs,
+                  logEntry,
+                  contractAddress,
+                  eventDeclaration: this.fields.eventDeclaration,
+                  parameterFilters: this.fields.parameterFilters,
+                });
+                continue;
+              }
               let decoded: { [key: string]: string };
               try {
                 decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
