@@ -128,6 +128,8 @@ class NewEventTrigger extends TriggerBase<{
               const inputs = eventInfo.inputs || [];
               const numIndexedInputs = inputs.filter((x) => x.indexed).length;
               if (numIndexedInputs !== logEntry.topics.length - 1) {
+                // Some contracts don't use standard number of indexed parameters, ignore this entry because we don't know how to decode it
+                /*
                 console.debug(`[${this.sessionId}] Number of indexed inputs doesn't match event declaration`, {
                   sessionId: this.sessionId,
                   inputs,
@@ -137,6 +139,7 @@ class NewEventTrigger extends TriggerBase<{
                   parameterFilters: this.fields.parameterFilters,
                   chain,
                 });
+                */
                 continue;
               }
               let decoded: { [key: string]: string };
