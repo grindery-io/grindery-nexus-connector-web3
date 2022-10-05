@@ -1,0 +1,5 @@
+resources:
+- deployer/defaults/deployments.yaml
+- deployer/defaults/services.yaml
+patchesStrategicMerge:
+- set-cpu.yaml
