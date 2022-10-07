@@ -10,6 +10,8 @@ import {
   parseFunctionDeclaration,
 } from "./web3Utils";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
+import { parseUserAccessToken } from "../jwt";
+import axios, { AxiosResponse } from "axios";
 
 class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -248,8 +250,10 @@ export async function callSmartContract(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
     dryRun?: boolean;
+    userToken: string;
   }>
 ): Promise<ConnectorOutput> {
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   const { web3, close } = getWeb3(input.fields.chain);
   try {
     web3.eth.transactionConfirmationBlocks = 1;
@@ -344,9 +348,33 @@ export async function callSmartContract(
         };
       }
     } else {
-      result = await web3.eth.sendTransaction(txConfig);
+      if (!user) {
+        throw new Error("User token is invalid");
+      }
+      const receipt = await web3.eth.sendTransaction(txConfig);
+      result = receipt;
+      const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+      if (process.env.GAS_DEBIT_WEBHOOK) {
+        axios
+          .post(process.env.GAS_DEBIT_WEBHOOK, {
+            transaction: receipt.transactionHash,
+            block: receipt.blockNumber,
+            chain: input.fields.chain,
+            contractAddress: input.fields.contractAddress,
+            gasCost: cost,
+          })
+          .catch((e) => {
+            const resp = e.response as AxiosResponse;
+            console.error(
+              "Failed to call gas debit webhook",
+              { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
+              e instanceof Error ? e : null
+            );
+          });
+      } else {
+        console.debug("Gas debit webhook is disabled");
+      }
     }
-
     return {
       key: input.key,
       sessionId: input.sessionId,
