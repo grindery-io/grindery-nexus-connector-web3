@@ -361,6 +361,7 @@ export async function callSmartContract(
             block: receipt.blockNumber,
             chain: input.fields.chain,
             contractAddress: input.fields.contractAddress,
+            user: user.sub,
             gasCost: cost,
           })
           .catch((e) => {
