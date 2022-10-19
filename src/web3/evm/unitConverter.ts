@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import Web3 from "web3";
-import { getWeb3 } from "./web3/web3Utils";
+import { getWeb3 } from "./web3";
 
 const ERC20_DECIMALS_ABI = [
   {

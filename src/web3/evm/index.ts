@@ -2,15 +2,10 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-com
 import { TransactionConfig } from "web3-core";
 import abi from "web3-eth-abi";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import {
-  getWeb3,
-  isSameAddress,
-  onNewBlockMultiChain,
-  parseEventDeclaration,
-  parseFunctionDeclaration,
-} from "./web3Utils";
-import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
-import { parseUserAccessToken } from "../jwt";
+import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration, parseFunctionDeclaration } from "./utils";
+import { getWeb3 } from "./web3";
+import { encodeExecTransaction, execTransactionAbi } from "../gnosisSafe";
+import { parseUserAccessToken } from "../../jwt";
 import axios, { AxiosResponse } from "axios";
 
 class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {

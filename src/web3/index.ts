@@ -19,7 +19,9 @@ const CHAINS: {
   "algorand:mainnet": algorand,
 };
 
-export function getTriggerClass(params: ConnectorInput<{ chain: string | string[] }>): new (params: ConnectorInput) => TriggerBase {
+export function getTriggerClass(
+  params: ConnectorInput<{ chain: string | string[] }>
+): new (params: ConnectorInput) => TriggerBase {
   const chain = params.fields.chain;
   const triggers = typeof chain === "string" ? (CHAINS[chain] || evm).Triggers : evm.Triggers;
 

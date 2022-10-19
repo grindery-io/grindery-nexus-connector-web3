@@ -5,7 +5,7 @@ import {
   ConnectorDefinition,
 } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import { convert } from "./unitConverter";
+import { convert } from "./web3/evm/unitConverter";
 import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
