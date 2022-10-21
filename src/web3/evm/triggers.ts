@@ -124,6 +124,7 @@ export class NewEventTrigger extends TriggerBase<{
             const entries = Object.keys(eventInfoMap)
               .map((x) => logsMap.get(x) || [])
               .flat();
+            const transactionLogFailures: { [key: string]: number } = {};
             for (const logEntry of entries as (typeof entries[0] & {
               __decodeFailure?: boolean;
               __decoded?: { [key: string]: string };
@@ -167,20 +168,24 @@ export class NewEventTrigger extends TriggerBase<{
                 logEntry.__decoded = decoded;
               } catch (e) {
                 logEntry.__decodeFailure = true;
-                console.error(
-                  `[${this.sessionId}] Failed to decode log [${logEntry.transactionHash} - ${logEntry.transactionIndex} - ${logEntry.logIndex}]`,
-                  {
-                    sessionId: this.sessionId,
-                    inputs,
-                    contractAddress,
-                    eventDeclaration: this.fields.eventDeclaration,
-                    parameterFilters: this.fields.parameterFilters,
-                    chain,
-                    topics: logEntry.topics,
-                    data: logEntry.data,
-                  },
-                  e
-                );
+                if (!transactionLogFailures[logEntry.transactionHash]) {
+                  transactionLogFailures[logEntry.transactionHash] = 0;
+                  console.error(
+                    `[${this.sessionId}] Failed to decode log [${logEntry.transactionHash} - ${logEntry.transactionIndex} - ${logEntry.logIndex}]`,
+                    {
+                      sessionId: this.sessionId,
+                      inputs,
+                      contractAddress,
+                      eventDeclaration: this.fields.eventDeclaration,
+                      parameterFilters: this.fields.parameterFilters,
+                      chain,
+                      topics: logEntry.topics,
+                      data: logEntry.data,
+                    },
+                    e
+                  );
+                }
+                transactionLogFailures[logEntry.transactionHash]++;
                 continue;
               }
               const event = {} as { [key: string]: unknown };
@@ -228,6 +233,11 @@ export class NewEventTrigger extends TriggerBase<{
                 __chainId: chainId,
                 ...event,
               });
+            }
+            for (const [transaction, num] of Object.entries(transactionLogFailures)) {
+              if (num > 1) {
+                console.log(`[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`);
+              }
             }
           })
           .catch((e) => {
