@@ -133,10 +133,7 @@ class EventAggregator {
       }
     }
   }
-  getEndHeight(): number {
-    if (this.endHeight === "sealed") {
-      throw new Error("End height is not known");
-    }
+  getEndHeight(): number | "sealed" {
     return this.endHeight;
   }
 }
@@ -169,7 +166,10 @@ class ContractSubscriber extends EventEmitter {
         this.running = false;
         return;
       }
-      nextBlock = aggregator.getEndHeight() + 1;
+      const newEndHeight = aggregator.getEndHeight();
+      if (typeof newEndHeight === "number") {
+        nextBlock = newEndHeight + 1;
+      }
     }
     this.running = false;
   }
