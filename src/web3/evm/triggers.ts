@@ -124,7 +124,13 @@ export class NewEventTrigger extends TriggerBase<{
             const entries = Object.keys(eventInfoMap)
               .map((x) => logsMap.get(x) || [])
               .flat();
-            for (const logEntry of entries) {
+            for (const logEntry of entries as (typeof entries[0] & {
+              __decodeFailure?: boolean;
+              __decoded: { [key: string]: string };
+            })[]) {
+              if (logEntry.__decodeFailure) {
+                continue;
+              }
               if (contractAddress && !isSameAddress(logEntry.address, contractAddress)) {
                 continue;
               }
@@ -155,10 +161,11 @@ export class NewEventTrigger extends TriggerBase<{
                 */
                 continue;
               }
-              let decoded: { [key: string]: string };
+              let decoded: { [key: string]: string } = logEntry.__decoded;
               try {
-                decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+                decoded = decoded || web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
               } catch (e) {
+                logEntry.__decodeFailure = true;
                 console.error(
                   `[${this.sessionId}] Failed to decode log [${logEntry.transactionHash} - ${logEntry.transactionIndex} - ${logEntry.logIndex}]`,
                   {
