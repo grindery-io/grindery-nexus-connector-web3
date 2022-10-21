@@ -121,11 +121,17 @@ export class NewEventTrigger extends TriggerBase<{
             })
         )
           .then((logsMap) => {
-            for (const logEntry of Array.prototype.concat.apply(
-              [],
-              Object.keys(eventInfoMap).map((x) => logsMap.get(x) || [])
-            )) {
+            const entries = Object.keys(eventInfoMap)
+              .map((x) => logsMap.get(x) || [])
+              .flat();
+            for (const logEntry of entries) {
               if (contractAddress && !isSameAddress(logEntry.address, contractAddress)) {
+                continue;
+              }
+              if (!logEntry.topics?.[0]) {
+                console.warn(`Got invalid log entry (${logEntry.transactionHash || "no hash"})`, {
+                  logEntry: { ...logEntry },
+                });
                 continue;
               }
               const eventInfo = eventInfoMap[logEntry.topics[0]];
@@ -158,7 +164,7 @@ export class NewEventTrigger extends TriggerBase<{
                   {
                     sessionId: this.sessionId,
                     inputs,
-                    logEntry,
+                    logEntry: { ...logEntry },
                     contractAddress,
                     eventDeclaration: this.fields.eventDeclaration,
                     parameterFilters: this.fields.parameterFilters,
