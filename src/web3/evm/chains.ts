@@ -10,6 +10,8 @@ export const CHAIN_MAPPING: { [key: string]: string | [string, string] } = {
   "eip155:1666600000": "harmony",
 
   "eip155:80001": "polygon_mumbai",
+  "eip155:5": "eth_goerli",
+  "eip155:97": "bsc_testnet_chapel",
 
   "eip155:25": [
     `wss://cro.getblock.io/mainnet/?api_key=${process.env.GETBLOCK_API_KEY}`,
