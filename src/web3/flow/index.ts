@@ -204,10 +204,10 @@ class ContractSubscriber extends EventEmitter {
         for (const event of events[primaryEvent] || []) {
           const eventFields = event.body.value.fields;
           const output = eventFields.reduce((acc, field) => {
-            if (field.value.value === undefined) {
+            if (!field || field.value?.value === undefined) {
               return acc;
             }
-            acc[field.name] = typeof field.value.value === "object" ? field.value.value.value : field.value.value;
+            acc[field.name] = typeof field.value?.value === "object" ? field.value?.value?.value : field.value?.value;
             return acc;
           }, {});
           let fastSkip = false;
