@@ -164,11 +164,12 @@ export class NewEventTrigger extends TriggerBase<{
                   {
                     sessionId: this.sessionId,
                     inputs,
-                    logEntry: { ...logEntry },
                     contractAddress,
                     eventDeclaration: this.fields.eventDeclaration,
                     parameterFilters: this.fields.parameterFilters,
                     chain,
+                    topics: logEntry.topics,
+                    data: logEntry.data,
                   },
                   e
                 );
