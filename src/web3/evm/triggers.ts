@@ -126,7 +126,7 @@ export class NewEventTrigger extends TriggerBase<{
               .flat();
             for (const logEntry of entries as (typeof entries[0] & {
               __decodeFailure?: boolean;
-              __decoded: { [key: string]: string };
+              __decoded?: { [key: string]: string };
             })[]) {
               if (logEntry.__decodeFailure) {
                 continue;
@@ -161,9 +161,10 @@ export class NewEventTrigger extends TriggerBase<{
                 */
                 continue;
               }
-              let decoded: { [key: string]: string } = logEntry.__decoded;
+              let decoded: { [key: string]: string };
               try {
-                decoded = decoded || web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+                decoded = logEntry.__decoded || web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+                logEntry.__decoded = decoded;
               } catch (e) {
                 logEntry.__decodeFailure = true;
                 console.error(
