@@ -160,7 +160,7 @@ export class NewEventTrigger extends TriggerBase<{
                 decoded = web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
               } catch (e) {
                 console.error(
-                  `[${this.sessionId}] Failed to decode log`,
+                  `[${this.sessionId}] Failed to decode log [${logEntry.transactionHash} - ${logEntry.transactionIndex} - ${logEntry.logIndex}]`,
                   {
                     sessionId: this.sessionId,
                     inputs,
