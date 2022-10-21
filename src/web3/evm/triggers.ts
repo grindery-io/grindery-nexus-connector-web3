@@ -236,7 +236,7 @@ export class NewEventTrigger extends TriggerBase<{
             }
             for (const [transaction, num] of Object.entries(transactionLogFailures)) {
               if (num > 1) {
-                console.log(`[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`);
+                console.warn(`[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`);
               }
             }
           })
