@@ -6,6 +6,7 @@ import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { hmac, parseUserAccessToken } from "../../jwt";
 import axios, { AxiosResponse } from "axios";
 import Web3 from "web3";
+import mutexify from "mutexify/promise";
 
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
@@ -13,6 +14,8 @@ import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
 const hubAvailability = new Map<string, boolean>();
+
+const transactionMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
 async function isHubAvailable(chain: string, web3: Web3) {
   if (!hubAvailability.has(chain)) {
@@ -146,138 +149,146 @@ export async function callSmartContract(
       to: input.fields.contractAddress,
       data: callData,
     };
-    const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
-      rawTxConfig,
-      userAddress,
-      input.fields.chain,
-      web3
-    );
-    let callResult, callResultDecoded;
+    if (!transactionMutexes[input.fields.chain]) {
+      transactionMutexes[input.fields.chain] = mutexify();
+    }
+    const releaseLock = await transactionMutexes[input.fields.chain]();
     try {
-      callResult = await web3.eth.call(txConfig);
-      if (droneAddress) {
-        const decoded = web3.eth.abi.decodeParameters(
-          GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
-          callResult
-        );
-        if (!decoded.success) {
-          await web3.eth.call({ ...rawTxConfig, from: droneAddress });
-          throw new Error("Transaction failed with unknown error");
-        }
-        if (functionInfo.outputs?.length) {
-          callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
-          if (functionInfo.outputs.length === 1) {
-            callResultDecoded = callResultDecoded[0];
+      const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
+        rawTxConfig,
+        userAddress,
+        input.fields.chain,
+        web3
+      );
+      let callResult, callResultDecoded;
+      try {
+        callResult = await web3.eth.call(txConfig);
+        if (droneAddress) {
+          const decoded = web3.eth.abi.decodeParameters(
+            GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
+            callResult
+          );
+          if (!decoded.success) {
+            await web3.eth.call({ ...rawTxConfig, from: droneAddress });
+            throw new Error("Transaction failed with unknown error");
+          }
+          if (functionInfo.outputs?.length) {
+            callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
+            if (functionInfo.outputs.length === 1) {
+              callResultDecoded = callResultDecoded[0];
+            }
           }
         }
+      } catch (e) {
+        if (!input.fields.dryRun) {
+          throw e;
+        }
+        return {
+          key: input.key,
+          sessionId: input.sessionId,
+          payload: {
+            _grinderyDryRunError:
+              "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
+          },
+        };
       }
-    } catch (e) {
-      if (!input.fields.dryRun) {
-        throw e;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
+      let result: unknown;
+      for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
+        if (key in input.fields && typeof input.fields[key] === "string") {
+          input.fields[key] = web3.utils.toWei(input.fields[key], "ether");
+        }
+      }
+      const gas = await web3.eth.estimateGas(txConfig);
+      txConfig.gas = Math.ceil(gas * 1.1 + 10000);
+      const block = await web3.eth.getBlock("pending").catch(() => web3.eth.getBlock("latest"));
+      let minFee: number;
+      if (block.baseFeePerGas) {
+        const baseFee = Number(block.baseFeePerGas);
+        minFee = baseFee + Number(web3.utils.toWei("30", "gwei"));
+        const maxTip = input.fields.maxPriorityFeePerGas || web3.utils.toWei("75", "gwei");
+        const maxFee = input.fields.gasLimit
+          ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
+          : baseFee + Number(maxTip);
+        if (maxFee < minFee) {
+          throw new Error(
+            `Gas limit of ${web3.utils.fromWei(
+              String(input.fields.gasLimit),
+              "ether"
+            )} is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
+          );
+        }
+        txConfig.maxFeePerGas = maxFee;
+        txConfig.maxPriorityFeePerGas = Math.min(Number(maxTip), maxFee - baseFee - 1);
+      } else {
+        const gasPrice = await ethersProvider.getGasPrice();
+        txConfig.gasPrice = gasPrice.toString();
+        minFee = gasPrice.mul(txConfig.gas).toNumber();
+      }
+      if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
+        result = {
+          returnValue: callResultDecoded,
+          estimatedGas: gas,
+          minFee,
+        };
+      } else {
+        const receipt = await web3.eth.sendTransaction(txConfig);
+        result = receipt;
+        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        if (process.env.GAS_DEBIT_WEBHOOK) {
+          axios
+            .post(process.env.GAS_DEBIT_WEBHOOK, {
+              transaction: receipt.transactionHash,
+              block: receipt.blockNumber,
+              chain: input.fields.chain,
+              contractAddress: input.fields.contractAddress,
+              user: user.sub,
+              gasCost: cost,
+            })
+            .catch((e) => {
+              const resp = e.response as AxiosResponse;
+              console.error(
+                "Failed to call gas debit webhook",
+                { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
+                e instanceof Error ? e : null
+              );
+            });
+        } else {
+          console.debug("Gas debit webhook is disabled");
+        }
+        if (droneAddress) {
+          const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
+          const eventSignature = web3.eth.abi.encodeEventSignature(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            eventAbi as any
+          );
+          const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
+          if (!log) {
+            throw new Error("No transaction result log in receipt");
+          }
+          const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
+          if (resultData.success) {
+            if (functionInfo.outputs?.length) {
+              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
+              if (functionInfo.outputs.length === 1) {
+                callResultDecoded = callResultDecoded[0];
+              }
+              result = { ...receipt, returnValue: callResultDecoded };
+            }
+          } else {
+            throw new Error("Unexpected failure: " + resultData.returnData);
+          }
+        }
       }
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: {
-          _grinderyDryRunError:
-            "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
-        },
+        payload: result,
       };
+    } finally {
+      releaseLock();
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
-    let result: unknown;
-    for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
-      if (key in input.fields && typeof input.fields[key] === "string") {
-        input.fields[key] = web3.utils.toWei(input.fields[key], "ether");
-      }
-    }
-    const gas = await web3.eth.estimateGas(txConfig);
-    txConfig.gas = Math.ceil(gas * 1.1 + 10000);
-    const block = await web3.eth.getBlock("pending").catch(() => web3.eth.getBlock("latest"));
-    let minFee: number;
-    if (block.baseFeePerGas) {
-      const baseFee = Number(block.baseFeePerGas);
-      minFee = baseFee + Number(web3.utils.toWei("30", "gwei"));
-      const maxTip = input.fields.maxPriorityFeePerGas || web3.utils.toWei("75", "gwei");
-      const maxFee = input.fields.gasLimit
-        ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
-        : baseFee + Number(maxTip);
-      if (maxFee < minFee) {
-        throw new Error(
-          `Gas limit of ${web3.utils.fromWei(
-            String(input.fields.gasLimit),
-            "ether"
-          )} is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
-        );
-      }
-      txConfig.maxFeePerGas = maxFee;
-      txConfig.maxPriorityFeePerGas = Math.min(Number(maxTip), maxFee - baseFee - 1);
-    } else {
-      const gasPrice = await ethersProvider.getGasPrice();
-      txConfig.gasPrice = gasPrice.toString();
-      minFee = gasPrice.mul(txConfig.gas).toNumber();
-    }
-    if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
-      result = {
-        returnValue: callResultDecoded,
-        estimatedGas: gas,
-        minFee,
-      };
-    } else {
-      const receipt = await web3.eth.sendTransaction(txConfig);
-      result = receipt;
-      const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
-      if (process.env.GAS_DEBIT_WEBHOOK) {
-        axios
-          .post(process.env.GAS_DEBIT_WEBHOOK, {
-            transaction: receipt.transactionHash,
-            block: receipt.blockNumber,
-            chain: input.fields.chain,
-            contractAddress: input.fields.contractAddress,
-            user: user.sub,
-            gasCost: cost,
-          })
-          .catch((e) => {
-            const resp = e.response as AxiosResponse;
-            console.error(
-              "Failed to call gas debit webhook",
-              { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
-              e instanceof Error ? e : null
-            );
-          });
-      } else {
-        console.debug("Gas debit webhook is disabled");
-      }
-      if (droneAddress) {
-        const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
-        const eventSignature = web3.eth.abi.encodeEventSignature(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          eventAbi as any
-        );
-        const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
-        if (!log) {
-          throw new Error("No transaction result log in receipt");
-        }
-        const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
-        if (resultData.success) {
-          if (functionInfo.outputs?.length) {
-            callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
-            if (functionInfo.outputs.length === 1) {
-              callResultDecoded = callResultDecoded[0];
-            }
-            result = { ...receipt, returnValue: callResultDecoded };
-          }
-        } else {
-          throw new Error("Unexpected failure: " + resultData.returnData);
-        }
-      }
-    }
-    return {
-      key: input.key,
-      sessionId: input.sessionId,
-      payload: result,
-    };
   } finally {
     close();
   }
