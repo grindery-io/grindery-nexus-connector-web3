@@ -1,5 +1,6 @@
 import { CHAIN_MAPPING } from "./chains";
 import { Web3Wrapper } from "./wrapper";
+import { ethers } from "ethers";
 
 const web3Cache = new Map<string, Web3Wrapper>();
 export function getWeb3(chain = "eth") {
@@ -23,8 +24,10 @@ export function getWeb3(chain = "eth") {
   } else {
     wrapper.addRef();
   }
+  const ethersProvider = new ethers.providers.JsonRpcProvider(urlHttp || url);
   return {
     web3: wrapper.web3,
+    ethersProvider,
     close: () => {
       wrapper?.close();
       wrapper = undefined;

@@ -96,10 +96,21 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
       name: parts[parts.length - 1],
     };
   });
+  const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(m[4]);
+  const outputs = returnMatch
+    ? returnMatch[1].split(",").map((p, index) => {
+        const parts = p.trim().split(/\s+/);
+        return {
+          type: parts[0],
+          name: parts[1] || `return${index}`,
+        };
+      })
+    : [];
   const suffixes = m[4].trim().split(/\s+/);
   return {
     name,
     inputs,
+    outputs,
     constant: suffixes.includes("view"),
     payable: suffixes.includes("payable"),
     stateMutability: suffixes.includes("pure")

@@ -1,6 +1,17 @@
 import { URL } from "node:url";
 import * as jose from "jose";
-import { TypedJWTPayload } from "grindery-nexus-common-utils";
+import { getJwtTools, TypedJWTPayload } from "grindery-nexus-common-utils";
+
+const ISSUER = "urn:grindery:web3-driver";
+
+const jwtTools = getJwtTools(ISSUER);
+jwtTools.getPublicJwk().catch((e) => {
+  console.error("Failed to initialize keys:", e);
+  process.exit(1);
+});
+
+const { encryptJWT, decryptJWT, signJWT, verifyJWT, getPublicJwk, typedCipher, typedToken, hmac } = jwtTools;
+export { encryptJWT, decryptJWT, signJWT, verifyJWT, getPublicJwk, typedCipher, typedToken, hmac };
 
 type AccessTokenExtra =
   | {
