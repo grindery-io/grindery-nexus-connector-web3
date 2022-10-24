@@ -3,7 +3,7 @@ import { TransactionConfig } from "web3-core";
 import { parseFunctionDeclaration } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
-import { hmac, parseUserAccessToken } from "../../jwt";
+import { hmac, parseUserAccessToken, TAccessToken } from "../../jwt";
 import axios, { AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
@@ -14,6 +14,21 @@ import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
 const hubAvailability = new Map<string, boolean>();
+
+function onlyOnce(fn: () => void): () => void {
+  let called = false;
+  return () => {
+    if (called) {
+      return;
+    }
+    called = true;
+    fn();
+  };
+}
+const safeMutexify = () => {
+  const mutex = mutexify();
+  return async () => onlyOnce(await mutex());
+};
 
 const transactionMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
@@ -66,24 +81,7 @@ async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | T
   return { tx, droneAddress };
 }
 
-export async function callSmartContract(
-  input: ConnectorInput<{
-    chain: string;
-    contractAddress: string;
-    functionDeclaration: string;
-    parameters: { [key: string]: unknown };
-    maxFeePerGas?: string | number;
-    maxPriorityFeePerGas?: string | number;
-    gasLimit?: string | number; // Note: This is in ETH instead of gas unit
-    dryRun?: boolean;
-    userToken: string;
-  }>
-): Promise<ConnectorOutput> {
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
-  if (!user) {
-    throw new Error("User token is invalid");
-  }
-  const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
+async function getUserAddress(user: TAccessToken, web3: Web3) {
   let userAddress: string;
   if ("workspace" in user) {
     userAddress = web3.utils.toChecksumAddress(
@@ -102,7 +100,28 @@ export async function callSmartContract(
       );
     }
   }
+  return userAddress;
+}
+export async function callSmartContract(
+  input: ConnectorInput<{
+    chain: string;
+    contractAddress: string;
+    functionDeclaration: string;
+    parameters: { [key: string]: unknown };
+    maxFeePerGas?: string | number;
+    maxPriorityFeePerGas?: string | number;
+    gasLimit?: string | number; // Note: This is in ETH instead of gas unit
+    dryRun?: boolean;
+    userToken: string;
+  }>
+): Promise<ConnectorOutput> {
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  if (!user) {
+    throw new Error("User token is invalid");
+  }
+  const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
+    const userAddress = await getUserAddress(user, web3);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -149,10 +168,16 @@ export async function callSmartContract(
       to: input.fields.contractAddress,
       data: callData,
     };
+    const isSimulation = functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun;
+    const block = await web3.eth.getBlock("pending").catch(() => web3.eth.getBlock("latest"));
     if (!transactionMutexes[input.fields.chain]) {
-      transactionMutexes[input.fields.chain] = mutexify();
+      transactionMutexes[input.fields.chain] = safeMutexify();
     }
-    const releaseLock = await transactionMutexes[input.fields.chain]();
+    const releaseLock = isSimulation
+      ? () => {
+          /* Empty */
+        }
+      : await transactionMutexes[input.fields.chain]();
     try {
       const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
         rawTxConfig,
@@ -202,7 +227,6 @@ export async function callSmartContract(
       }
       const gas = await web3.eth.estimateGas(txConfig);
       txConfig.gas = Math.ceil(gas * 1.1 + 10000);
-      const block = await web3.eth.getBlock("pending").catch(() => web3.eth.getBlock("latest"));
       let minFee: number;
       if (block.baseFeePerGas) {
         const baseFee = Number(block.baseFeePerGas);
@@ -226,7 +250,7 @@ export async function callSmartContract(
         txConfig.gasPrice = gasPrice.toString();
         minFee = gasPrice.mul(txConfig.gas).toNumber();
       }
-      if (functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun) {
+      if (isSimulation) {
         result = {
           returnValue: callResultDecoded,
           estimatedGas: gas,
@@ -234,6 +258,7 @@ export async function callSmartContract(
         };
       } else {
         const receipt = await web3.eth.sendTransaction(txConfig);
+        releaseLock(); // Block less time
         result = receipt;
         const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
         if (process.env.GAS_DEBIT_WEBHOOK) {
