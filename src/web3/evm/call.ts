@@ -169,7 +169,7 @@ export async function callSmartContract(
       data: callData,
     };
     const isSimulation = functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun;
-    const block = await web3.eth.getBlock("pending").catch(() => web3.eth.getBlock("latest"));
+    const feeData = await ethersProvider.getFeeData();
     if (!transactionMutexes[input.fields.chain]) {
       transactionMutexes[input.fields.chain] = safeMutexify();
     }
@@ -228,13 +228,18 @@ export async function callSmartContract(
       const gas = await web3.eth.estimateGas(txConfig);
       txConfig.gas = Math.ceil(gas * 1.1 + 10000);
       let minFee: number;
-      if (block.baseFeePerGas) {
-        const baseFee = Number(block.baseFeePerGas);
-        minFee = baseFee + Number(web3.utils.toWei("30", "gwei"));
-        const maxTip = input.fields.maxPriorityFeePerGas || web3.utils.toWei("75", "gwei");
+      if (input.fields.chain === "eip155:42161") {
+        // Arbitrum, fixed fee
+        txConfig.maxPriorityFeePerGas = 0;
+        txConfig.maxFeePerGas = Number(web3.utils.toWei("110", "kwei"));
+        minFee = txConfig.maxFeePerGas;
+      } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10).toNumber();
+        const maxTip =
+          input.fields.maxPriorityFeePerGas || Math.floor(minFee / 2);
         const maxFee = input.fields.gasLimit
           ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
-          : baseFee + Number(maxTip);
+          : feeData.maxFeePerGas.add(maxTip).toNumber();
         if (maxFee < minFee) {
           throw new Error(
             `Gas limit of ${web3.utils.fromWei(
@@ -244,9 +249,9 @@ export async function callSmartContract(
           );
         }
         txConfig.maxFeePerGas = maxFee;
-        txConfig.maxPriorityFeePerGas = Math.min(Number(maxTip), maxFee - baseFee - 1);
+        txConfig.maxPriorityFeePerGas = Number(maxTip);
       } else {
-        const gasPrice = await ethersProvider.getGasPrice();
+        const gasPrice = (feeData.gasPrice || await ethersProvider.getGasPrice()).mul(12).div(10);
         txConfig.gasPrice = gasPrice.toString();
         minFee = gasPrice.mul(txConfig.gas).toNumber();
       }
