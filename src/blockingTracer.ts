@@ -25,7 +25,9 @@ function formatAsyncChain(state: State | undefined): string {
 function init(asyncId: number, type: string, triggerAsyncId: number, resource) {
   const tags = [] as string[];
   if (type === "HTTPCLIENTREQUEST") {
-    tags.push(`${resource?.req?.protocol}//${resource?.req?.host}${resource?.req?.path}`);
+    tags.push(
+      `${resource?.req?.protocol}//${resource?.req?.host}${resource?.req?.path}`.replace(/[0-9a-f-]{8,}/i, "***")
+    );
   }
   states.set(asyncId, { type, parent: triggerAsyncId, id: asyncId, tags });
 }
