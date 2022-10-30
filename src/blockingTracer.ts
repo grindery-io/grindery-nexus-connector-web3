@@ -57,7 +57,7 @@ function after(asyncId: number) {
 
   if (diffNs > THRESHOLD) {
     const time = diffNs / 1e6;
-    console.warn(`[${asyncId}] Blocked event loop for ${time}ms: ${formatAsyncChain(state)}`, { time, asyncId, state });
+    console.warn(`[${asyncId}] Blocked event loop for ${Math.floor(time)}ms: ${formatAsyncChain(state)}`, { time, asyncId, state });
   }
 }
 
