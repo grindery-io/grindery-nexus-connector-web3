@@ -2,6 +2,7 @@ import { TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import abi from "web3-eth-abi";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./utils";
+import blockingTracer from "../../blockingTracer";
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -15,6 +16,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
       async ({ block, chain }) => {
+        blockingTracer.tag("evm.NewTransactionTrigger");
         for (const transaction of block.transactions) {
           if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
             continue;
@@ -78,6 +80,7 @@ export class NewEventTrigger extends TriggerBase<{
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
       async ({ block, chain, web3, callOnce }) => {
+        blockingTracer.tag("evm.NewEventTrigger");
         if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
           return;
         }
@@ -109,6 +112,7 @@ export class NewEventTrigger extends TriggerBase<{
               toBlock: block.number,
             })
             .then((logs) => {
+              blockingTracer.tag("evm.NewEventTrigger.processLogsOnce");
               const map = new Map<string, typeof logs>();
               for (const logEntry of logs) {
                 const eventSignature = logEntry.topics[0];
@@ -121,6 +125,7 @@ export class NewEventTrigger extends TriggerBase<{
             })
         )
           .then((logsMap) => {
+            blockingTracer.tag("evm.NewEventTrigger.processLogs");
             const entries = Object.keys(eventInfoMap)
               .map((x) => logsMap.get(x) || [])
               .flat();
@@ -236,7 +241,9 @@ export class NewEventTrigger extends TriggerBase<{
             }
             for (const [transaction, num] of Object.entries(transactionLogFailures)) {
               if (num > 1) {
-                console.warn(`[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`);
+                console.warn(
+                  `[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`
+                );
               }
             }
           })

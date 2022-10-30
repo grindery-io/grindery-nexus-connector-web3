@@ -3,6 +3,7 @@ import _ from "lodash";
 import axios from "axios";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
+import blockingTracer from "../blockingTracer";
 
 type Status = {
   catchpoint: string;
@@ -173,6 +174,7 @@ class TransactionSubscriber extends EventEmitter {
     this.setMaxListeners(1000);
   }
   async handleBlock(block: BlockResponse) {
+    blockingTracer.tag("algorand.TransactionSubscriber.handleBlock");
     for (const txn of block.block.txns) {
       for (const listener of this.listeners("process")) {
         await listener(txn);
@@ -188,7 +190,16 @@ class TransactionSubscriber extends EventEmitter {
     this.running = true;
     while (this.listenerCount("process") > 0) {
       try {
-        const response = await arApi(["blocks", currentHeight.toString()]);
+        const response = await arApi(["blocks", currentHeight.toString()]).catch((e) => {
+          if (e.isAxiosError && e.response?.status === 404) {
+            return null;
+          }
+          return Promise.reject(e);
+        });
+        if (!response) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
         await this.handleBlock(response);
         currentHeight++;
       } catch (e) {
@@ -235,6 +246,7 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
+        blockingTracer.tag("algorand.NewTransactionTrigger");
         if (tx.txn.type !== "pay") {
           return;
         }
@@ -285,6 +297,7 @@ class NewEventTrigger extends TriggerBase<{
     }
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
+        blockingTracer.tag("algorand.NewEventTrigger");
         if (tx.txn.type !== this.fields.eventDeclaration) {
           return;
         }
