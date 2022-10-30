@@ -176,7 +176,11 @@ export class NewEventTrigger extends TriggerBase<{
               }
               let decoded: { [key: string]: string };
               try {
-                decoded = logEntry.__decoded || web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1));
+                decoded =
+                  logEntry.__decoded ||
+                  (await new Promise((res) =>
+                    res(web3.eth.abi.decodeLog(inputs, logEntry.data, logEntry.topics.slice(1)))
+                  ));
                 logEntry.__decoded = decoded;
               } catch (e) {
                 logEntry.__decodeFailure = true;
