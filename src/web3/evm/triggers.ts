@@ -124,12 +124,13 @@ export class NewEventTrigger extends TriggerBase<{
               return map;
             })
         )
-          .then((logsMap) => {
+          .then(async (logsMap) => {
             blockingTracer.tag("evm.NewEventTrigger.processLogs");
             const entries = Object.keys(eventInfoMap)
               .map((x) => logsMap.get(x) || [])
               .flat();
             const transactionLogFailures: { [key: string]: number } = {};
+            let numProcessed = 0;
             for (const logEntry of entries as (typeof entries[0] & {
               __decodeFailure?: boolean;
               __decoded?: { [key: string]: string };
@@ -149,6 +150,12 @@ export class NewEventTrigger extends TriggerBase<{
               const eventInfo = eventInfoMap[logEntry.topics[0]];
               if (!eventInfo) {
                 continue;
+              }
+              numProcessed++;
+              if (numProcessed > 50) {
+                numProcessed = 0;
+                // Try not to block event loop for too long
+                await new Promise((res) => setImmediate(res));
               }
               const inputs = eventInfo.inputs || [];
               const numIndexedInputs = inputs.filter((x) => x.indexed).length;
