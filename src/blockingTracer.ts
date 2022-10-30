@@ -22,8 +22,12 @@ function formatAsyncChain(state: State | undefined): string {
   return parts.join(" <- ");
 }
 
-function init(asyncId: number, type: string, triggerAsyncId: number) {
-  states.set(asyncId, { type, parent: triggerAsyncId, id: asyncId, tags: [] });
+function init(asyncId: number, type: string, triggerAsyncId: number, resource) {
+  const tags = [] as string[];
+  if (type === "HTTPCLIENTREQUEST") {
+    tags.push(`${resource?.req?.protocol}//${resource?.req?.host}${resource?.req?.path}`);
+  }
+  states.set(asyncId, { type, parent: triggerAsyncId, id: asyncId, tags });
 }
 
 function destroy(asyncId: number) {
@@ -57,7 +61,11 @@ function after(asyncId: number) {
 
   if (diffNs > THRESHOLD) {
     const time = diffNs / 1e6;
-    console.warn(`[${asyncId}] Blocked event loop for ${Math.floor(time)}ms: ${formatAsyncChain(state)}`, { time, asyncId, state });
+    console.warn(`[${asyncId}] Blocked event loop for ${Math.floor(time)}ms: ${formatAsyncChain(state)}`, {
+      time,
+      asyncId,
+      state,
+    });
   }
 }
 
