@@ -81,7 +81,12 @@ export class NewEventTrigger extends TriggerBase<{
       this.fields.chain,
       async ({ block, chain, web3, callOnce }) => {
         blockingTracer.tag("evm.NewEventTrigger");
-        if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
+        if (
+          contractAddress &&
+          !callOnce("bloom-" + contractAddress, () =>
+            web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)
+          )
+        ) {
           return;
         }
         for (const topic of topics) {
@@ -89,14 +94,14 @@ export class NewEventTrigger extends TriggerBase<{
             continue;
           }
           if (typeof topic === "string") {
-            if (!web3.utils.isTopicInBloom(block.logsBloom, topic)) {
+            if (!callOnce("bloom-" + topic, () => web3.utils.isTopicInBloom(block.logsBloom, topic))) {
               return;
             }
             continue;
           }
           let found = false;
           for (const singleTopic of topic) {
-            if (web3.utils.isTopicInBloom(block.logsBloom, singleTopic)) {
+            if (callOnce("bloom-" + singleTopic, () => web3.utils.isTopicInBloom(block.logsBloom, singleTopic))) {
               found = true;
               break;
             }
