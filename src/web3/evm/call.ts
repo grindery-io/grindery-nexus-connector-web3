@@ -1,17 +1,15 @@
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { TransactionConfig } from "web3-core";
-import { parseFunctionDeclaration } from "./utils";
+import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
-import { hmac, parseUserAccessToken, TAccessToken } from "../../jwt";
+import { parseUserAccessToken } from "../../jwt";
 import axios, { AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
 
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
-
-const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -81,27 +79,6 @@ async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | T
   return { tx, droneAddress };
 }
 
-async function getUserAddress(user: TAccessToken, web3: Web3) {
-  let userAddress: string;
-  if ("workspace" in user) {
-    userAddress = web3.utils.toChecksumAddress(
-      "0x" + (await hmac("grindery-web3-address-workspace/" + user.workspace)).subarray(0, 20).toString("hex")
-    );
-  } else {
-    const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
-    if (addressMatch) {
-      userAddress = addressMatch[1];
-      if (!web3.utils.isAddress(userAddress)) {
-        throw new Error("Unexpected eip155 user ID format");
-      }
-    } else {
-      userAddress = web3.utils.toChecksumAddress(
-        "0x" + (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, 20).toString("hex")
-      );
-    }
-  }
-  return userAddress;
-}
 export async function callSmartContract(
   input: ConnectorInput<{
     chain: string;
@@ -121,7 +98,7 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
-    const userAddress = await getUserAddress(user, web3);
+    const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

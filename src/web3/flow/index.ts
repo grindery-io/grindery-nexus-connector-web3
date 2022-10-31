@@ -4,6 +4,7 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-com
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { sendTransaction } from "./send";
 import blockingTracer from "../../blockingTracer";
+import { TAccessToken } from "../../jwt";
 
 type Block = {
   header: {
@@ -437,4 +438,8 @@ export async function callSmartContract(
     },
   });
   return { key: input.key, sessionId: input.sessionId, payload: result };
+}
+
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
+  throw new Error("Not implemented");
 }

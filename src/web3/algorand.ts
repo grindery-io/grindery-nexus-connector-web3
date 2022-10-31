@@ -4,6 +4,7 @@ import axios from "axios";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import blockingTracer from "../blockingTracer";
+import { TAccessToken } from "../jwt";
 
 type Status = {
   catchpoint: string;
@@ -366,5 +367,9 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
   console.log("callSmartContract", input);
+  throw new Error("Not implemented");
+}
+
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
   throw new Error("Not implemented");
 }

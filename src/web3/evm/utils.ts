@@ -2,6 +2,9 @@ import Web3 from "web3";
 import { AbiItem } from "web3-utils";
 import { BlockTransactionObject } from "web3-eth";
 import { getWeb3 } from "./web3";
+import { hmac, TAccessToken } from "../../jwt";
+
+export const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
 export function onNewBlockMultiChain(
   chains: string | string[],
@@ -122,4 +125,26 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
       : "nonpayable",
     type: "function",
   };
+}
+
+export async function getUserAddress(user: TAccessToken) {
+  let userAddress: string;
+  if ("workspace" in user) {
+    userAddress = Web3.utils.toChecksumAddress(
+      "0x" + (await hmac("grindery-web3-address-workspace/" + user.workspace)).subarray(0, 20).toString("hex")
+    );
+  } else {
+    const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
+    if (addressMatch) {
+      userAddress = addressMatch[1];
+      if (!Web3.utils.isAddress(userAddress)) {
+        throw new Error("Unexpected eip155 user ID format");
+      }
+    } else {
+      userAddress = Web3.utils.toChecksumAddress(
+        "0x" + (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, 20).toString("hex")
+      );
+    }
+  }
+  return userAddress;
 }
