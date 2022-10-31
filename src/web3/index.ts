@@ -54,7 +54,7 @@ export async function callSmartContractWebHook(params: ConnectorInput<WebhookPar
   if (params.fields.method !== "POST") {
     throw new Error("Unsupported method");
   }
-  if (params.fields.path.endsWith("/getDroneAddress")) {
+  if (params.fields.path === "getDroneAddress") {
     const { token, chain } = (params.fields.payload || {}) as { token: string; chain: string };
     if (!token || !chain) {
       throw new Error("Missing parameter");
