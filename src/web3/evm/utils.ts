@@ -9,7 +9,7 @@ export function onNewBlockMultiChain(
     chain: string;
     web3: Web3;
     block: BlockTransactionObject;
-    callOnce: <T>(key: string, call: () => T) => T;
+    memoCall: <T>(key: string, call: () => T) => T;
   }) => Promise<void>,
   onError: (e: Error) => void
 ): () => void {
@@ -31,7 +31,7 @@ export function onNewBlockMultiChain(
     });
     cleanUpFunctions.push(
       onNewBlock(
-        (block, callOnce) => Promise.resolve(callback({ chain, web3, block, callOnce })).catch(onError),
+        (block, memoCall) => Promise.resolve(callback({ chain, web3, block, memoCall })).catch(onError),
         onError
       )
     );

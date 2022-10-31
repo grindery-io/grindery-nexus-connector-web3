@@ -79,11 +79,11 @@ export class NewEventTrigger extends TriggerBase<{
     console.log(`[${this.sessionId}] Topics: ${topics}`);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
-      async ({ block, chain, web3, callOnce }) => {
+      async ({ block, chain, web3, memoCall }) => {
         blockingTracer.tag("evm.NewEventTrigger");
         if (
           contractAddress &&
-          !callOnce("bloom-" + contractAddress, () =>
+          !memoCall("bloom-" + contractAddress, () =>
             web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)
           )
         ) {
@@ -94,14 +94,14 @@ export class NewEventTrigger extends TriggerBase<{
             continue;
           }
           if (typeof topic === "string") {
-            if (!callOnce("bloom-" + topic, () => web3.utils.isTopicInBloom(block.logsBloom, topic))) {
+            if (!memoCall("bloom-" + topic, () => web3.utils.isTopicInBloom(block.logsBloom, topic))) {
               return;
             }
             continue;
           }
           let found = false;
           for (const singleTopic of topic) {
-            if (callOnce("bloom-" + singleTopic, () => web3.utils.isTopicInBloom(block.logsBloom, singleTopic))) {
+            if (memoCall("bloom-" + singleTopic, () => web3.utils.isTopicInBloom(block.logsBloom, singleTopic))) {
               found = true;
               break;
             }
@@ -110,7 +110,7 @@ export class NewEventTrigger extends TriggerBase<{
             return;
           }
         }
-        callOnce("getPastLogsMap", () =>
+        memoCall("getPastLogsMap", () =>
           web3.eth
             .getPastLogs({
               fromBlock: block.number,
