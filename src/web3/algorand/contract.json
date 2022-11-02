@@ -1,0 +1,28 @@
+{
+  "name": "demo-abi",
+  "methods": [
+    {
+      "name": "txntest",
+      "args": [
+        {
+          "type": "uint64",
+          "name": "amt"
+        },
+        {
+          "type": "pay",
+          "name": "ptxn"
+        },
+        {
+          "type": "uint64",
+          "name": "fee"
+        }
+      ],
+      "returns": {
+        "type": "uint64"
+      },
+      "desc": "Useless method that just demonstrates specifying a transaction in the method signature"
+    }
+  ],
+  "desc": null,
+  "networks": {}
+}

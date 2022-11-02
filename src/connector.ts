@@ -6,7 +6,7 @@ import {
 } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { convert } from "./web3/evm/unitConverter";
-import { callSmartContract as _callSmartContract, callSmartContractWebHook, getTriggerClass } from "./web3";
+import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sanitizeParameters(input: ConnectorInput<any>) {
@@ -51,9 +51,7 @@ export async function callSmartContract(params: ConnectorInput): Promise<Connect
   return await _callSmartContract(params as ConnectorInput<{ chain: string }>);
 }
 
-
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   actions: { callSmartContract },
   triggers: { newTransaction: { factory: setupSignal }, newEvent: { factory: setupSignal } },
-  webhooks: { callSmartContract: callSmartContractWebHook }
 };

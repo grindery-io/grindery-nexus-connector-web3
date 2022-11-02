@@ -1,0 +1,101 @@
+#pragma version 6
+txn NumAppArgs
+int 0
+==
+bnz main_l4
+txna ApplicationArgs 0
+method "txntest(uint64,pay,uint64)uint64"
+==
+bnz main_l3
+err
+main_l3:
+txn OnCompletion
+int NoOp
+==
+txn ApplicationID
+int 0
+!=
+&&
+assert
+txna ApplicationArgs 1
+btoi
+store 0
+txna ApplicationArgs 2
+btoi
+store 2
+txn GroupIndex
+int 1
+-
+store 1
+load 1
+gtxns TypeEnum
+int pay
+==
+assert
+load 0
+load 1
+load 2
+callsub txntest_0
+store 3
+byte 0x151f7c75
+load 3
+itob
+concat
+log
+int 1
+return
+main_l4:
+txn OnCompletion
+int NoOp
+==
+bnz main_l10
+txn OnCompletion
+int UpdateApplication
+==
+bnz main_l9
+txn OnCompletion
+int DeleteApplication
+==
+bnz main_l8
+err
+main_l8:
+txn Sender
+global CreatorAddress
+==
+return
+main_l9:
+txn Sender
+global CreatorAddress
+==
+return
+main_l10:
+txn ApplicationID
+int 0
+==
+assert
+int 1
+return
+
+// txntest
+txntest_0:
+store 6
+store 5
+store 4
+load 5
+gtxns TypeEnum
+int pay
+==
+assert
+load 5
+gtxns Amount
+load 4
+==
+assert
+load 5
+gtxns Fee
+load 6
+==
+assert
+load 5
+gtxns Amount
+retsub

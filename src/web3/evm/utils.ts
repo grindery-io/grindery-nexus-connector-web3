@@ -2,9 +2,6 @@ import Web3 from "web3";
 import { AbiItem } from "web3-utils";
 import { BlockTransactionObject } from "web3-eth";
 import { getWeb3 } from "./web3";
-import { hmac, TAccessToken } from "../../jwt";
-
-export const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
 export function onNewBlockMultiChain(
   chains: string | string[],
@@ -12,7 +9,7 @@ export function onNewBlockMultiChain(
     chain: string;
     web3: Web3;
     block: BlockTransactionObject;
-    memoCall: <T>(key: string, call: () => T) => T;
+    callOnce: <T>(key: string, call: () => T) => T;
   }) => Promise<void>,
   onError: (e: Error) => void
 ): () => void {
@@ -34,7 +31,7 @@ export function onNewBlockMultiChain(
     });
     cleanUpFunctions.push(
       onNewBlock(
-        (block, memoCall) => Promise.resolve(callback({ chain, web3, block, memoCall })).catch(onError),
+        (block, callOnce) => Promise.resolve(callback({ chain, web3, block, callOnce })).catch(onError),
         onError
       )
     );
@@ -125,26 +122,4 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
       : "nonpayable",
     type: "function",
   };
-}
-
-export async function getUserAddress(user: TAccessToken) {
-  let userAddress: string;
-  if ("workspace" in user) {
-    userAddress = Web3.utils.toChecksumAddress(
-      "0x" + (await hmac("grindery-web3-address-workspace/" + user.workspace)).subarray(0, 20).toString("hex")
-    );
-  } else {
-    const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
-    if (addressMatch) {
-      userAddress = addressMatch[1];
-      if (!Web3.utils.isAddress(userAddress)) {
-        throw new Error("Unexpected eip155 user ID format");
-      }
-    } else {
-      userAddress = Web3.utils.toChecksumAddress(
-        "0x" + (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, 20).toString("hex")
-      );
-    }
-  }
-  return userAddress;
 }

@@ -2,7 +2,6 @@ import Web3 from "web3";
 import { Subscription } from "web3-core-subscriptions";
 import { BlockTransactionObject } from "web3-eth";
 import { EventEmitter } from "node:events";
-import blockingTracer from "../../blockingTracer";
 
 export class NewBlockSubscriber extends EventEmitter {
   private newBlockSubscription: null | Subscription<unknown> = null;
@@ -92,7 +91,6 @@ export class NewBlockSubscriber extends EventEmitter {
     }, 1000);
   }
   async poll() {
-    blockingTracer.tag("newBlockSubScriber.poll");
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
@@ -153,7 +151,6 @@ export class NewBlockSubscriber extends EventEmitter {
     }, 30000);
   }
   async checkNewBlocks() {
-    blockingTracer.tag("newBlockSubScriber.checkNewBlocks");
     if (this.nextBlock <= 0) {
       this.nextBlock = this.latestBlock;
       return;
