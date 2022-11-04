@@ -8,6 +8,8 @@ import Web3 from "web3";
 import algosdk, { decodeAddress, Transaction } from "algosdk";
 import { getWeb3 } from "../evm/web3";
 import * as fs from "fs";
+import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "../evm/utils";
+import { getUserAccountAlgorand } from "./utils"; 
 
 
 
@@ -354,48 +356,16 @@ Triggers.set("newEvent", NewEventTrigger);
 // ###################################################################
 // ###################################################################
 
-const algod_token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const algod_host = "http://127.0.0.1";
-const algod_port = "4001";
-
-async function getUserAddress(user: TAccessToken, web3: Web3) {
-  let userAddress: string;
-  if ("workspace" in user) {
-    userAddress = web3.utils.toChecksumAddress(
-      "0x" + (await hmac("grindery-web3-address-workspace/" + user.workspace)).subarray(0, 20).toString("hex")
-    );
-  } else {
-    const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
-    if (addressMatch) {
-      // console.log("user.sub", user.sub)
-      // console.log("addressMatch", addressMatch);
-      userAddress = addressMatch[1];
-      // console.log("userAddress", userAddress);
-      if (!web3.utils.isAddress(userAddress)) {
-        throw new Error("Unexpected eip155 user ID format");
-      }
-    } else {
-      userAddress = web3.utils.toChecksumAddress(
-        "0x" + (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, 20).toString("hex")
-      );
-    }
-  }
-  return userAddress;
-}
-
-
-
-
 const createAccount = function() {
   try {  
-    const myaccount = algosdk.generateAccount();
-    console.log("Account Address = " + myaccount.addr);
-    let account_mnemonic = algosdk.secretKeyToMnemonic(myaccount.sk);
+    const userAccount = algosdk.generateAccount();
+    console.log("Account Address = " + userAccount.addr);
+    let account_mnemonic = algosdk.secretKeyToMnemonic(userAccount.sk);
     console.log("Account Mnemonic = "+ account_mnemonic);
     console.log("Account created. Save off Mnemonic and address");
     console.log("Add funds to account using the TestNet Dispenser: ");
     console.log("https://dispenser.testnet.aws.algodev.network/ ");
-    return myaccount;
+    return userAccount;
   }
   catch (err) {
       console.log("err", err);
@@ -416,17 +386,32 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
 
-  // const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
-  // if (!user) {
-  //   throw new Error("User token is invalid");
-  // }
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  if (!user) {
+    throw new Error("User token is invalid");
+  }
+
+  const { web3, close, ethersProvider } = getWeb3("eip155:5");
+
+  // // #################################################################
+  // // #################################################################
+  // // #################################################################
+
+  // const test = await getUserAccountAlgorand(user);
+
+  // console.log("user test function", test);
+  // console.log("test function", algosdk.isValidAddress(test.addr));
+
+
+  // // #################################################################
+  // // #################################################################
+  // // #################################################################
 
   try {
 
     // console.log("input.fields.parameters", input.fields.parameters)
 
 
-    // const { web3, close, ethersProvider } = getWeb3("eip155:5");
 
     // const userAccount2 = createAccount();
     // const userAccount1 = createAccount();
@@ -436,7 +421,9 @@ export async function callSmartContract(
     // #####################################################
     // #####################################################
 
-    let myaccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC!);
+    let userAccount = await getUserAccountAlgorand(user);
+
+    // let userAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC!);
     let userAccount1 = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC1!);
     // let userAccount2 = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC2!);
 
@@ -458,18 +445,24 @@ export async function callSmartContract(
     // // Account informations  
     // let myaccountInfo = await algodClient.accountInformation(address_thomas).do();
 
+    console.log('user account info', user)
+    console.log("user", await getUserAddress(user));
+    console.log("web3.defaultAccount", web3.defaultAccount);
+
+    
+
+
 
     // console.log("userAccount2", userAccount2)
     // console.log("myaccountInfo", myaccountInfo)
-    // console.log("myaccount", myaccount)
+    // console.log("userAccount", userAccount)
 
-    // console.log("myaccount", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY!).do());
+    // console.log("userAccount", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY!).do());
     // console.log("userAccount1", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY1!).do());
     // console.log("userAccount2", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY2!).do());
 
-
     // let amount = 0.1; // equals .1 ALGO
-    let sender = myaccount.addr;
+    let sender = userAccount.addr;
     let intermediary = userAccount1.addr;
     let receiver = input.fields.contractAddress; //userAccount2.addr;
 
@@ -504,7 +497,7 @@ export async function callSmartContract(
 
     const transactionWithSigner = {
       txn: txn,
-      signer: algosdk.makeBasicAccountTransactionSigner(myaccount)
+      signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
     };
 
     comp.addTransaction(transactionWithSigner);
@@ -571,7 +564,7 @@ export async function callSmartContract(
 
 
     // // sign transaction 
-    // let signedTxn = txn.signTxn(myaccount.sk);
+    // let signedTxn = txn.signTxn(userAccount.sk);
     // let txId = txn.txID().toString();
 
     // console.log("Signed transaction with txID: %s", txId);
@@ -580,7 +573,7 @@ export async function callSmartContract(
 
     // // Wait for confirmation
     // let confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
-    // myaccountInfo = await algodClient.accountInformation(myaccount.addr).do();
+    // myaccountInfo = await algodClient.accountInformation(userAccount.addr).do();
     // console.log("Transaction Amount: %d microAlgos", confirmedTxn.txn.txn.amt);        
     // console.log("Transaction Fee: %d microAlgos", confirmedTxn.txn.txn.fee);
     // console.log("Account balance: %d microAlgos", myaccountInfo.amount);
@@ -594,7 +587,7 @@ export async function callSmartContract(
 
 
     // console.log('userAccount2', userAccount2)
-    // console.log("myaccount", myaccount)
+    // console.log("userAccount", userAccount)
     // console.log("key", process.env.ALGORAND_PRIVATE_KEY)
     // console.log("thomasssssssssssssssssssssssssssssssssssssssss", myaccountInfo)
 
@@ -609,18 +602,11 @@ export async function callSmartContract(
     throw new Error("Not implemented");
 
   }
-
-
-  
-
-
-
-
-
-
-
-
-
-
   
 }
+
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
+  throw new Error("Not implemented");
+}
+
+

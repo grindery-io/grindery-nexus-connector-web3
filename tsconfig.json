@@ -3,6 +3,7 @@
   "include": ["src/*.ts", "src/**/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"],
   "compilerOptions": {
+    "esModuleInterop": true,
     "allowJs": true,
     "outDir": "./dist",
     "noImplicitAny": false,

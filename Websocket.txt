@@ -1,0 +1,56 @@
+# Initial
+
+{
+  "jsonrpc": "2.0",
+  "method": "runAction",
+  "params": {
+    "key": "callSmartContract",
+    "fields": {
+      "chain": "eip155:5",
+      "contractAddress": "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
+      "parameters": {
+        "to": "0xAF432541BEeFF5755B7C85cAf52F20893CBB838C",
+        "_grinderyUnitConversion_value": "erc20Decimals[@]",
+        "value": "1"
+      },
+      "functionDeclaration": "transfer(address to, uint256 value) returns (bool)",
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHgwZGVENzgyMjhBMjY2NDQzNGZFZDFBNUY2ZDAxN0E2NTdlNEU0RDMyIiwiaWF0IjoxNjY2OTM4NzE0LCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY2OTQyMzE0fQ.6AB97HJAI_Ak6rUPy22SXI5-oyH4MI0VcPW5egZZkXXGgwsaMu6fJxiLMnREB62x7UDykKV8JJuFvp4luFncuQ"
+    }
+  },
+  "id": 1
+}
+
+# Algorand
+
+{
+  "jsonrpc": "2.0",
+  "method": "runAction",
+  "params": {
+    "key": "callSmartContract",
+    "fields": {
+      "chain": "algorand:testnet",
+      "contractAddress": "QVBTWWUAX2U2CQAJL762Y3J34XFD7ECHXJTTC7SOJE3HKX65KRR5EPDO7U",
+      "parameters": {
+      },
+      "functionDeclaration": "???",
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY3NjAxNTYxLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY3NjA1MTYxfQ.A-VhIxV4_0TMoM0JNmftKrWA6-_00WPWkbqYhB4nqNu506KM8mkIU1nrzjPuPEFKvfjW8OVwEa-4feSM7CZ3Ow"
+    }
+  },
+  "id": 1
+}
+
+
+
+
+/ import { hmac, TAccessToken } from "../../jwt";
+// import nacl from 'tweetnacl';
+
+
+// export async function getUserAddress(user: TAccessToken) {
+
+//     let userAddress: string;
+
+
+
+
+// }
