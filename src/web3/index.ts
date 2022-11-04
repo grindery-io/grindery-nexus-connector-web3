@@ -1,18 +1,14 @@
-import {
-  ActionOutput,
-  ConnectorInput,
-  ConnectorOutput,
-  TriggerBase,
-  WebhookParams,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import * as evm from "./evm";
 import * as near from "./near";
 import * as flow from "./flow";
 import * as algorand from "./algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import { parseUserAccessToken, TAccessToken } from "../jwt";
+import { TAccessToken } from "../jwt";
 
-const CHAINS: {
+export * from "./webhook";
+
+export const CHAINS: {
   [key: string]: {
     callSmartContract(input: ConnectorInput<unknown>): Promise<ConnectorOutput>;
     getUserDroneAddress(user: TAccessToken): Promise<string>;
@@ -49,31 +45,4 @@ export async function callSmartContract(
   const chain = input.fields.chain;
   const module = typeof chain === "string" ? CHAINS[chain] || evm : evm;
   return module.callSmartContract(input as Parameters<typeof evm.callSmartContract>[0]);
-}
-export async function callSmartContractWebHook(params: ConnectorInput<WebhookParams>): Promise<ActionOutput> {
-  if (params.fields.method !== "POST") {
-    throw new Error("Unsupported method");
-  }
-  if (params.fields.path === "getDroneAddress") {
-    const { token, chain } = (params.fields.payload || {}) as { token: string; chain: string };
-    if (!token || !chain) {
-      throw new Error("Missing parameter");
-    }
-    const user = await parseUserAccessToken(token).catch(() => null);
-    if (!user) {
-      throw new Error("Invalid access token");
-    }
-    let droneAddress: string;
-    if (CHAINS[chain]) {
-      droneAddress = await CHAINS[chain].getUserDroneAddress(user);
-    } else {
-      if (!/^eip155:\d+$/.exec(chain)) {
-        throw new Error("Invalid chain");
-      }
-      droneAddress = await evm.getUserDroneAddress(user);
-    }
-    return { payload: { droneAddress } };
-  } else {
-    throw new Error("Unsupported call");
-  }
 }
