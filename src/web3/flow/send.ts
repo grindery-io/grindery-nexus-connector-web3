@@ -6,7 +6,7 @@ import { createSigner, publicKeyFromPrivateKey } from "./signer";
 // so we'll get back to simple version
 config({
   "accessNode.api": "https://rest-mainnet.onflow.org",
-  "fcl.limit": 1000000,
+  "fcl.limit": 9999,
 });
 
 export async function sendTransaction({
