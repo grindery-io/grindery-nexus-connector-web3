@@ -5,6 +5,8 @@ import { base58_to_binary } from "base58-js";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
+import blockingTracer from "../blockingTracer";
+import { TAccessToken } from "../jwt";
 
 type Receipt = {
   predecessor_id: string;
@@ -39,6 +41,7 @@ class ReceiptSubscriber extends EventEmitter {
     this.setMaxListeners(1000);
   }
   async main() {
+    blockingTracer.tag("near.ReceiptSubscriber.main");
     if (this.running) {
       return;
     }
@@ -180,6 +183,7 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
+        blockingTracer.tag("near.NewTransactionTrigger");
         // console.log(receipt);
         if (
           this.fields.from &&
@@ -237,6 +241,7 @@ class NewEventTrigger extends TriggerBase<{
       typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
+        blockingTracer.tag("near.NewEventTrigger");
         if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
           return;
         }
@@ -318,5 +323,9 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
   console.log("callSmartContract", input);
+  throw new Error("Not implemented");
+}
+
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
   throw new Error("Not implemented");
 }

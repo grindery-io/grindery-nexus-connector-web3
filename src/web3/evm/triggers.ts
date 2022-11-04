@@ -2,6 +2,7 @@ import { TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import abi from "web3-eth-abi";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./utils";
+import blockingTracer from "../../blockingTracer";
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -15,6 +16,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
       async ({ block, chain }) => {
+        blockingTracer.tag("evm.NewTransactionTrigger");
         for (const transaction of block.transactions) {
           if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
             continue;
@@ -77,8 +79,14 @@ export class NewEventTrigger extends TriggerBase<{
     console.log(`[${this.sessionId}] Topics: ${topics}`);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
-      async ({ block, chain, web3, callOnce }) => {
-        if (contractAddress && !web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)) {
+      async ({ block, chain, web3, memoCall }) => {
+        blockingTracer.tag("evm.NewEventTrigger");
+        if (
+          contractAddress &&
+          !memoCall("bloom-" + contractAddress, () =>
+            web3.utils.isContractAddressInBloom(block.logsBloom, contractAddress)
+          )
+        ) {
           return;
         }
         for (const topic of topics) {
@@ -86,14 +94,14 @@ export class NewEventTrigger extends TriggerBase<{
             continue;
           }
           if (typeof topic === "string") {
-            if (!web3.utils.isTopicInBloom(block.logsBloom, topic)) {
+            if (!memoCall("bloom-" + topic, () => web3.utils.isTopicInBloom(block.logsBloom, topic))) {
               return;
             }
             continue;
           }
           let found = false;
           for (const singleTopic of topic) {
-            if (web3.utils.isTopicInBloom(block.logsBloom, singleTopic)) {
+            if (memoCall("bloom-" + singleTopic, () => web3.utils.isTopicInBloom(block.logsBloom, singleTopic))) {
               found = true;
               break;
             }
@@ -102,13 +110,14 @@ export class NewEventTrigger extends TriggerBase<{
             return;
           }
         }
-        callOnce("getPastLogsMap", () =>
+        memoCall("getPastLogsMap", () =>
           web3.eth
             .getPastLogs({
               fromBlock: block.number,
               toBlock: block.number,
             })
             .then((logs) => {
+              blockingTracer.tag("evm.NewEventTrigger.processLogsOnce");
               const map = new Map<string, typeof logs>();
               for (const logEntry of logs) {
                 const eventSignature = logEntry.topics[0];
@@ -120,11 +129,13 @@ export class NewEventTrigger extends TriggerBase<{
               return map;
             })
         )
-          .then((logsMap) => {
+          .then(async (logsMap) => {
+            blockingTracer.tag("evm.NewEventTrigger.processLogs");
             const entries = Object.keys(eventInfoMap)
               .map((x) => logsMap.get(x) || [])
               .flat();
             const transactionLogFailures: { [key: string]: number } = {};
+            let numProcessed = 0;
             for (const logEntry of entries as (typeof entries[0] & {
               __decodeFailure?: boolean;
               __decoded?: { [key: string]: string };
@@ -144,6 +155,12 @@ export class NewEventTrigger extends TriggerBase<{
               const eventInfo = eventInfoMap[logEntry.topics[0]];
               if (!eventInfo) {
                 continue;
+              }
+              numProcessed++;
+              if (numProcessed > 50) {
+                numProcessed = 0;
+                // Try not to block event loop for too long
+                await new Promise((res) => setImmediate(res));
               }
               const inputs = eventInfo.inputs || [];
               const numIndexedInputs = inputs.filter((x) => x.indexed).length;
@@ -236,7 +253,9 @@ export class NewEventTrigger extends TriggerBase<{
             }
             for (const [transaction, num] of Object.entries(transactionLogFailures)) {
               if (num > 1) {
-                console.warn(`[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`);
+                console.warn(
+                  `[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`
+                );
               }
             }
           })

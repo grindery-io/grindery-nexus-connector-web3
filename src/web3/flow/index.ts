@@ -3,6 +3,8 @@ import axios from "axios";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { sendTransaction } from "./send";
+import blockingTracer from "../../blockingTracer";
+import { TAccessToken } from "../../jwt";
 
 type Block = {
   header: {
@@ -62,6 +64,7 @@ class EventAggregator {
   constructor(private startHeight: number, private contractAddress: string) {}
 
   async fetchEvent(type: string) {
+    blockingTracer.tag("flow.EventAggregator.fetchEvent");
     if (this.fetchPromises.has(type)) {
       return this.fetchPromises.get(type);
     }
@@ -78,6 +81,7 @@ class EventAggregator {
     }
   }
   async fetchEventImpl(type: string) {
+    blockingTracer.tag("flow.EventAggregator.fetchEventImpl");
     if (this.addedEvents.has(type)) {
       return;
     }
@@ -126,6 +130,7 @@ class EventAggregator {
     }
   }
   async forEach(type: string, callback: (events: { [key: string]: ParsedEvent[] }) => Promise<unknown>) {
+    blockingTracer.tag("flow.EventAggregator.forEach");
     await this.fetchEvent(type);
     for (const transaction of this.transactions.values()) {
       if (transaction[type]) {
@@ -144,6 +149,7 @@ class ContractSubscriber extends EventEmitter {
     this.setMaxListeners(1000);
   }
   async main() {
+    blockingTracer.tag("flow.ContractSubscriber.main");
     if (this.running) {
       return;
     }
@@ -200,6 +206,7 @@ class ContractSubscriber extends EventEmitter {
       };
     });
     const handler = async (aggregator: EventAggregator) => {
+      blockingTracer.tag("flow.ContractSubscriber.subscribe.handler");
       await aggregator.forEach(primaryEvent, async (events) => {
         for (const event of events[primaryEvent] || []) {
           const eventFields = event.body.value.fields;
@@ -431,4 +438,8 @@ export async function callSmartContract(
     },
   });
   return { key: input.key, sessionId: input.sessionId, payload: result };
+}
+
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
+  throw new Error("Not implemented");
 }

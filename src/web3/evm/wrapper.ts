@@ -168,13 +168,13 @@ export class Web3Wrapper extends EventEmitter {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const callOnceMemo = new Map<string, any>();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const callOnce = function (key: string, call: () => any) {
+        const memoCall = function (key: string, call: () => any) {
           if (!callOnceMemo.has(key)) {
             callOnceMemo.set(key, call());
           }
           return callOnceMemo.get(key);
         };
-        this.emit("newBlock", block, callOnce);
+        this.emit("newBlock", block, memoCall);
       });
       this.newBlockSubscriber.on("reconnectProvider", () => {
         console.log(`[${this.redactedUrl()}] Trying to reconnect to WebSocket provider`);
@@ -193,7 +193,7 @@ export class Web3Wrapper extends EventEmitter {
     }
   }
   onNewBlock(
-    callback: (block: BlockTransactionObject, callOnce: <T>(key: string, call: () => T) => T) => void,
+    callback: (block: BlockTransactionObject, memoCall: <T>(key: string, call: () => T) => T) => void,
     onError: (e: Error) => void
   ) {
     if (this.isClosed()) {

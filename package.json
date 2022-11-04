@@ -28,19 +28,13 @@
     "ethers": "^5.7.0",
     "ethers-eip712": "^0.2.0",
     "exponential-backoff": "^3.1.0",
-    "formidable": "^3.2.5",
-    "fs": "^0.0.1-security",
-    "grindery-nexus-common-utils": "file:../grindery-nexus-common-utils",
+    "grindery-nexus-common-utils": "^1.0.47",
     "jose": "^4.10.0",
     "lodash": "^4.17.21",
     "mutexify": "^1.4.0",
     "near-api-js": "^0.45.1",
-    "open": "^8.4.0",
-    "superagent": "^8.0.3",
-    "util": "^0.12.5",
     "uuid": "^8.3.2",
-    "web3": "^1.7.4",
-    "ws": "^8.10.0"
+    "web3": "^1.7.4"
   },
   "devDependencies": {
     "@onflow/types": "^1.0.2",
