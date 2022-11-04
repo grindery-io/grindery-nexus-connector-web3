@@ -57,7 +57,7 @@ export async function createAccount({
       weight: "1000.0",
     }),
   ]);
-  const txDetails = await tx(response.transactionId).onceSealed();
+  const txDetails = await tx(response.transactionId).onceExecuted();
   const accountEvent = await txDetails.events.find((x) => x.type === "flow.AccountCreated");
   return { address: accountEvent.data.address };
 }
