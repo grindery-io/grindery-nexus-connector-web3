@@ -41,7 +41,7 @@ export async function createAccount({
   signerArgs,
 }: {
   signerArgs: Parameters<typeof createSigner>[0];
-}): Promise<unknown> {
+}) {
   const signer = createSigner(signerArgs);
   const proposer = signer;
   const payer = signer;

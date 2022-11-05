@@ -56,7 +56,7 @@ export async function callSmartContract(
   return { key: input.key, sessionId: input.sessionId, payload: result };
 }
 
-export async function createAccount(): Promise<unknown> {
+export async function createAccount() {
   const privateKeyParts = process.env.FLOW_KEY?.split("/");
   if (privateKeyParts?.length !== 3) {
     throw new Error("Invalid flow key");

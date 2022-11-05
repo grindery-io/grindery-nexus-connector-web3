@@ -13,6 +13,8 @@ jwtTools.getPublicJwk().catch((e) => {
 const { encryptJWT, decryptJWT, signJWT, verifyJWT, getPublicJwk, typedCipher, typedToken, hmac } = jwtTools;
 export { encryptJWT, decryptJWT, signJWT, verifyJWT, getPublicJwk, typedCipher, typedToken, hmac };
 
+export const FlowAddressToken = typedCipher("urn:grindery:web3-driver:flow-address-token");
+
 type AccessTokenExtra =
   | {
       _?: never;

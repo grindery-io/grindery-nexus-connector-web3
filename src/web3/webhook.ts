@@ -2,7 +2,7 @@ import { ConnectorInput, WebhookOutput, WebhookParams } from "grindery-nexus-com
 import * as evm from "./evm";
 import { parseUserAccessToken } from "../jwt";
 import { CHAINS } from "./index";
-import { createAccount } from "./flow";
+import flow from "./flow/webhooks";
 
 const WEBHOOK_FUNCTIONS = {
   async getDroneAddress(params: ConnectorInput<WebhookParams>) {
@@ -25,8 +25,16 @@ const WEBHOOK_FUNCTIONS = {
     }
     return { droneAddress };
   },
-  async flowCreateAccount(_params: ConnectorInput<WebhookParams>) {
-    return await createAccount();
+  async flowCreateAccountBegin(_params: ConnectorInput<WebhookParams>) {
+    return flow.createAccountBegin();
+  },
+  async flowCreateAccountQuery(params: ConnectorInput<WebhookParams>) {
+    const { token } = params.fields.payload as { token: string };
+    return await flow.createAccountQuery(token);
+  },
+  async flowCreateAccountComplete(params: ConnectorInput<WebhookParams>) {
+    const { code } = params.fields.payload as { code: string };
+    return await flow.createAccountComplete(code);
   },
   async echo(params: ConnectorInput<WebhookParams>) {
     return params.fields.payload;
