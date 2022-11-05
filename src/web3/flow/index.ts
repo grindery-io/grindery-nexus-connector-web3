@@ -2,6 +2,7 @@ import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dis
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { sendTransaction, createAccount as _createAccount } from "./send";
 import { TAccessToken } from "../../jwt";
+import axios from "axios";
 
 export * from "./triggers";
 
@@ -17,6 +18,22 @@ export async function callSmartContract(
     dryRun?: boolean;
   }>
 ): Promise<ConnectorOutput> {
+  const addressResp = await axios.post(
+    (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "web3") +
+      "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
+    { address: "{{ auth.address }}" },
+    {
+      headers: {
+        Authorization: `Bearer ${input.authentication}`,
+        "Content-Type": "application/json",
+        "x-grindery-template-scope": "all",
+      },
+    }
+  );
+  const address = addressResp.data.address;
+  if (!address) {
+    throw new Error("Can't get address from authentication token");
+  }
   const m = /^\[([^\]]+?)\](.+)$/.exec(input.fields.functionDeclaration);
   if (!m) {
     throw new InvalidParamsError("Invalid function declaration");
@@ -47,7 +64,12 @@ export async function callSmartContract(
   const result = await sendTransaction({
     cadence,
     args,
-    signerArgs: {
+    senderArgs: {
+      accountAddress: address,
+      keyId: 0,
+      pkey: privateKeyParts[2],
+    },
+    payerArgs: {
       accountAddress: privateKeyParts[0],
       keyId: parseInt(privateKeyParts[1], 10),
       pkey: privateKeyParts[2],
@@ -63,7 +85,7 @@ export async function createAccount() {
   }
 
   return await _createAccount({
-    signerArgs: {
+    senderArgs: {
       accountAddress: privateKeyParts[0],
       keyId: parseInt(privateKeyParts[1], 10),
       pkey: privateKeyParts[2],

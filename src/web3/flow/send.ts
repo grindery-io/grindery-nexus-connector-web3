@@ -12,15 +12,17 @@ config({
 export async function sendTransaction({
   cadence,
   args,
-  signerArgs,
+  senderArgs,
+  payerArgs,
 }: {
   cadence: string;
   args: [unknown, string][];
-  signerArgs: Parameters<typeof createSigner>[0];
+  senderArgs: Parameters<typeof createSigner>[0];
+  payerArgs: Parameters<typeof createSigner>[0];
 }) {
-  const signer = createSigner(signerArgs);
+  const signer = createSigner(senderArgs);
   const proposer = signer;
-  const payer = signer;
+  const payer = createSigner(payerArgs);
   const authorizations = [signer];
 
   // "mutate" method will return us transaction id
@@ -37,12 +39,8 @@ export async function sendTransaction({
   return txDetails;
 }
 
-export async function createAccount({
-  signerArgs,
-}: {
-  signerArgs: Parameters<typeof createSigner>[0];
-}) {
-  const signer = createSigner(signerArgs);
+export async function createAccount({ senderArgs }: { senderArgs: Parameters<typeof createSigner>[0] }) {
+  const signer = createSigner(senderArgs);
   const proposer = signer;
   const payer = signer;
   const authorization = signer;
@@ -51,7 +49,7 @@ export async function createAccount({
       proposer,
       authorization,
       payer,
-      publicKey: publicKeyFromPrivateKey(signerArgs.pkey),
+      publicKey: publicKeyFromPrivateKey(senderArgs.pkey),
       signatureAlgorithm: "2",
       hashAlgorithm: "1",
       weight: "1000.0",
