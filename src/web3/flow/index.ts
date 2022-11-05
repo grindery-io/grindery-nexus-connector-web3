@@ -18,19 +18,24 @@ export async function callSmartContract(
     dryRun?: boolean;
   }>
 ): Promise<ConnectorOutput> {
-  console.log(input);
-  const addressResp = await axios.post(
-    (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "web3") +
-      "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
-    { address: "{{ auth.address }}" },
-    {
-      headers: {
-        Authorization: `Bearer ${input.authentication}`,
-        "Content-Type": "application/json",
-        "x-grindery-template-scope": "all",
-      },
-    }
-  );
+  let addressResp;
+  try {
+    addressResp = await axios.post(
+      (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "web3") +
+        "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
+      { address: "{{ auth.address }}" },
+      {
+        headers: {
+          Authorization: `Bearer ${input.authentication}`,
+          "Content-Type": "application/json",
+          "x-grindery-template-scope": "all",
+        },
+      }
+    );
+  } catch (e) {
+    console.error("[Flow] Failed to decode address", { status: e.response?.status, data: e.response?.data });
+    throw e;
+  }
   const address = addressResp.data.address;
   if (!address) {
     throw new Error("Can't get address from authentication token");
