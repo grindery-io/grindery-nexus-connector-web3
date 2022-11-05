@@ -18,6 +18,7 @@ export async function callSmartContract(
     dryRun?: boolean;
   }>
 ): Promise<ConnectorOutput> {
+  console.log(input);
   const addressResp = await axios.post(
     (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "web3") +
       "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
