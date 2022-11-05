@@ -21,7 +21,7 @@ export async function callSmartContract(
   let addressResp;
   try {
     addressResp = await axios.post(
-      (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "web3") +
+      (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "flow") +
         "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
       { address: "{{ auth.address }}" },
       {
