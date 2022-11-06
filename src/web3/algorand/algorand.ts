@@ -9,7 +9,7 @@ import algosdk, { decodeAddress, Transaction } from "algosdk";
 import { getWeb3 } from "../evm/web3";
 import * as fs from "fs";
 import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "../evm/utils";
-import { getUserAccountAlgorand } from "./utils"; 
+import { getUserAccountAlgorand, parseFunctionDeclarationAlgorand } from "./utils"; 
 
 
 
@@ -391,35 +391,7 @@ export async function callSmartContract(
     throw new Error("User token is invalid");
   }
 
-  const { web3, close, ethersProvider } = getWeb3("eip155:5");
-
-  // // #################################################################
-  // // #################################################################
-  // // #################################################################
-
-  // const test = await getUserAccountAlgorand(user);
-
-  // console.log("user test function", test);
-  // console.log("test function", algosdk.isValidAddress(test.addr));
-
-
-  // // #################################################################
-  // // #################################################################
-  // // #################################################################
-
   try {
-
-    // console.log("input.fields.parameters", input.fields.parameters)
-
-
-
-    // const userAccount2 = createAccount();
-    // const userAccount1 = createAccount();
-    // const userAccount2 = createAccount();
-
-    // #####################################################
-    // #####################################################
-    // #####################################################
 
     let userAccount = await getUserAccountAlgorand(user);
 
@@ -433,11 +405,11 @@ export async function callSmartContract(
 
     const algodClient = new algosdk.Algodv2(token, baseServer, port); 
 
-    // Read in the local contract.json file
-    const buff = fs.readFileSync('./src/web3/algorand/abi/contract.json');
+    // // Read in the local contract.json file
+    // const buff = fs.readFileSync('./src/web3/algorand/abi/contract.json');
 
-    // Parse the json file into an object, pass it to create an ABIContract object
-    const contract = new algosdk.ABIContract(JSON.parse(buff.toString()));
+    // // Parse the json file into an object, pass it to create an ABIContract object
+    // const contract = new algosdk.ABIContract(JSON.parse(buff.toString()));
 
     // Set new atomicTransactionComposer
     const comp = new algosdk.AtomicTransactionComposer();
@@ -445,23 +417,6 @@ export async function callSmartContract(
     // // Account informations  
     // let myaccountInfo = await algodClient.accountInformation(address_thomas).do();
 
-    console.log('user account info', user)
-    console.log("user", await getUserAddress(user));
-    console.log("web3.defaultAccount", web3.defaultAccount);
-
-    
-
-
-
-    // console.log("userAccount2", userAccount2)
-    // console.log("myaccountInfo", myaccountInfo)
-    // console.log("userAccount", userAccount)
-
-    // console.log("userAccount", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY!).do());
-    // console.log("userAccount1", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY1!).do());
-    // console.log("userAccount2", await algodClient.accountInformation(process.env.ALGORAND_PUBLIC_KEY2!).do());
-
-    // let amount = 0.1; // equals .1 ALGO
     let sender = userAccount.addr;
     let intermediary = userAccount1.addr;
     let receiver = input.fields.contractAddress; //userAccount2.addr;
@@ -502,46 +457,10 @@ export async function callSmartContract(
 
     comp.addTransaction(transactionWithSigner);
 
-    // Transaction being passed as an argument, this removes the transaction from the
-    // args list, but includes it in the atomic grouped transaction
-    // Transaction from Grindery wallet to the dApp (amount = 0, fees = 3 * fees)
-    // comp.addMethodCall({
-    //   method: contract.getMethodByName("txntest"),
-    //   methodArgs: [
-    //     0,
-    //     {
-    //       txn: new Transaction({
-    //         from: intermediary,
-    //         to: receiver,
-    //         amount: 0,
-    //         ...spNoFee,
-    //       }),
-    //       signer: algosdk.makeBasicAccountTransactionSigner(userAccount1),
-    //     },
-    //     0,
-    //   ],
-    // });
-
-    // const test = contract.getMethodByName("txntest");
-
-    // async function readGlobalState(client: any, index: any){
-    //     let applicationInfoResponse = await client.getApplicationByID(index).do();
-    //     console.log("applicationInfoResponse", applicationInfoResponse);
-    //     let globalState = []
-    //     globalState = applicationInfoResponse['params']['global-state-schema']
-    //     console.log("globalState", globalState);
-    //     for (let n = 0; n < globalState.length; n++) {
-    //         console.log(applicationInfoResponse['params']['global-state-schema'][n]);
-    //     }
-    // }
-
-    // console.log("Number(process.env.ALGORAND_APP_ID!)", Number(process.env.ALGORAND_APP_ID!));
-    // console.log("intermediary", intermediary);
-    // console.log("receiver", receiver);
-
     comp.addMethodCall({
       appID: Number(process.env.ALGORAND_APP_ID!),
-      method: contract.getMethodByName("txntest"),
+      method: parseFunctionDeclarationAlgorand(input.fields.functionDeclaration),
+      // method: test,
       methodArgs: [
         0,
         {
@@ -576,25 +495,7 @@ export async function callSmartContract(
     // myaccountInfo = await algodClient.accountInformation(userAccount.addr).do();
     // console.log("Transaction Amount: %d microAlgos", confirmedTxn.txn.txn.amt);        
     // console.log("Transaction Fee: %d microAlgos", confirmedTxn.txn.txn.fee);
-    // console.log("Account balance: %d microAlgos", myaccountInfo.amount);
-
-
-    // #####################################################
-    // #####################################################
-    // #####################################################
-
-    
-
-
-    // console.log('userAccount2', userAccount2)
-    // console.log("userAccount", userAccount)
-    // console.log("key", process.env.ALGORAND_PRIVATE_KEY)
-    // console.log("thomasssssssssssssssssssssssssssssssssssssssss", myaccountInfo)
-
-
-  
-
-    
+    // console.log("Account balance: %d microAlgos", myaccountInfo.amount);   
 
   } finally {
 
