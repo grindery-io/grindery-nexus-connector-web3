@@ -8,6 +8,9 @@
     "noImplicitAny": false,
     "sourceMap": true,
     "useUnknownInCatchVariables": false,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
   }
 }

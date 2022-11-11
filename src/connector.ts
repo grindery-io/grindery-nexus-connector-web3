@@ -7,7 +7,7 @@ import {
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { convert } from "./web3/evm/unitConverter";
 import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
-import { callSmartContractWebHook } from "./web3";
+import * as near from "./web3/near";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sanitizeParameters(input: ConnectorInput<any>) {
@@ -44,6 +44,7 @@ export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> 
     throw new Error(`Invalid trigger: ${params.key}`);
   }
 }
+
 export async function callSmartContract(params: ConnectorInput): Promise<ConnectorOutput> {
   await sanitizeParameters(params);
   if (!("chain" in (params.fields as Record<string, unknown>))) {
@@ -52,8 +53,11 @@ export async function callSmartContract(params: ConnectorInput): Promise<Connect
   return await _callSmartContract(params as ConnectorInput<{ chain: string }>);
 }
 
+export async function callNearFunction(params: ConnectorInput): Promise<ConnectorOutput> {
+  return await near.callSmartContract(params as ConnectorInput<{ senderAccount: string; receiverAccount: string; amount: string; }>);
+}
+
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
-  actions: { callSmartContract },
+  actions: { callSmartContract, callNearFunction },
   triggers: { newTransaction: { factory: setupSignal }, newEvent: { factory: setupSignal } },
-  webhooks: { callSmartContract: callSmartContractWebHook },
 };

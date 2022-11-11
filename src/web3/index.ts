@@ -4,19 +4,15 @@ import * as near from "./near";
 import * as flow from "./flow";
 import * as algorand from "./algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import { TAccessToken } from "../jwt";
 
-export * from "./webhook";
-
-export const CHAINS: {
+const CHAINS: {
   [key: string]: {
     callSmartContract(input: ConnectorInput<unknown>): Promise<ConnectorOutput>;
-    getUserDroneAddress(user: TAccessToken): Promise<string>;
     Triggers: Map<string, new (params: ConnectorInput) => TriggerBase>;
   };
 } = {
   near,
-  "near:mainnet": near,
+  "near:testnet": near,
   flow,
   "flow:mainnet": flow,
   algorand,
