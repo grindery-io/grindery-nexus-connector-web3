@@ -1,6 +1,7 @@
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import * as evm from "./evm";
 import * as near from "./near";
+import * as neartest from "./near";
 import * as flow from "./flow";
 import * as algorand from "./algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
@@ -17,6 +18,8 @@ export const CHAINS: {
 } = {
   near,
   "near:mainnet": near,
+  neartest,
+  "near:testnet": neartest,
   flow,
   "flow:mainnet": flow,
   algorand,

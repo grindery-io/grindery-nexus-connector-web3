@@ -8,6 +8,10 @@
     "noImplicitAny": false,
     "sourceMap": true,
     "useUnknownInCatchVariables": false,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "lib": [
+      "es2018",
+      "dom"
+    ]
   }
 }

@@ -1,12 +1,24 @@
 import { EventEmitter } from "node:events";
 import _ from "lodash";
-import { connect } from "near-api-js";
 import { base58_to_binary } from "base58-js";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../blockingTracer";
-import { TAccessToken } from "../jwt";
+import { parseUserAccessToken, TAccessToken } from "../jwt";
+import {v4 as uuidv4} from 'uuid';
+
+
+// import { connect, transactions, keyStores } from "near-api-js";
+// import * as nearAPI from "near-api-js";
+// import fs from "fs";
+// import path from "path";
+// import { homedir } from 'os';
+
+const { connect, transactions, keyStores } = require("near-api-js");
+const fs = require("fs");
+const path = require("path");
+const userHomeDir = require("os").homedir();
 
 type Receipt = {
   predecessor_id: string;
@@ -310,6 +322,28 @@ export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerB
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
+// #########################################################################
+// #########################################################################
+// #########################################################################
+
+// const userHomeDir = homedir();
+
+const CREDENTIALS_DIR = ".near-credentials";
+const CONTRACT_NAME = "nft-example.tcoratger.testnet";
+const credentialsPath = path.join(userHomeDir, CREDENTIALS_DIR);
+console.log(credentialsPath);
+const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
+
+const config = {
+  keyStore,
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+};
+
+// #########################################################################
+// #########################################################################
+// #########################################################################
+
 export async function callSmartContract(
   input: ConnectorInput<{
     chain: string;
@@ -320,10 +354,51 @@ export async function callSmartContract(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
     dryRun?: boolean;
+    userToken: string;
   }>
 ): Promise<ConnectorOutput> {
-  console.log("callSmartContract", input);
-  throw new Error("Not implemented");
+
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  if (!user) {
+    throw new Error("User token is invalid");
+  }
+
+  const near = await connect({ ...config, keyStore });
+  const account = await near.account(input.fields.contractAddress);  
+
+  const args = {
+      token_id: uuidv4(), 
+      metadata: {
+          title: input.fields.parameters.title, 
+          description: input.fields.parameters.description, 
+          media: input.fields.parameters.media
+      }, 
+      receiver_id: input.fields.parameters.to
+  };
+
+  const result = await account.signAndSendTransaction({
+      receiverId: input.fields.contractAddress,
+      actions: [
+          transactions.functionCall(
+              "nft_mint",
+              args,
+              10000000000000,
+              "10000000000000000000000"
+          ),
+      ],
+  });
+
+  console.log(result);
+
+  return {
+    key: input.key,
+    sessionId: input.sessionId,
+    payload: result,
+  };
+
+  // console.log("callSmartContract", input);
+  // throw new Error("Not implemented");
+
 }
 
 export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
