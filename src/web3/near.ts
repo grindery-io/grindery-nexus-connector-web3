@@ -333,6 +333,7 @@ const CONTRACT_NAME = "nft-example.tcoratger.testnet";
 const credentialsPath = path.join(userHomeDir, CREDENTIALS_DIR);
 console.log(credentialsPath);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
+console.log(keyStore);
 
 const config = {
   keyStore,
