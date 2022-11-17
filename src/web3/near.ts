@@ -1,13 +1,17 @@
 import { EventEmitter } from "node:events";
 import _ from "lodash";
 import { base58_to_binary } from "base58-js";
-import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
+import {
+  ConnectorInput,
+  ConnectorOutput,
+  TriggerBase,
+} from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../blockingTracer";
 import { parseUserAccessToken, TAccessToken } from "../jwt";
-import {v4 as uuidv4} from 'uuid';
-
+import { v4 as uuidv4 } from "uuid";
+import { KeyPair } from "near-api-js";
 
 // import { connect, transactions, keyStores } from "near-api-js";
 // import * as nearAPI from "near-api-js";
@@ -85,10 +89,24 @@ class ReceiptSubscriber extends EventEmitter {
           continue;
         }
         const pendingBlocks = [response];
-        while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
-          pendingBlocks.unshift(await near.connection.provider.block({ blockId: pendingBlocks[0].header.prev_hash }));
-          if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
-            console.log("[Near] Last block was removed:", currentHeight, currentHash);
+        while (
+          currentHash &&
+          pendingBlocks[0].header.prev_hash !== currentHash
+        ) {
+          pendingBlocks.unshift(
+            await near.connection.provider.block({
+              blockId: pendingBlocks[0].header.prev_hash,
+            })
+          );
+          if (
+            currentHeight &&
+            pendingBlocks[0].header.height <= currentHeight
+          ) {
+            console.log(
+              "[Near] Last block was removed:",
+              currentHeight,
+              currentHash
+            );
             if (pendingBlocks[0].header.height < currentHeight) {
               pendingBlocks.shift();
             }
@@ -96,7 +114,9 @@ class ReceiptSubscriber extends EventEmitter {
           }
         }
         if (pendingBlocks.length > 10) {
-          console.warn(`[Near] Too many blocks in a row: ${pendingBlocks.length}`);
+          console.warn(
+            `[Near] Too many blocks in a row: ${pendingBlocks.length}`
+          );
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const block of pendingBlocks) {
@@ -104,7 +124,9 @@ class ReceiptSubscriber extends EventEmitter {
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
-                const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
+                const chunkDetails = await near.connection.provider.chunk(
+                  chunk.chunk_hash
+                );
                 receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
               },
               {
@@ -145,7 +167,13 @@ class ReceiptSubscriber extends EventEmitter {
     this.running = false;
     console.log("[Near] event main loop stopped");
   }
-  subscribe({ callback, onError }: { callback: (receipt: Receipt) => void; onError: (error: unknown) => void }) {
+  subscribe({
+    callback,
+    onError,
+  }: {
+    callback: (receipt: Receipt) => void;
+    onError: (error: unknown) => void;
+  }) {
     const handler = async (receipt: Receipt) => {
       await callback(receipt);
     };
@@ -185,26 +213,40 @@ function normalizeAddress<T>(address: T): T {
   return base58_to_binary(m[1]).toString("hex");
 }
 
-class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
+class NewTransactionTrigger extends TriggerBase<{
+  chain: string | string[];
+  from?: string;
+  to?: string;
+}> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
     this.fields.from = normalizeAddress(this.fields.from);
     this.fields.to = normalizeAddress(this.fields.to);
-    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    console.log(
+      `[${this.sessionId}] NewTransactionTrigger:`,
+      this.fields.chain,
+      this.fields.from,
+      this.fields.to
+    );
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
         blockingTracer.tag("near.NewTransactionTrigger");
         // console.log(receipt);
         if (
           this.fields.from &&
-          this.fields.from !== normalizeAddress(receipt.receipt.Action?.signer_id) &&
-          this.fields.from !== normalizeAddress(receipt.receipt.Action?.signer_public_key)
+          this.fields.from !==
+            normalizeAddress(receipt.receipt.Action?.signer_id) &&
+          this.fields.from !==
+            normalizeAddress(receipt.receipt.Action?.signer_public_key)
         ) {
           return;
         }
-        if (this.fields.to && this.fields.to !== normalizeAddress(receipt.receiver_id)) {
+        if (
+          this.fields.to &&
+          this.fields.to !== normalizeAddress(receipt.receiver_id)
+        ) {
           return;
         }
         for (const action of receipt.receipt.Action?.actions ?? []) {
@@ -250,11 +292,16 @@ class NewEventTrigger extends TriggerBase<{
       this.fields.contractAddress = undefined;
     }
     const functions =
-      typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
+      typeof this.fields.eventDeclaration === "string"
+        ? [this.fields.eventDeclaration]
+        : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
         blockingTracer.tag("near.NewEventTrigger");
-        if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
+        if (
+          this.fields.contractAddress &&
+          this.fields.contractAddress !== receipt.receiver_id
+        ) {
           return;
         }
         for (const action of receipt.receipt.Action?.actions ?? []) {
@@ -268,14 +315,19 @@ class NewEventTrigger extends TriggerBase<{
           let args;
           if (functionCall.args.length < 4096) {
             try {
-              args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
+              args = JSON.parse(
+                Buffer.from(functionCall.args, "base64").toString("utf-8")
+              );
             } catch (e) {
               // Fall through
             }
             if (!args) {
               try {
                 args = {
-                  _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
+                  _argsDecoded: Buffer.from(
+                    functionCall.args,
+                    "base64"
+                  ).toString("utf-8"),
                 };
               } catch (e) {
                 // Fall through
@@ -287,12 +339,18 @@ class NewEventTrigger extends TriggerBase<{
               _rawArgs: functionCall.args,
             };
           }
-          args._from = receipt.receipt.Action?.signer_id || normalizeAddress(receipt.receipt.Action?.signer_public_key);
-          for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
+          args._from =
+            receipt.receipt.Action?.signer_id ||
+            normalizeAddress(receipt.receipt.Action?.signer_public_key);
+          for (const [key, value] of Object.entries(
+            this.fields.parameterFilters
+          )) {
             if (key.startsWith("_grindery")) {
               continue;
             }
-            if (normalizeAddress(_.get(args, key)) !== normalizeAddress(value)) {
+            if (
+              normalizeAddress(_.get(args, key)) !== normalizeAddress(value)
+            ) {
               return;
             }
           }
@@ -318,7 +376,10 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
+export const Triggers = new Map<
+  string,
+  new (params: ConnectorInput) => TriggerBase
+>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
@@ -326,19 +387,12 @@ Triggers.set("newEvent", NewEventTrigger);
 // #########################################################################
 // #########################################################################
 
-// const userHomeDir = homedir();
+const networkId = "testnet";
+const CONTRACT_NAME = "nft-example.olashina.testnet";
+const keyStore = new keyStores.InMemoryKeyStore();
+const keyPair = KeyPair.fromString((process.env.PRIVATE_KEY as string));
 
-const CREDENTIALS_DIR = ".near-credentials";
-const CONTRACT_NAME = "nft-example.tcoratger.testnet";
-const credentialsPath = path.join(userHomeDir, CREDENTIALS_DIR);
-console.log(credentialsPath);
-const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
-
-const config = {
-  keyStore,
-  networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-};
+keyStore.setKey(networkId, CONTRACT_NAME, keyPair.toString());
 
 // #########################################################################
 // #########################################################################
@@ -358,34 +412,42 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
 
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  const config = {
+    keyStore,
+    networkId: networkId,
+    nodeUrl: "https://rpc.testnet.near.org",
+  };
+
+  const user = await parseUserAccessToken(input.fields.userToken).catch(
+    () => null
+  );
   if (!user) {
     throw new Error("User token is invalid");
   }
 
   const near = await connect({ ...config, keyStore });
-  const account = await near.account(input.fields.contractAddress);  
+  const account = await near.account(input.fields.contractAddress);
 
   const args = {
-      token_id: uuidv4(), 
-      metadata: {
-          title: input.fields.parameters.title, 
-          description: input.fields.parameters.description, 
-          media: input.fields.parameters.media
-      }, 
-      receiver_id: input.fields.parameters.to
+    token_id: uuidv4(),
+    metadata: {
+      title: input.fields.parameters.title,
+      description: input.fields.parameters.description,
+      media: input.fields.parameters.media,
+    },
+    receiver_id: input.fields.parameters.to,
   };
 
   const result = await account.signAndSendTransaction({
-      receiverId: input.fields.contractAddress,
-      actions: [
-          transactions.functionCall(
-              "nft_mint",
-              args,
-              10000000000000,
-              "10000000000000000000000"
-          ),
-      ],
+    receiverId: input.fields.contractAddress,
+    actions: [
+      transactions.functionCall(
+        "nft_mint",
+        args,
+        10000000000000,
+        "10000000000000000000000"
+      ),
+    ],
   });
 
   console.log(result);
@@ -398,9 +460,10 @@ export async function callSmartContract(
 
   // console.log("callSmartContract", input);
   // throw new Error("Not implemented");
-
 }
 
-export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
+export async function getUserDroneAddress(
+  _user: TAccessToken
+): Promise<string> {
   throw new Error("Not implemented");
 }
