@@ -44,7 +44,7 @@ jspm_packages
 # Custom
 .idea
 .vscode
-# .env
+.env
 .DS_Store
 
 dist
