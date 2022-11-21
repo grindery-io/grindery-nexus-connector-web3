@@ -13,10 +13,6 @@ export async function getUserAccountAlgorand(user: TAccessToken): Promise<algosd
     const keypair = nacl.sign.keyPair.fromSeed(seed);
     const encodedPk = algosdk.encodeAddress(keypair.publicKey);
 
-    // console.log("seed", seed);
-    // console.log("keypair", keypair);
-    // console.log("{ addr: encodedPk, sk: keys.secretKey }", { addr: encodedPk, sk: keypair.secretKey })
-
     return { addr: encodedPk, sk: keypair.secretKey };
 
 }
@@ -48,13 +44,6 @@ export function parseFunctionDeclarationAlgorand(functionDeclaration: string): a
             };
         })
         : [];
-
-    // // let MethodParams:algosdk.ABIMethodParams= {name:name, args:args, returns:returns[0]};
-
-
-    // // const result = new algosdk.ABIMethod(MethodParams);
-
-    // console.log("returnMatch", returnMatch);
 
     return new algosdk.ABIMethod({name:name, args:args, returns:returns[0]});
 

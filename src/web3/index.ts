@@ -6,7 +6,8 @@ import {
   WebhookParams,
 } from "grindery-nexus-common-utils/dist/connector";
 import * as evm from "./evm";
-import * as near from "./near";
+import * as near from "./near/near";
+import * as neartest from "./near/near";
 import * as flow from "./flow";
 import * as algorand from "./algorand/algorand";
 import * as algorandtest from "./algorand/algorand";
@@ -22,6 +23,8 @@ const CHAINS: {
 } = {
   near,
   "near:mainnet": near,
+  neartest,
+  "near:testnet": neartest,
   flow,
   "flow:mainnet": flow,
   algorand,

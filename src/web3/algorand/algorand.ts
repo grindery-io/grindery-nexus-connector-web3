@@ -391,118 +391,97 @@ export async function callSmartContract(
     throw new Error("User token is invalid");
   }
 
-  try {
+  let userAccount = await getUserAccountAlgorand(user);
+  let grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
 
-    let userAccount = await getUserAccountAlgorand(user);
+  const baseServer = 'https://testnet-algorand.api.purestake.io/ps2'
+  const port = '';
+  const token = {'X-API-Key': process.env.ALGORAND_API_KEY!}
 
-    // let userAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC!);
-    let userAccount1 = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC1!);
-    // let userAccount2 = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC2!);
+  const algodClient = new algosdk.Algodv2(token, baseServer, port); 
 
-    const baseServer = 'https://testnet-algorand.api.purestake.io/ps2'
-    const port = '';
-    const token = {'X-API-Key': process.env.ALGORAND_API_KEY!}
+  // Set new atomicTransactionComposer
+  const comp = new algosdk.AtomicTransactionComposer();
 
-    const algodClient = new algosdk.Algodv2(token, baseServer, port); 
+  let sender = userAccount.addr;
+  let intermediary = grinderyAccount.addr;
+  let receiver = input.fields.contractAddress;
 
-    // // Read in the local contract.json file
-    // const buff = fs.readFileSync('./src/web3/algorand/abi/contract.json');
+  // We initialize the common parameters here, they'll be passed to all the transactions
+  // since they happen to be the same
+  const spNoFee = await algodClient.getTransactionParams().do();
+  spNoFee.flatFee = true;
+  spNoFee.fee = 0;
 
-    // // Parse the json file into an object, pass it to create an ABIContract object
-    // const contract = new algosdk.ABIContract(JSON.parse(buff.toString()));
+  const spFullFee = await algodClient.getTransactionParams().do();
+  spFullFee.flatFee = true;
+  spFullFee.fee = 3 * algosdk.ALGORAND_MIN_TX_FEE;
 
-    // Set new atomicTransactionComposer
-    const comp = new algosdk.AtomicTransactionComposer();
+  // Transaction from the user to the dApp (amount = 0 and fees = 0)
+  const txn = algosdk.makePaymentTxnWithSuggestedParams(
+    sender, 
+    receiver!, 
+    0, 
+    undefined, 
+    undefined, 
+    spNoFee
+  );
 
-    // // Account informations  
-    // let myaccountInfo = await algodClient.accountInformation(address_thomas).do();
+  const transactionWithSigner = {
+    txn: txn,
+    signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
+  };
 
-    let sender = userAccount.addr;
-    let intermediary = userAccount1.addr;
-    let receiver = input.fields.contractAddress; //userAccount2.addr;
+  comp.addTransaction(transactionWithSigner);
 
-    // We initialize the common parameters here, they'll be passed to all the transactions
-    // since they happen to be the same
-    const spNoFee = await algodClient.getTransactionParams().do();
-    spNoFee.flatFee = true;
-    spNoFee.fee = 0;
+  const commonParamsFullFee = {
+    sender: grinderyAccount.addr,
+    suggestedParams: spFullFee,
+    signer: algosdk.makeBasicAccountTransactionSigner(grinderyAccount),
+  };
 
-    const spFullFee = await algodClient.getTransactionParams().do();
-    spFullFee.flatFee = true;
-    spFullFee.fee = 3 * algosdk.ALGORAND_MIN_TX_FEE;
+  comp.addMethodCall({
+    appID: Number(process.env.ALGORAND_APP_ID!),
+    method: parseFunctionDeclarationAlgorand(input.fields.functionDeclaration),
+    // method: test,
+    methodArgs: [
+      0,
+      {
+        txn: new Transaction({
+          from: intermediary!,
+          to: receiver,
+          amount: 0,
+          ...spNoFee,
+        }),
+        signer: algosdk.makeBasicAccountTransactionSigner(grinderyAccount!),
+      },
+      0,
+    ],
+    ...commonParamsFullFee,
+  });
 
-    function SetcommonParams(sp: any, account: any) {
-      return {
-        sender: account.addr,
-        suggestedParams: sp,
-        signer: algosdk.makeBasicAccountTransactionSigner(account),
-      };
-    }
+  // Finally, execute the composed group and print out the results
+  let result: any = await comp.execute(algodClient, 2);
+  // result.confirmedRound = result.confirmedRound.toString();
+  // result.methodResults[0].returnValue = result.methodResults[0].returnValue?.toString();
 
-
-    // Transaction from the user to the dApp (amount = 0 and fees = 0)
-    const txn = algosdk.makePaymentTxnWithSuggestedParams(
-      sender, 
-      receiver!, 
-      0, 
-      undefined, 
-      undefined, 
-      spNoFee
-    );
-
-    const transactionWithSigner = {
-      txn: txn,
-      signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
-    };
-
-    comp.addTransaction(transactionWithSigner);
-
-    comp.addMethodCall({
-      appID: Number(process.env.ALGORAND_APP_ID!),
-      method: parseFunctionDeclarationAlgorand(input.fields.functionDeclaration),
-      // method: test,
-      methodArgs: [
-        0,
-        {
-          txn: new Transaction({
-            from: intermediary!,
-            to: receiver,
-            amount: 0,
-            ...spNoFee,
-          }),
-          signer: algosdk.makeBasicAccountTransactionSigner(userAccount1!),
-        },
-        0,
-      ],
-      ...SetcommonParams(spFullFee, userAccount1),
-    });
-
-    // Finally, execute the composed group and print out the results
-    const results = await comp.execute(algodClient, 2);
-    console.log("results", results);
+  // let toto = JSON.stringify(result, (key, value) =>
+  //   typeof value === 'bigint' ? value.toString() : value // return everything else unchanged
+  // )
 
 
-    // // sign transaction 
-    // let signedTxn = txn.signTxn(userAccount.sk);
-    // let txId = txn.txID().toString();
+  console.log("result", result);
+  // console.log("toto", toto);
+  // console.log("result1", JSON.stringify(result));
 
-    // console.log("Signed transaction with txID: %s", txId);
+  return {
+    key: input.key,
+    sessionId: input.sessionId,
+    payload: result,
+  };
 
-    // await algodClient.sendRawTransaction(signedTxn).do();
-
-    // // Wait for confirmation
-    // let confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
-    // myaccountInfo = await algodClient.accountInformation(userAccount.addr).do();
-    // console.log("Transaction Amount: %d microAlgos", confirmedTxn.txn.txn.amt);        
-    // console.log("Transaction Fee: %d microAlgos", confirmedTxn.txn.txn.fee);
-    // console.log("Account balance: %d microAlgos", myaccountInfo.amount);   
-
-  } finally {
-
-    console.log("callSmartContract", input);
-    throw new Error("Not implemented");
-
-  }
+  console.log("callSmartContract", input);
+  throw new Error("Not implemented");
   
 }
 
