@@ -32,16 +32,16 @@ const path = require("path");
 const userHomeDir = require("os").homedir();
 const BN = require('bn.js');
 
-const private_key_tcoratger = "ed25519:TvQJsaDCF65uVGfeAzHkSSUFcpbM127uJ3A7GJLnh1eZuRD2wqjdkYWRJXfbkxa6v5yzPjSiPYQ7nQsdgtebEzE";
+const private_key_tcoratger = "ed25519:your_private_key";
 
 const private_key_depay = 
-"ed25519:4STJ43D4LEL7bbSrp3hP1JiuFLZ8gmjuVa5zafQxGpMJXNknFZ1UzYmUuPiuYPKUxDPNbfrw92JuLHDRQEvu2kLb"
+"ed25519:your_private_key"
 
 const userToken = "eyJhbGciJiJFUzI1NiJ8.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY3Njk0NDk5LCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY3Njk4MDk5fQ.eSuX4Jx4VutnAFvs9kC48G4ccHlAuv8OoDzfKZhcFyFQCMda2LxZV4BbZGstFsT-WMoVpKEIexj8O-hg1jm2ZZ"
 
 const networkId = "testnet";
 // const accountId = "depay.tcoratger.testnet";
-const accountId = "tcoratger.testnet";
+const accountId = "your-account-id";
 
 const nodeUrl= "https://rpc.testnet.near.org";
 const explorerUrl= "https://explorer.testnet.near.org";
@@ -206,7 +206,7 @@ async function main() {
     const actionTransaction = [
         await transactions.functionCall(
             "set_greeting",
-            {greeting: "toto"},
+            {greeting: "test"},
             10000000000000,
         )
     ]
@@ -214,8 +214,8 @@ async function main() {
 
 async function newAccount() {
 
-    const private_key_user = "ed25519:2jzR8ifX6uidDi8qXc9FMmvuJEGmopraC8jZThcrJpiGrMWur2t3wzN5VKtepmZo5CUJUGKojFUn7Y6i3V6dMGoz";
-    const useraccountId = "e661c12ff4e693f0268188e6488aa19382e72620e3b66d894cc3c7dc9cc46841";
+    const private_key_user = "ed25519:your_private_key";
+    const useraccountId = "your-user-id";
 
     // const private_key_user = "ed25519:2jzR8ifX6uidDi8qXc9FMmvuJEGmopraC8jZThcrJpiGrMWur2t3wzN5VKtepmZo5CUJUGKojFUn7Y6i3V6dMGou";
     // const useraccountId = "e661c12ff4e693f0268188e6488aa19382e72620e3b66d894cc3c7dc9cc4683c";
