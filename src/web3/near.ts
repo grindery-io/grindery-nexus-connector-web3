@@ -459,7 +459,8 @@ export async function callSmartContract(
       txn_hash: result.transaction.hash,
       public_key: result.transaction.public_key,
       media_url: input.fields.parameters.media,
-      signer_id: result.transaction.signer_id,
+      // signer_id: result.transaction.signer_id,
+      NFTAddress: result.transaction.signer_id
     },
   };
 
