@@ -456,11 +456,13 @@ export async function callSmartContract(
     key: input.key,
     sessionId: input.sessionId,
     payload: {
-      txn_hash: result.transaction.hash,
-      public_key: result.transaction.public_key,
-      media_url: input.fields.parameters.media,
-      // signer_id: result.transaction.signer_id,
-      NFTAddress: result.transaction.signer_id
+      // result,
+      NFTAddress: result.transaction_outcome.outcome.receipt_ids
+      // txn_hash: result.transaction.hash,
+      // public_key: result.transaction.public_key,
+      // media_url: input.fields.parameters.media,
+      // // signer_id: result.transaction.signer_id,
+      // NFTAddress: result.transaction.signer_id
     },
   };
 
