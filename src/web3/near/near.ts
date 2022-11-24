@@ -5,6 +5,8 @@ import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../../blockingTracer";
 import { TAccessToken } from "../../jwt";
+import { base58_to_binary } from "base58-js";
+
 
 const { connect, transactions, KeyPair, keyStores, utils } = require("near-api-js");
 const fs = require("fs");
@@ -347,7 +349,56 @@ export async function callSmartContract(
 ): Promise<ConnectorOutput> {
 
 
-  console.log("callSmartContract", input);
+  const public_key_tcoratger_wallet = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C7";
+  const networkId = "testnet";
+
+  const near = await connect({ ...config, keyStore });
+  const account = await near.account(process.env.NEAR_ACCOUNT_ID);  
+
+  // const privateKey = base_encode((await hmac("grindery-web3-address-sub/" + userToken)).subarray(0, 64));
+  // let newKeyPair = await KeyPair.fromString('ed25519:' + privateKey);
+
+  let newKeyPair = KeyPair.fromRandom('ed25519');
+
+  const newPublicKey = await newKeyPair.getPublicKey();
+  // const publickeystr = await newPublicKey.toString();
+  // let useraccountId = await utils.PublicKey.fromString(publickeystr).data.hexSlice();
+  let useraccountId = ("grindery" + public_key_tcoratger_wallet).toLowerCase();
+
+  console.log("useraccountId", useraccountId);
+
+  let UserAccount = await near.account(useraccountId);
+
+  try {
+      await UserAccount.state()
+  } catch (e) {
+      if (e.type === 'HANDLER_ERROR') {
+          console.log("account to be created");
+          const creationTransaction = await account.createAccount(useraccountId, newPublicKey, await utils.format.parseNearAmount('1'))
+          await keyStore.setKey(networkId, useraccountId, newKeyPair);
+          console.log("account created");
+      }
+  }
+
+  UserAccount = await near.account(useraccountId);
+
+  let amountToUser = 10000000000000;
+
+  await UserAccount.sendMoney(process.env.NEAR_ACCOUNT_ID, amountToUser);
+
+  const result = await UserAccount.signAndSendTransaction({
+      receiverId: process.env.NEAR_ACCOUNT_ID, 
+      actions: [
+          await transactions.functionCall(
+              "set_greeting",
+              {greeting: "message test"},
+              amountToUser
+          )
+      ]
+  });
+
+
+  // console.log("callSmartContract", input);
   throw new Error("Not implemented");
 }
 
