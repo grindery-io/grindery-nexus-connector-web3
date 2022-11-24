@@ -388,7 +388,7 @@ Triggers.set("newEvent", NewEventTrigger);
 // #########################################################################
 
 const networkId = "testnet";
-const CONTRACT_NAME = "streetlife.streetlifemovie.near";
+const CONTRACT_NAME = "street-life-movie.neargrindery.testnet";
 const keyStore = new keyStores.InMemoryKeyStore();
 const keyPair = KeyPair.fromString((process.env.NEAR_PRIVATE_KEY as string));
 
