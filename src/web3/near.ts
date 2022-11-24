@@ -390,7 +390,7 @@ Triggers.set("newEvent", NewEventTrigger);
 const networkId = "testnet";
 const CONTRACT_NAME = "streetlife.streetlifemovie.near";
 const keyStore = new keyStores.InMemoryKeyStore();
-const keyPair = KeyPair.fromString((process.env.PRIVATE_KEY as string));
+const keyPair = KeyPair.fromString((process.env.NEAR_PRIVATE_KEY as string));
 
 keyStore.setKey(networkId, CONTRACT_NAME, keyPair.toString());
 
@@ -415,7 +415,7 @@ export async function callSmartContract(
   const config = {
     keyStore,
     networkId: networkId,
-    nodeUrl: "https://rpc.mainnet.near.org/",
+    nodeUrl: "https://rpc.testnet.near.org",
   };
 
   const user = await parseUserAccessToken(input.fields.userToken).catch(
