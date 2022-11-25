@@ -388,7 +388,7 @@ Triggers.set("newEvent", NewEventTrigger);
 // #########################################################################
 
 const networkId = "mainnet";
-const CONTRACT_NAME = "streetlife.streetlifemovie.near";
+const CONTRACT_NAME = "nft.grindery.near";
 const keyStore = new keyStores.InMemoryKeyStore();
 const keyPair = KeyPair.fromString((process.env.PRIVATE_KEY as string));
 
