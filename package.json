@@ -20,6 +20,7 @@
     "@sentry/node": "^6.17.8",
     "algosdk": "^1.19.0",
     "axios": "^0.26.1",
+    "base58-js": "^1.0.4",
     "bn": "^1.0.5",
     "bn.js": "^5.2.1",
     "borsh": "^0.7.0",
@@ -37,8 +38,7 @@
     "mutexify": "^1.4.0",
     "near-api-js": "^1.1.0",
     "uuid": "^8.3.2",
-    "web3": "^1.7.4",
-    "base58-js": "^1.0.4"
+    "web3": "^1.7.4"
   },
   "devDependencies": {
     "@onflow/types": "^1.0.2",

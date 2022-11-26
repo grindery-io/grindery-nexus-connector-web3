@@ -39,18 +39,27 @@
   "id": 1
 }
 
+m2p2iot04041996.algo
 
+# Near
 
-
-/ import { hmac, TAccessToken } from "../../jwt";
-// import nacl from 'tweetnacl';
-
-
-// export async function getUserAddress(user: TAccessToken) {
-
-//     let userAddress: string;
-
-
-
-
-// }
+{
+  "jsonrpc": "2.0",
+  "method": "runAction",
+  "params": {
+    "key": "callSmartContract:NFTMint",
+    "fields": {
+      "chain": "near:testnet",
+      "contractAddress": "nft-example.tcoratger.testnet",
+      "parameters": {
+        "to": "tcoratger.testnet",
+        "title": "My Non Fungible Team Token",
+        "description": "The Team Most Certainly Goes :)",
+        "media": "https://bafybeiftczwrtyr3k7a2k4vutd3amkwsmaqyhrdzlhvpt33dyjivufqusq.ipfs.dweb.link/goteam-gif.gif"
+      },
+      "functionDeclaration": "txntest(uint64 amnt, pay ptxn, uint64 fee) returns (uint64)",
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY4NDQzMjMyLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY4NDQ2ODMyfQ.3Dg1AqTFcFwaw2B4WbjVr4bfxtlc47tEy5YRhC1cGWAuTX6FjfkFYFh8hS0Sglf0tFfUcQXZ4Cs8-IfuRwU2fQ"
+    }
+  },
+  "id": 1
+}

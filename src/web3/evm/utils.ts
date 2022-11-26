@@ -5,6 +5,7 @@ import { getWeb3 } from "./web3";
 import { hmac, TAccessToken } from "../../jwt";
 
 export const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
+// export const HUB_ADDRESS = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5";
 
 export function onNewBlockMultiChain(
   chains: string | string[],

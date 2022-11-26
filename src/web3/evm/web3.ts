@@ -9,8 +9,11 @@ export function getWeb3(chain = "eth") {
     : [(CHAIN_MAPPING[chain] as string) || "", ""];
   const isRawUrl = url.includes("://");
   if (!isRawUrl) {
-    urlHttp = `https://rpc.ankr.com/${url || chain}/${process.env.ANKR_KEY}`;
-    url = `wss://rpc.ankr.com/${url || chain}/ws/${process.env.ANKR_KEY}`;
+    // urlHttp = `https://rpc.ankr.com/${url || chain}/${process.env.ANKR_KEY}`;
+    // url = `wss://rpc.ankr.com/${url || chain}/ws/${process.env.ANKR_KEY}`;
+
+    urlHttp = `https://rpc.ankr.com/${url || chain}`;
+    url = `wss://rpc.ankr.com/${url || chain}/ws`;
   }
   let wrapper = web3Cache.get(url);
   if (!wrapper || wrapper.isClosed()) {
