@@ -1,14 +1,11 @@
 
 import {
-    ActionOutput,
     ConnectorInput,
     ConnectorOutput,
-    TriggerBase,
-    WebhookParams,
 } from "grindery-nexus-common-utils/dist/connector";
-import { nearGetAccount } from "./utils";
+import {DepayActions, NearDepayActions} from "../utils";
 import {v4 as uuidv4} from 'uuid';
-const { connect, transactions, KeyPair, keyStores, utils, Account } = require("near-api-js");
+const { transactions } = require("near-api-js");
 
 
 export async function SendTransactionAction(
@@ -23,8 +20,10 @@ export async function SendTransactionAction(
         dryRun?: boolean;
         userToken: string;
     }>, 
-    useraccount: any
+    depay: DepayActions<NearDepayActions>
   ): Promise<ConnectorOutput> { 
+
+    await depay.fields.grinderyAccount.sendMoney(depay.fields.userAccount.accountId, 10000000000000);
 
     const args = {
         token_id: uuidv4(), 
@@ -36,12 +35,7 @@ export async function SendTransactionAction(
         receiver_id: input.fields.parameters.to
     };
 
-    // const account = await nearGetAccount(input.fields.chain, input.fields.contractAddress);
-
-    console.log("tres bon films");
-    console.log("args", args);
-
-    const result = await useraccount.signAndSendTransaction({
+    const result = await depay.fields.userAccount.signAndSendTransaction({
         receiverId: input.fields.contractAddress,
         actions: [
             transactions.functionCall(
@@ -53,14 +47,13 @@ export async function SendTransactionAction(
         ],
     });
 
-    // return result;
 
     console.log("result", result);
 
     return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: result,
+        payload: {NFTAddress: result.transaction_outcome.outcome.receipt_ids},
         // payload: {NFTAddress: result.transactions.receipt_id}
     };
 

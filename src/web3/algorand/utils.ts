@@ -5,6 +5,7 @@ import Web3 from "web3";
 import { AbiItem, AbiInput, AbiOutput, StateMutabilityType, AbiType } from "web3-utils";
 import { BlockTransactionObject } from "web3-eth";
 import algosdk from "algosdk";
+import { getNetworkId } from "../utils";
 
 export async function getUserAccountAlgorand(user: TAccessToken): Promise<algosdk.Account> {
 
@@ -47,4 +48,23 @@ export function parseFunctionDeclarationAlgorand(functionDeclaration: string): a
 
     return new algosdk.ABIMethod({name:name, args:args, returns:returns[0]});
 
+}
+
+export async function getAlgodClient(chain: string) {
+
+    const networkId = await getNetworkId(chain);
+    const baseServer = `https://${networkId}-algorand.api.purestake.io/ps2`;
+    const port = '';
+    const token = {'X-API-Key': process.env.ALGORAND_API_KEY!}
+
+    return new algosdk.Algodv2(token, baseServer, port); 
+}
+
+export async function setSpFee(fees: number, algodClient: algosdk.Algodv2) {
+
+    const sp = await algodClient.getTransactionParams().do();
+    sp.flatFee = true;
+    sp.fee = fees;
+
+    return sp;
 }

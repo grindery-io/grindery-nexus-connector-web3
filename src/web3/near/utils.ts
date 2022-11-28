@@ -1,19 +1,7 @@
-
-import {SendTransactionAction} from "../actions"
-
-
-import { EventEmitter } from "node:events";
 import _ from "lodash";
-import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
-import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import { backOff } from "exponential-backoff";
-import blockingTracer from "../../blockingTracer";
-import { hmac, TAccessToken } from "../../jwt";
-import { base58_to_binary } from "base58-js";
-import { base_encode, base_decode } from './serialize';
+import { getNetworkId } from "../utils";
 
-const { connect, transactions, KeyPair, keyStores, utils, Account } = require("near-api-js");
-const fs = require("fs");
+const { connect, keyStores } = require("near-api-js");
 const path = require("path");
 const homedir = require("os").homedir();
 
@@ -45,90 +33,17 @@ const homedir = require("os").homedir();
 
 async function main() {
 
-    // #################################################################
-    // #################################################################
-    // #################################################################
+    const chain = "near:testnet";
+    const key = "callSmartContract:NFTMint";
 
-    const chain: string = "near:testnet";
-    const contractAddress: string =  "nft-example.tcoratger.testnet";
-    const functionDeclaration: string = "txntest(uint64 amnt, pay ptxn, uint64 fee) returns (uint64)";
-    const parameters: { [key: string]: unknown } = {
-        "to": "tcoratger.testnet",
-        "title": "My Non Fungible Team Token",
-        "description": "The Team Most Certainly Goes :)",
-        "media": "https://bafybeiftczwrtyr3k7a2k4vutd3amkwsmaqyhrdzlhvpt33dyjivufqusq.ipfs.dweb.link/goteam-gif.gif"
-      };
-    
-    // #################################################################
-    // #################################################################
-    // #################################################################
+    const result = chain.concat(':' + key.split(':')[1]);
 
-    const CREDENTIALS_DIR = ".near-credentials";
-    const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
-    const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
-    const networkId = chain.split(':')[1];
-
-    // const config = {
-    //     networkId,
-    //     keyStore,
-    //     nodeUrl: `https://rpc.${networkId}.near.org`,
-    //     walletUrl: `https://wallet.${networkId}.near.org`,
-    //     helperUrl: `https://helper.${networkId}.near.org`,
-    //     explorerUrl: `https://explorer.${networkId}.near.org`,
-    // };
-    
-    
-    const public_key_tcoratger_wallet = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C4";
-
-    // const near = await connect({ ...config, keyStore });
-    // const account = await near.account(process.env.NEAR_ACCOUNT_ID);  
-
-    const account =  await nearGetAccount(chain, process.env.NEAR_ACCOUNT_ID);
-
-    const newKeyPair = KeyPair.fromRandom('ed25519');
-    const newPublicKey = await newKeyPair.getPublicKey();
-    const useraccountId = ("grindery" + public_key_tcoratger_wallet).toLowerCase();
-    // let UserAccount = await near.account(useraccountId);
-
-    let UserAccount = await nearGetAccount(chain, useraccountId);
-
-    console.log("useraccountId", useraccountId);
-
-    try {
-        await UserAccount.state()
-    } catch (e) {
-        if (e.type === 'HANDLER_ERROR') {
-            console.log("account to be created");
-            await account.createAccount(useraccountId, newPublicKey, await utils.format.parseNearAmount('1'))
-            await keyStore.setKey(networkId, useraccountId, newKeyPair);
-            console.log("account created");
-        }
-    }
-
-    // UserAccount = await near.account(useraccountId);
-
-    UserAccount = await nearGetAccount(chain, useraccountId);
-
-    SendTransactionAction(UserAccount, UserAccount)
-
-    // let amountToUser = 10000000000000;
-
-    // await UserAccount.sendMoney(process.env.NEAR_ACCOUNT_ID, amountToUser);
-
-    // const result = await UserAccount.signAndSendTransaction({
-    // receiverId: process.env.NEAR_ACCOUNT_ID, 
-    // actions: [
-    //     await transactions.functionCall(
-    //     "set_greeting",
-    //     {greeting: "message test"},
-    //     amountToUser
-    //     )
-    // ]
-    // });
-    
+    console.log(result);
 }
 
 // main()
+
+
 
 
 export async function nearGetAccount(chain: string, accountId: string | undefined) {
@@ -144,10 +59,6 @@ export async function nearGetAccount(chain: string, accountId: string | undefine
     };
     const near = await connect({ ...config, keyStore });
     return await near.account(accountId);
-}
-
-export async function getNetworkId(chain: string) {
-    return chain.split(':')[1];
 }
 
 export async function getKeyStore() {

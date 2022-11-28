@@ -26,14 +26,14 @@
   "jsonrpc": "2.0",
   "method": "runAction",
   "params": {
-    "key": "callSmartContract",
+    "key": "callSmartContract:NFTMint",
     "fields": {
       "chain": "algorand:testnet",
       "contractAddress": "QVBTWWUAX2U2CQAJL762Y3J34XFD7ECHXJTTC7SOJE3HKX65KRR5EPDO7U",
       "parameters": {
       },
       "functionDeclaration": "txntest(uint64 amnt, pay ptxn, uint64 fee) returns (uint64)",
-      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY3Njk0NDk5LCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY3Njk4MDk5fQ.eSuX4Jx4VutnAFvs9kC48G4ccHlAuv8OoDzfKZhcFyFQCMda2LxZV4BbZGstFsT-WMoVpKEIexj8O-hg1jm2ZA"
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY5NTkzNjUyLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY5NTk3MjUyfQ.M8a2Fi7TP7bFv9x7qevycvp6uDJB31C1Dh-RLVIJtL0N-Y04_sle-SYdlN9mmCm3ql7JIoupbVaWcCVAa_IzYg"
     }
   },
   "id": 1

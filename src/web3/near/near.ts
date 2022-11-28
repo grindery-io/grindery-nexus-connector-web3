@@ -7,8 +7,10 @@ import blockingTracer from "../../blockingTracer";
 import { hmac, TAccessToken } from "../../jwt";
 import { base58_to_binary } from "base58-js";
 import { base_encode, base_decode } from './serialize';
-import {nearGetAccount, getNetworkId, getKeyStore} from './utils';
-import {SendTransactionAction} from "../actions"
+import {nearGetAccount, getKeyStore} from './utils';
+import {SendTransactionAction} from "../actions";
+import { parseUserAccessToken } from "../../jwt";
+import {getNetworkId, DepayActions, NearDepayActions} from "../utils";
 
 
 const { connect, transactions, KeyPair, keyStores, utils } = require("near-api-js");
@@ -348,13 +350,17 @@ export async function callSmartContract(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
     dryRun?: boolean;
+    userToken: string;
   }>
 ): Promise<ConnectorOutput> {
 
+  // const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  // if (!user) {
+  //   throw new Error("User token is invalid");
+  // }
+
   const account = await nearGetAccount(input.fields.chain, process.env.NEAR_ACCOUNT_ID);
   const useraccountId = ("grindery" + process.env.PUBLIC_KEY_USER).toLowerCase();
-  // let useraccount = await near.account(useraccountId);
-
   let useraccount = await nearGetAccount(input.fields.chain, useraccountId);
 
   console.log("useraccountId", useraccountId);
@@ -374,19 +380,13 @@ export async function callSmartContract(
     }
   }
 
+  const depayparameter : DepayActions<NearDepayActions> = {
+    fields: {grinderyAccount: account,
+    userAccount: await nearGetAccount(input.fields.chain, useraccountId)
+  }}
 
+  return await SendTransactionAction(input, depayparameter)
 
-  // useraccount = await near.account(useraccountId);
-
-  useraccount = await nearGetAccount(input.fields.chain, useraccountId);
-
-  await useraccount.sendMoney(useraccountId, 10000000000000);
-
-  return await SendTransactionAction(input, useraccount)
-
-
-  // console.log("callSmartContract", input);
-  throw new Error("Not implemented");
 }
 
 export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
