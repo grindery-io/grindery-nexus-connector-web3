@@ -23,6 +23,5 @@
       "desc": "Useless method that just demonstrates specifying a transaction in the method signature"
     }
   ],
-  "desc": null,
   "networks": {}
 }

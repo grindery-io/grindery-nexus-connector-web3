@@ -2,8 +2,13 @@
 import algosdk from "algosdk";
 import {TextEncoder} from "util";
 import {open, readFile} from 'node:fs/promises';
+import { readFileSync } from 'fs';
 
-require('dotenv').config({ path: '../../../.env' })
+
+// require('dotenv').config({ path: '../../../../.env' })
+
+require('dotenv').config();
+
 
 const baseServer = 'https://testnet-algorand.api.purestake.io/ps2'
 const port = '';
@@ -32,8 +37,8 @@ async function compileProgram(client: any, TealSource: any) {
         const globalInts = 1
         const globalBytes = 0
 
-        let approvalProgramfile = await open('./approval.teal');
-        let clearProgramfile = await open('./clear.teal');
+        let approvalProgramfile = await open('./src/web3/algorand/contracts/txntest/approval.teal');
+        let clearProgramfile = await open('./src/web3/algorand/contracts/txntest/clear.teal');
 
         const approvalProgram = await approvalProgramfile.readFile();
         const clearProgram = await clearProgramfile.readFile();

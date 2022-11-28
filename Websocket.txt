@@ -26,14 +26,18 @@
   "jsonrpc": "2.0",
   "method": "runAction",
   "params": {
-    "key": "callSmartContract:NFTMint",
+    "key": "callSmartContract:txtest",
     "fields": {
       "chain": "algorand:testnet",
       "contractAddress": "QVBTWWUAX2U2CQAJL762Y3J34XFD7ECHXJTTC7SOJE3HKX65KRR5EPDO7U",
       "parameters": {
+        "unitName":"ALICEART",
+        "assetName":"Alice's Artwork@arc3",
+        "image_url":"https://c0.lestechnophiles.com/www.numerama.com/wp-content/uploads/2021/12/nft-singes-1024x576.jpg?webp=1&key=681596ec",
+        "to":"G53BTEF3OSZXDBHLDKXNE5Q4GYQRJ7S3G3D3QEFAD2JDNCTJ55CAAZK63U"
       },
       "functionDeclaration": "txntest(uint64 amnt, pay ptxn, uint64 fee) returns (uint64)",
-      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY5NTkzNjUyLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY5NTk3MjUyfQ.M8a2Fi7TP7bFv9x7qevycvp6uDJB31C1Dh-RLVIJtL0N-Y04_sle-SYdlN9mmCm3ql7JIoupbVaWcCVAa_IzYg"
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY5NjY2MDMxLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY5NjY5NjMxfQ.IlWx4pPT4ZGe4LZk7EDIGkBn6nM5eEJ_agj4UbuDXQVqYLdFkRUz1k8DKBRpRp46kpPhGes9bMHGDHMZsg2d1g"
     }
   },
   "id": 1
@@ -47,7 +51,7 @@ m2p2iot04041996.algo
   "jsonrpc": "2.0",
   "method": "runAction",
   "params": {
-    "key": "callSmartContract:NFTMint",
+    "key": "callSmartContract:txtest",
     "fields": {
       "chain": "near:testnet",
       "contractAddress": "nft-example.tcoratger.testnet",

@@ -408,31 +408,31 @@ export async function callSmartContract(
   const intermediary = grinderyAccount.addr;
   const receiver = input.fields.contractAddress;
 
-  // We initialize the common parameters here, they'll be passed to all the transactions
-  // since they happen to be the same
-  const spNoFee = await setSpFee(0, algodClient);
-  const spFullFee = await setSpFee(3 * algosdk.ALGORAND_MIN_TX_FEE, algodClient);
+  // // We initialize the common parameters here, they'll be passed to all the transactions
+  // // since they happen to be the same
+  // const spNoFee = await setSpFee(0, algodClient);
+  // const spFullFee = await setSpFee(3 * algosdk.ALGORAND_MIN_TX_FEE, algodClient);
 
-  // Transaction from the user to the dApp (amount = 0 and fees = 0)
-  const txn = algosdk.makePaymentTxnWithSuggestedParams(
-    sender, 
-    receiver!, 
-    0, 
-    undefined, 
-    undefined, 
-    spNoFee
-  );
+  // // Transaction from the user to the dApp (amount = 0 and fees = 0)
+  // const txn = algosdk.makePaymentTxnWithSuggestedParams(
+  //   sender, 
+  //   receiver!, 
+  //   0, 
+  //   undefined, 
+  //   undefined, 
+  //   spNoFee
+  // );
 
-  comp.addTransaction({
-    txn: txn,
-    signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
-  });
+  // comp.addTransaction({
+  //   txn: txn,
+  //   signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
+  // });
 
-  const commonParamsFullFee = {
-    sender: grinderyAccount.addr,
-    suggestedParams: spFullFee,
-    signer: algosdk.makeBasicAccountTransactionSigner(grinderyAccount),
-  };
+  // const commonParamsFullFee = {
+  //   sender: grinderyAccount.addr,
+  //   suggestedParams: spFullFee,
+  //   signer: algosdk.makeBasicAccountTransactionSigner(grinderyAccount),
+  // };
 
   // comp.addMethodCall({
   //   appID: Number(process.env.ALGORAND_APP_ID!),
@@ -470,10 +470,9 @@ export async function callSmartContract(
     fields: {
       comp: comp,
       algodClient: algodClient,
+      userAccount: userAccount,
       grinderyAccount: grinderyAccount,
-      receiver: receiver,
-      spNoFee: spNoFee,
-      commonParamsFullFee: commonParamsFullFee
+      receiver: receiver
     }
   }
 

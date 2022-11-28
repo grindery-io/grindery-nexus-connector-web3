@@ -18,7 +18,6 @@ export type AlgorandDepayActions = {
     comp: algosdk.AtomicTransactionComposer;
     algodClient: algosdk.Algodv2;
     grinderyAccount: algosdk.Account;
+    userAccount: algosdk.Account;
     receiver: string;
-    spNoFee: algosdk.SuggestedParams;
-    commonParamsFullFee: any;
 };

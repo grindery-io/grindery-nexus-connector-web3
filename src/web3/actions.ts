@@ -7,6 +7,7 @@ import {
 } from "grindery-nexus-common-utils/dist/connector";
 
 import * as nftnear from "./near/nftnear";
+import * as txtestalgorand from "./algorand/txtestalgorand";
 import * as nftalgorand from "./algorand/nftalgorand";
 import { DepayActions } from "./utils";
 
@@ -21,6 +22,8 @@ const ACTIONS: {
     "near:mainnet:NFTMint": nftnear,
     "algorand:testnet:NFTMint": nftalgorand,
     "algorand:mainnet:NFTMint": nftalgorand,
+    "algorand:testnet:txtest": txtestalgorand,
+    "algorand:mainnet:txtest": txtestalgorand,
 };
 
 export function SendTransactionAction(input: ConnectorInput<{chain: string;}>, depay: DepayActions<unknown>) {
