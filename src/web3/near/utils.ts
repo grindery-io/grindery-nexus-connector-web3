@@ -1,7 +1,17 @@
 import _ from "lodash";
 import { getNetworkId } from "../utils";
+import * as ed25519 from "ed25519";
+import { hmac, TAccessToken } from "../../jwt";
+import { Buffer } from 'buffer';
+const Base58 = require("base-58")
+import * as ed from '@noble/ed25519';
+const textEncoding = require('text-encoding');
+import { base_encode, base_decode } from './serialize';
 
-const { connect, keyStores } = require("near-api-js");
+
+var crypto = require('crypto');
+
+const { connect, keyStores, nearConnection, transactions, utils, KeyPair, KeyPairEd25519 } = require("near-api-js");
 const path = require("path");
 const homedir = require("os").homedir();
 
@@ -33,12 +43,45 @@ const homedir = require("os").homedir();
 
 async function main() {
 
+    console.log("toto");
+
+    const PUBLIC_KEY_USER="0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad0U1"
     const chain = "near:testnet";
-    const key = "callSmartContract:NFTMint";
+    const nearaccountId = "tcoratger.testnet"
+    
+    // const account = await nearGetAccount(chain, nearaccountId);
+    // const useraccountId = ("grindery" + PUBLIC_KEY_USER).toLowerCase();
+    // let useraccount = await nearGetAccount(chain, useraccountId);
 
-    const result = chain.concat(':' + key.split(':')[1]);
+    // console.log("useraccountId", useraccountId);
 
-    console.log(result);
+    // try {
+    //     await useraccount.state()
+    // } catch (e) {
+    //     if (e.type === 'HANDLER_ERROR') {
+    //     console.log("new account to be created");
+    //     const keyStore = await getKeyStore();
+    //     const networkId = await getNetworkId(chain);
+    //     const newKeyPair = KeyPair.fromRandom('ed25519');
+
+
+    //     // const privateKey= base_encode((await hmac("grindery-web3-address-sub/" + PUBLIC_KEY_USER)).subarray(0, 64));
+    //     // let newKeyPair = await KeyPair.fromString('ed25519:' + privateKeyTmp);
+
+
+
+    //     const newPublicKey = await newKeyPair.getPublicKey();
+    //     await account.createAccount(useraccountId, newPublicKey, await utils.format.parseNearAmount('1'))
+    //     await keyStore.setKey(networkId, useraccountId, newKeyPair);
+    //     console.log("new account created with userID ", useraccountId);
+    //     }
+    // }
+
+    // await useraccount.sendMoney(useraccountId, 10000000000000);
+
+    
+
+    
 }
 
 // main()

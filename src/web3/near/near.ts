@@ -11,6 +11,7 @@ import {nearGetAccount, getKeyStore} from './utils';
 import {SendTransactionAction} from "../actions";
 import { parseUserAccessToken } from "../../jwt";
 import {getNetworkId, DepayActions, NearDepayActions} from "../utils";
+import { TRANSACTION_TRANSPORT_CATEGORY } from "@sentry/core/types/transports/base";
 
 
 const { connect, transactions, KeyPair, keyStores, utils } = require("near-api-js");

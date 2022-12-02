@@ -14,7 +14,7 @@
         "value": "1"
       },
       "functionDeclaration": "transfer(address to, uint256 value) returns (bool)",
-      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHgwZGVENzgyMjhBMjY2NDQzNGZFZDFBNUY2ZDAxN0E2NTdlNEU0RDMyIiwiaWF0IjoxNjY2OTM4NzE0LCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY2OTQyMzE0fQ.6AB97HJAI_Ak6rUPy22SXI5-oyH4MI0VcPW5egZZkXXGgwsaMu6fJxiLMnREB62x7UDykKV8JJuFvp4luFncuQ"
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY5ODQzMTcwLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY5ODQ2NzcwfQ.YkdcXZeJfckp9fTCdNCRksb3v4xjNHwKHuLzS9hmMnWn8DLu_3e3nf9VQHL_-AlC-ohMWdlc4n7VFXpQVsKxjg"
     }
   },
   "id": 1
@@ -26,7 +26,7 @@
   "jsonrpc": "2.0",
   "method": "runAction",
   "params": {
-    "key": "callSmartContract:txtest",
+    "key": "callSmartContract:NFTMint",
     "fields": {
       "chain": "algorand:testnet",
       "contractAddress": "QVBTWWUAX2U2CQAJL762Y3J34XFD7ECHXJTTC7SOJE3HKX65KRR5EPDO7U",
@@ -37,7 +37,7 @@
         "to":"G53BTEF3OSZXDBHLDKXNE5Q4GYQRJ7S3G3D3QEFAD2JDNCTJ55CAAZK63U"
       },
       "functionDeclaration": "txntest(uint64 amnt, pay ptxn, uint64 fee) returns (uint64)",
-      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY5NjY2MDMxLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY5NjY5NjMxfQ.IlWx4pPT4ZGe4LZk7EDIGkBn6nM5eEJ_agj4UbuDXQVqYLdFkRUz1k8DKBRpRp46kpPhGes9bMHGDHMZsg2d1g"
+      "userToken": "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY5OTYxMDE3LCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY5OTY0NjE3fQ.C-u3QJvgl2_FLWq_bkaeTEQqT0Mneegr-I2uyrxcXOfQTt971EvTJ2JPz26faQa-XE3HZ72_R0Fv463gZpPemg"
     }
   },
   "id": 1
@@ -51,7 +51,7 @@ m2p2iot04041996.algo
   "jsonrpc": "2.0",
   "method": "runAction",
   "params": {
-    "key": "callSmartContract:txtest",
+    "key": "callSmartContract:NFTMint",
     "fields": {
       "chain": "near:testnet",
       "contractAddress": "nft-example.tcoratger.testnet",

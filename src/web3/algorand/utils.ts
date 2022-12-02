@@ -6,11 +6,12 @@ import { AbiItem, AbiInput, AbiOutput, StateMutabilityType, AbiType } from "web3
 import { BlockTransactionObject } from "web3-eth";
 import algosdk from "algosdk";
 import { getNetworkId } from "../utils";
+import AlgodClient from "algosdk/dist/types/src/client/v2/algod/algod";
 
 export async function getUserAccountAlgorand(user: TAccessToken): Promise<algosdk.Account> {
 
     const lengthSecretKey = nacl.box.secretKeyLength;
-    const seed = (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, lengthSecretKey);
+    const seed = (await hmac("grindery-algorand-key/" + user.sub)).subarray(0, lengthSecretKey);
     const keypair = nacl.sign.keyPair.fromSeed(seed);
     const encodedPk = algosdk.encodeAddress(keypair.publicKey);
 
@@ -67,4 +68,61 @@ export async function setSpFee(fees: number, algodClient: algosdk.Algodv2) {
     sp.fee = fees;
 
     return sp;
+}
+
+export async function getbalance(
+    account: algosdk.Account, 
+    algodClient: algosdk.Algodv2
+): Promise<any> {
+    let accountInfo = await algodClient.accountInformation(account.addr).do();
+    return accountInfo.amount;
+} 
+
+export async function feedAccount(
+    from: algosdk.Account, 
+    to: algosdk.Account, 
+    amount: number | bigint,
+    algodClient: algosdk.Algodv2,
+) : Promise<Record<string, any>> {
+
+    // Check balances
+    console.log("Grindery account balance: %d microAlgos", await getbalance(from, algodClient));
+    console.log("User account balance: %d microAlgos", await getbalance(to, algodClient));
+
+    // Transaction to feed the user account
+    const txnToFeedUser = algosdk.makePaymentTxnWithSuggestedParams(
+        from.addr, 
+        to.addr, 
+        amount, 
+        undefined, 
+        undefined, 
+        await setSpFee(algosdk.ALGORAND_MIN_TX_FEE, algodClient)
+    );
+
+    let signedTxn = txnToFeedUser.signTxn(from.sk);
+    let txId = txnToFeedUser.txID().toString();
+    console.log("Signed transaction with txID: %s", txId);
+
+    // Submit the transaction
+    await algodClient.sendRawTransaction(signedTxn).do();
+
+    // Wait for confirmation
+    let confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
+    //Get the completed Transaction
+    console.log("Transaction " + txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
+    // let mytxinfo = JSON.stringify(confirmedTxn.txn.txn, undefined, 2);
+    // console.log("Transaction information: %o", mytxinfo);
+    let string = new TextDecoder().decode(confirmedTxn.txn.txn.note);
+    console.log("Note field: ", string);
+    
+    // Check balances
+    console.log("Grindery account balance: %d microAlgos", await getbalance(from, algodClient));
+    console.log("User account balance: %d microAlgos", await getbalance(to, algodClient));
+
+
+    console.log("Transaction Amount: %d microAlgos", confirmedTxn.txn.txn.amt);        
+    console.log("Transaction Fee: %d microAlgos", confirmedTxn.txn.txn.fee);
+
+    return confirmedTxn;
+
 }

@@ -165,11 +165,14 @@ export async function callSmartContract(
       let callResult, callResultDecoded;
       try {
         callResult = await web3.eth.call(txConfig);
+        console.log("toto post")
+        console.log(droneAddress);
         if (droneAddress) {
           const decoded = web3.eth.abi.decodeParameters(
             GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
             callResult
           );
+          console.log("decoded", decoded);
           if (!decoded.success) {
             await web3.eth.call({ ...rawTxConfig, from: droneAddress });
             throw new Error("Transaction failed with unknown error");
@@ -181,6 +184,7 @@ export async function callSmartContract(
             }
           }
         }
+        console.log("toto1")
       } catch (e) {
         if (!input.fields.dryRun) {
           throw e;
