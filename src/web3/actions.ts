@@ -26,12 +26,14 @@ const ACTIONS: {
     "algorand:mainnet:txtest": txtestalgorand,
 };
 
-export function SendTransactionAction(input: ConnectorInput<{chain: string;}>, depay: DepayActions<unknown>) {
+export function SendTransactionAction(input: ConnectorInput<{chain: string; functionDeclaration: string;}>, depay: DepayActions<unknown>) {
 
     console.log("SendTransactionAction")
     console.log("module: " + input.key);
 
-    const key = input.fields.chain.concat(':' + input.key.split(':')[1]);
+    // const key = input.fields.chain.concat(':' + input.key.split(':')[1]);
+
+    const key = input.fields.chain.concat(':' + input.fields.functionDeclaration);
     const module = ACTIONS[key];
     
     return module.SendTransactionAction(input, depay);

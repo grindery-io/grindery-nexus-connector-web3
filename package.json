@@ -18,6 +18,7 @@
     "@onflow/fcl": "^1.2.0",
     "@onflow/six-create-account": "^0.0.9",
     "@sentry/node": "^6.17.8",
+    "algosdk": "^1.23.2",
     "axios": "^0.26.1",
     "base58-js": "^1.0.4",
     "console-log-json": "github:SAPikachu/console-log-json",

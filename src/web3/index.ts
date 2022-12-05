@@ -3,7 +3,8 @@ import * as evm from "./evm";
 import * as near from "./near";
 import * as neartest from "./near";
 import * as flow from "./flow";
-import * as algorand from "./algorand";
+import * as algorand from "./algorand/algorand";
+import * as algorandtest from "./algorand/algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { TAccessToken } from "../jwt";
 
@@ -25,6 +26,8 @@ export const CHAINS: {
   "flow:mainnet": flow,
   algorand,
   "algorand:mainnet": algorand,
+  algorandtest,
+  "algorand:testnet": algorandtest,
 };
 
 export function getTriggerClass(

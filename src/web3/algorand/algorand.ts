@@ -355,13 +355,6 @@ export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerB
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
-
-
-
-// ###################################################################
-// ###################################################################
-// ###################################################################
-
 const createAccount = function() {
   try {  
     const userAccount = algosdk.generateAccount();
@@ -392,6 +385,8 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
 
+  console.log("algorand début"); //
+
   const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
@@ -407,6 +402,8 @@ export async function callSmartContract(
   const sender = userAccount.addr;
   const intermediary = grinderyAccount.addr;
   const receiver = input.fields.contractAddress;
+
+  console.log("test1")
 
   // // We initialize the common parameters here, they'll be passed to all the transactions
   // // since they happen to be the same
