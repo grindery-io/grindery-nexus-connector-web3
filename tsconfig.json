@@ -9,8 +9,6 @@
     "sourceMap": true,
     "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
-    "module": "commonjs",
-    "target": "esnext",
     "lib": [
       "es2018",
       "dom"
