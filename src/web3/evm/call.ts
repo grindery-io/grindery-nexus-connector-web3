@@ -1,6 +1,6 @@
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { TransactionConfig } from "web3-core";
-import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "./utils";
+import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS, getMetadataFromCID } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { parseUserAccessToken } from "../../jwt";
@@ -138,8 +138,19 @@ export async function callSmartContract(
         }
         paramArray.push(input.fields.parameters[i.name]);
       }
+    
+      // NFT minting ipfs metadata
+      if (functionInfo.name === "mintNFT") {
+        const metadata = JSON.stringify(input.fields.parameters.tokenURI);
+        const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
+        let ipfs = await IPFS.create(); 
+        const cid = await ipfs.add(metadata);
+        const indexTokenURI = functionInfo.inputs!.findIndex(e => e.name === 'tokenURI');
+        paramArray[indexTokenURI] = "ipfs://" + cid.path 
+      }
       callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
+
     const rawTxConfig: TransactionConfig = {
       from: web3.defaultAccount,
       to: input.fields.contractAddress,
@@ -156,6 +167,7 @@ export async function callSmartContract(
         }
       : await transactionMutexes[input.fields.chain]();
     try {
+      console.log("userAddress", userAddress)
       const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
         rawTxConfig,
         userAddress,
@@ -163,47 +175,52 @@ export async function callSmartContract(
         web3
       );
       let callResult, callResultDecoded;
-      try {
-        callResult = await web3.eth.call(txConfig);
-        if (droneAddress) {
-          const decoded = web3.eth.abi.decodeParameters(
-            GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
-            callResult
-          );
-          if (!decoded.success) {
-            await web3.eth.call({ ...rawTxConfig, from: droneAddress });
-            throw new Error("Transaction failed with unknown error");
-          }
-          if (functionInfo.outputs?.length) {
-            callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
-            if (functionInfo.outputs.length === 1) {
-              callResultDecoded = callResultDecoded[0];
-            }
-          }
-        }
-      } catch (e) {
-        if (!input.fields.dryRun) {
-          throw e;
-        }
-        return {
-          key: input.key,
-          sessionId: input.sessionId,
-          payload: {
-            _grinderyDryRunError:
-              "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
-          },
-        };
-      }
+      // try {
+      //   callResult = await web3.eth.call(txConfig);
+      //   if (droneAddress) {
+      //     const decoded = web3.eth.abi.decodeParameters(
+      //       GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
+      //       callResult
+      //     );
+      //     if (!decoded.success) {
+      //       await web3.eth.call({ ...rawTxConfig, from: droneAddress });
+      //       throw new Error("Transaction failed with unknown error");
+      //     }
+      //     if (functionInfo.outputs?.length) {
+      //       callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
+      //       if (functionInfo.outputs.length === 1) {
+      //         callResultDecoded = callResultDecoded[0];
+      //       }
+      //     }
+      //   }
+      //   console.log("après comment")
+      // } catch (e) {
+      //   if (!input.fields.dryRun) {
+      //     throw e;
+      //   }
+      //   return {
+      //     key: input.key,
+      //     sessionId: input.sessionId,
+      //     payload: {
+      //       _grinderyDryRunError:
+      //         "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
+      //     },
+      //   };
+      // }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+
+
       txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
-      let result: unknown;
+      let result: any;
       for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
         if (key in input.fields && typeof input.fields[key] === "string") {
           input.fields[key] = web3.utils.toWei(input.fields[key], "ether");
         }
       }
+
       const gas = await web3.eth.estimateGas(txConfig);
-      txConfig.gas = Math.ceil(gas * 1.1 + 10000);
+      txConfig.gas = Math.ceil(gas * 1.1 + 100000);
       let minFee: number;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
@@ -232,6 +249,7 @@ export async function callSmartContract(
         txConfig.gasPrice = gasPrice.toString();
         minFee = gasPrice.mul(txConfig.gas).toNumber();
       }
+
       if (isSimulation) {
         result = {
           returnValue: callResultDecoded,
@@ -239,59 +257,77 @@ export async function callSmartContract(
           minFee,
         };
       } else {
+
+
         const receipt = await web3.eth.sendTransaction(txConfig);
         releaseLock(); // Block less time
         result = receipt;
         const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
-        if (process.env.GAS_DEBIT_WEBHOOK) {
-          axios
-            .post(process.env.GAS_DEBIT_WEBHOOK, {
-              transaction: receipt.transactionHash,
-              block: receipt.blockNumber,
-              chain: input.fields.chain,
-              contractAddress: input.fields.contractAddress,
-              user: user.sub,
-              gasCost: cost,
-            })
-            .catch((e) => {
-              const resp = e.response as AxiosResponse;
-              console.error(
-                "Failed to call gas debit webhook",
-                { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
-                e instanceof Error ? e : null
-              );
-            });
-        } else {
-          console.debug("Gas debit webhook is disabled");
-        }
-        if (droneAddress) {
-          const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
-          const eventSignature = web3.eth.abi.encodeEventSignature(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            eventAbi as any
-          );
-          const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
-          if (!log) {
-            throw new Error("No transaction result log in receipt");
-          }
-          const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
-          if (resultData.success) {
-            if (functionInfo.outputs?.length) {
-              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
-              if (functionInfo.outputs.length === 1) {
-                callResultDecoded = callResultDecoded[0];
-              }
-              result = { ...receipt, returnValue: callResultDecoded };
-            }
-          } else {
-            throw new Error("Unexpected failure: " + resultData.returnData);
-          }
-        }
+
+        console.log("result: " + JSON.stringify(result))
+
+        // if (process.env.GAS_DEBIT_WEBHOOK) {
+        //   axios
+        //     .post(process.env.GAS_DEBIT_WEBHOOK, {
+        //       transaction: receipt.transactionHash,
+        //       block: receipt.blockNumber,
+        //       chain: input.fields.chain,
+        //       contractAddress: input.fields.contractAddress,
+        //       user: user.sub,
+        //       gasCost: cost,
+        //     })
+        //     .catch((e) => {
+        //       const resp = e.response as AxiosResponse;
+        //       console.error(
+        //         "Failed to call gas debit webhook",
+        //         { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
+        //         e instanceof Error ? e : null
+        //       );
+        //     });
+        // } else {
+        //   console.debug("Gas debit webhook is disabled");
+        // }
+
+
+
+
+
+
+        // if (droneAddress) {
+        //   const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
+        //   const eventSignature = web3.eth.abi.encodeEventSignature(
+        //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        //     eventAbi as any
+        //   );
+        //   const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
+        //   if (!log) {
+        //     throw new Error("No transaction result log in receipt");
+        //   }
+        //   const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
+        //   if (resultData.success) {
+        //     if (functionInfo.outputs?.length) {
+        //       callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
+        //       if (functionInfo.outputs.length === 1) {
+        //         callResultDecoded = callResultDecoded[0];
+        //       }
+        //       result = { ...receipt, returnValue: callResultDecoded };
+        //     }
+        //   } else {
+        //     throw new Error("Unexpected failure: " + resultData.returnData);
+        //   }
+        // }
       }
+
+      let payload:any;
+
+      if (functionInfo.name === "mintNFT") {
+        payload = result.transactionHash
+      }
+      console.log("end call")
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: result,
+        payload: payload,
       };
     } finally {
       releaseLock();
@@ -300,3 +336,164 @@ export async function callSmartContract(
     close();
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+async function test() {
+
+  // #################################################################
+  // #################################################################
+  // #################################################################
+
+  const chain = "eip155:5";
+  const functionDeclaration = "mintNFT(address recipient, string memory tokenURI) returns (uint256)";
+  const parameters = {
+    recipient: "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5",
+    tokenURI: {
+      name: "test name",
+      description: "test description",
+      image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png",
+    },
+    _grinderyUnitConversion_value: "erc20Decimals[@]"
+  }
+
+
+  // const contractAddress = "0x7B999D684C983aF189FAD0bD5b6401A7434FE042";
+  // const contractAddress = "0xDAc4116559B0C494aa13f2a385684536aED6167E";
+  const contractAddress = "0x2d28c8967B240f10e478Da41cD4f749b9fc0d0c0";
+  const userAddress = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5";
+
+
+  // #################################################################
+  // #################################################################
+  // #################################################################
+
+  const { web3, close, ethersProvider } = getWeb3(chain);
+
+  web3.eth.transactionConfirmationBlocks = 1;
+  if (!web3.defaultAccount) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
+    web3.eth.accounts.wallet.add(account);
+    web3.eth.defaultAccount = account.address;
+    web3.defaultAccount = account.address;
+  }
+
+  let functionInfo, callData;
+  const paramArray = [] as any[];
+  functionInfo = parseFunctionDeclaration(functionDeclaration);
+  const inputs = functionInfo.inputs || [];
+  for (const i of inputs) {
+  if (!(i.name in parameters)) {
+      throw new Error("Missing parameter " + i.name);
+  }
+  paramArray.push(parameters[i.name]);
+  }
+
+  // ############################################
+  // ############################################
+  // ############################################
+
+  const metadata = JSON.stringify(parameters.tokenURI);
+
+  console.log("metadata", metadata)
+
+  const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
+  let ipfs = await IPFS.create(); 
+
+  const cid = await ipfs.add(metadata);
+
+  console.log("functionInfo", functionInfo)
+
+  const indexTokenURI = functionInfo.inputs.findIndex(e => e.name === 'tokenURI');
+
+  console.log("test", indexTokenURI)
+  console.log("paramArray", paramArray) 
+
+  paramArray[indexTokenURI] = "ipfs://" + cid.path 
+
+  console.log("paramArray", paramArray)
+
+
+  // ############################################
+  // ############################################
+  // ############################################
+  
+  callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
+
+  const rawTxConfig: TransactionConfig = {
+    from: web3.defaultAccount!,
+    to: contractAddress,
+    data: callData,
+  };
+  const feeData = await ethersProvider.getFeeData();
+
+  console.log("rawTxConfig", rawTxConfig);
+  console.log("userAddress", userAddress);
+  console.log("functionInfo", functionInfo);
+  console.log("paramArray", paramArray);
+
+  // const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
+  //   rawTxConfig,
+  //   userAddress,
+  //   chain,
+  //   web3
+  // );
+
+  console.log("toto")
+
+  let txConfig = rawTxConfig;
+
+
+  const gas = await web3.eth.estimateGas(txConfig);
+
+  console.log("toto1")
+
+  
+  txConfig.gas = Math.ceil(gas * 1.1 + 100000);
+  let minFee: number;
+  if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+    minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10).toNumber();
+    const maxTip =
+      false || Math.floor(minFee / 2);
+    const maxFee = feeData.maxFeePerGas.add(maxTip).toNumber();
+    if (maxFee < minFee) {
+      throw new Error(
+        `Gas limit of is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
+      );
+    }
+    txConfig.maxFeePerGas = maxFee;
+    txConfig.maxPriorityFeePerGas = Number(maxTip);
+  } else {
+    const gasPrice = (feeData.gasPrice || await ethersProvider.getGasPrice()).mul(12).div(10);
+    txConfig.gasPrice = gasPrice.toString();
+    minFee = gasPrice.mul(txConfig.gas).toNumber();
+    console.log("else")
+  }
+
+  console.log("txConfig", txConfig)
+
+  const receipt = await web3.eth.sendTransaction(txConfig);
+  const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+
+  console.log("result: " + JSON.stringify(receipt));
+  console.log("cost: " + cost);
+
+  console.log("toto");
+
+
+
+
+}
+
+
+// test();

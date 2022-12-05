@@ -1,0 +1,1 @@
+/Users/tcoratger/Documents/grindery-nexus-connector-web3/src/web3/near/smart-contracts/target/wasm32-unknown-unknown/release/contract.wasm: /Users/tcoratger/Documents/grindery-nexus-connector-web3/src/web3/near/smart-contracts/src/lib.rs
