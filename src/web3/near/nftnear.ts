@@ -23,8 +23,10 @@ export async function SendTransactionAction(
     depay: DepayActions<NearDepayActions>
   ): Promise<ConnectorOutput> { 
 
+    // Make deposit from grindery account to the user account
     await depay.fields.grinderyAccount.sendMoney(depay.fields.userAccount.accountId, 10000000000000);
 
+    // Set arguments for NFT minting
     const args = {
         token_id: uuidv4(), 
         metadata: {
@@ -35,6 +37,7 @@ export async function SendTransactionAction(
         receiver_id: input.fields.parameters.to
     };
 
+    // Sign and send the transaction using the user account
     const result = await depay.fields.userAccount.signAndSendTransaction({
         receiverId: input.fields.contractAddress,
         actions: [
@@ -53,7 +56,7 @@ export async function SendTransactionAction(
     return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: {NFTAddress: result.transaction_outcome.outcome.receipt_ids},
+        payload: {NFTAddress: result.transaction.hash},
         // payload: {NFTAddress: result.transactions.receipt_id}
     };
 

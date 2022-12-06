@@ -35,6 +35,7 @@ export async function SendTransactionAction(
     depay: DepayActions<AlgorandDepayActions>
   ): Promise<ConnectorOutput> { 
 
+    // Feed the user account
     const confirmedTxn = await feedAccount( 
         depay.fields.grinderyAccount, 
         depay.fields.userAccount, 

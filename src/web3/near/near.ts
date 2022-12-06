@@ -7,12 +7,12 @@ import blockingTracer from "../../blockingTracer";
 import { hmac, TAccessToken } from "../../jwt";
 import { base58_to_binary } from "base58-js";
 import { base_encode, base_decode } from './serialize';
-import {nearGetAccount, getKeyStore} from './utils';
+import {nearGetAccount, getKeyStore, getUserAccountNear} from './utils';
 import {SendTransactionAction} from "../actions";
 import { parseUserAccessToken } from "../../jwt";
 import {getNetworkId, DepayActions, NearDepayActions} from "../utils";
 import { TRANSACTION_TRANSPORT_CATEGORY } from "@sentry/core/types/transports/base";
-
+import nacl, { randomBytes } from 'tweetnacl';
 
 const { connect, transactions, KeyPair, keyStores, utils } = require("near-api-js");
 const fs = require("fs");
@@ -355,52 +355,55 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
 
+  // Verify the userToken is valid
   const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
 
-  // const account = await nearGetAccount(input.fields.chain, process.env.NEAR_ACCOUNT_ID);
-  // const useraccountId = ("grindery" + process.env.PUBLIC_KEY_USER).toLowerCase();
-  // let useraccount = await nearGetAccount(input.fields.chain, useraccountId);
-
-  // console.log("useraccountId", useraccountId);
-
-  // try {
-  //   await useraccount.state()
-  // } catch (e) {
-  //   if (e.type === 'HANDLER_ERROR') {
-  //     console.log("new account to be created");
-  //     const keyStore = await getKeyStore();
-  //     const networkId = await getNetworkId(input.fields.chain);
-  //     const newKeyPair = KeyPair.fromRandom('ed25519');
-  //     const newPublicKey = await newKeyPair.getPublicKey();
-  //     await account.createAccount(useraccountId, newPublicKey, await utils.format.parseNearAmount('1'))
-  //     await keyStore.setKey(networkId, useraccountId, newKeyPair);
-  //     console.log("new account created with userID ", useraccountId);
-  //   }
-  // }
-
-  // const depayparameter : DepayActions<NearDepayActions> = {
-  //   fields: {grinderyAccount: account,
-  //   userAccount: await nearGetAccount(input.fields.chain, useraccountId)
-  // }}
-
-
-
-
   const CONTRACT_NAME = "tcoratger.testnet";
-  const keyStore = new keyStores.InMemoryKeyStore();
-  const keyPair = KeyPair.fromString((process.env.PRIVATE_KEY as string));
-  const account = await nearGetAccount(input.fields.chain, process.env.NEAR_ACCOUNT_ID);
 
-  const depayparameter : DepayActions<NearDepayActions> = {
-    fields: {
-      grinderyAccount: account,
-      userAccount: account
+  // Set the key store in memory
+  const networkId = await getNetworkId(input.fields.chain);
+  const keyStore = new keyStores.InMemoryKeyStore();
+  await keyStore.setKey(networkId, CONTRACT_NAME, KeyPair.fromString((process.env.PRIVATE_KEY as string)));
+
+  // Get grindery account
+  const grinderyAccount = await nearGetAccount(input.fields.chain, process.env.NEAR_ACCOUNT_ID, keyStore);
+
+  // Get user key pair
+  const seed = (await hmac("grindery-near-key/" + user.sub)).subarray(0, 32);
+  const newkeypairtmp = nacl.sign.keyPair.fromSeed(seed);
+  const newKeyPair = new utils.KeyPairEd25519(base_encode(newkeypairtmp.secretKey));
+  const newPublicKey = await newKeyPair.getPublicKey();
+
+  // Get user implicit account from the new key pair
+  const implicit_user_id = utils.PublicKey.fromString(newPublicKey.toString()).data.toString('hex');
+  await keyStore.setKey(networkId, implicit_user_id, newKeyPair);
+  let useraccount = await nearGetAccount(input.fields.chain, implicit_user_id, keyStore);
+
+  console.log("implicit_user_id", implicit_user_id)
+  
+  // Test the state of the user account to know if it exists
+  try {
+    await useraccount.state()
+  } catch (e) {
+    // If ueser account doens't exist, then create an implicit grinderyAccount via transaction
+    if (e.type === 'AccountDoesNotExist') {
+      await grinderyAccount.sendMoney(implicit_user_id, await utils.format.parseNearAmount('1'));
+      console.log("new grinderyAccount created with userID ", implicit_user_id);
     }
   }
 
+  // Set depay actions parameters
+  const depayparameter : DepayActions<NearDepayActions> = {
+    fields: {
+      grinderyAccount: grinderyAccount,
+      userAccount: await nearGetAccount(input.fields.chain, implicit_user_id, keyStore)
+    }
+  }
+
+  // Send the transaction to be routed via the function declaration
   return await SendTransactionAction(input, depayparameter)
 
 }

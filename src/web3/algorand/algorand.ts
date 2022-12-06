@@ -385,13 +385,13 @@ export async function callSmartContract(
   }>
 ): Promise<ConnectorOutput> {
 
-  console.log("algorand début"); //
-
+  // Verify the userToken is valid
   const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
 
+  // Get user account
   const userAccount = await getUserAccountAlgorand(user);
   const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
   const algodClient = await getAlgodClient(input.fields.chain);
@@ -399,70 +399,12 @@ export async function callSmartContract(
   // Set new atomicTransactionComposer
   const comp = new algosdk.AtomicTransactionComposer();
 
+  // Set the three accounts: sender (user), intermediary to pay gas fees (grindery) and receiver
   const sender = userAccount.addr;
   const intermediary = grinderyAccount.addr;
   const receiver = input.fields.contractAddress;
 
-  console.log("test1")
-
-  // // We initialize the common parameters here, they'll be passed to all the transactions
-  // // since they happen to be the same
-  // const spNoFee = await setSpFee(0, algodClient);
-  // const spFullFee = await setSpFee(3 * algosdk.ALGORAND_MIN_TX_FEE, algodClient);
-
-  // // Transaction from the user to the dApp (amount = 0 and fees = 0)
-  // const txn = algosdk.makePaymentTxnWithSuggestedParams(
-  //   sender, 
-  //   receiver!, 
-  //   0, 
-  //   undefined, 
-  //   undefined, 
-  //   spNoFee
-  // );
-
-  // comp.addTransaction({
-  //   txn: txn,
-  //   signer: algosdk.makeBasicAccountTransactionSigner(userAccount)
-  // });
-
-  // const commonParamsFullFee = {
-  //   sender: grinderyAccount.addr,
-  //   suggestedParams: spFullFee,
-  //   signer: algosdk.makeBasicAccountTransactionSigner(grinderyAccount),
-  // };
-
-  // comp.addMethodCall({
-  //   appID: Number(process.env.ALGORAND_APP_ID!),
-  //   method: parseFunctionDeclarationAlgorand(input.fields.functionDeclaration),
-  //   // method: test,
-  //   methodArgs: [
-  //     0,
-  //     {
-  //       txn: new Transaction({
-  //         from: intermediary!,
-  //         to: receiver,
-  //         amount: 0,
-  //         ...spNoFee,
-  //       }),
-  //       signer: algosdk.makeBasicAccountTransactionSigner(grinderyAccount!),
-  //     },
-  //     0,
-  //   ],
-  //   ...commonParamsFullFee,
-  // });
-
-  // // Finally, execute the composed group and print out the results
-  // let result: any = await comp.execute(algodClient, 2);
-
-  // console.log("result", result);
-
-  // return {
-  //   key: input.key,
-  //   sessionId: input.sessionId,
-  //   payload: result,
-  // };
-
-
+  // Set depay parameters for Algorand
   const depayparameter: DepayActions<AlgorandDepayActions> = {
     fields: {
       comp: comp,
@@ -473,12 +415,7 @@ export async function callSmartContract(
     }
   }
 
-
-  return await SendTransactionAction(input, depayparameter)
-
-  console.log("callSmartContract", input);
-  throw new Error("Not implemented");
-  
+  return await SendTransactionAction(input, depayparameter);
 }
 
 export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {

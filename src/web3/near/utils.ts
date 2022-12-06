@@ -1,13 +1,9 @@
 import _ from "lodash";
 import { getNetworkId } from "../utils";
-import * as ed25519 from "ed25519";
 import { hmac, TAccessToken } from "../../jwt";
 import { Buffer } from 'buffer';
-const Base58 = require("base-58")
-import * as ed from '@noble/ed25519';
-const textEncoding = require('text-encoding');
 import { base_encode, base_decode } from './serialize';
-
+import nacl, { randomBytes } from 'tweetnacl';
 
 var crypto = require('crypto');
 
@@ -15,83 +11,88 @@ const { connect, keyStores, nearConnection, transactions, utils, KeyPair, KeyPai
 const path = require("path");
 const homedir = require("os").homedir();
 
-// const private_key_tcoratger = "ed25519:TvQJsaDCF65uVGfeAzHkSSUFcpbM127uJ3A7GJLnh1eZuRD2wqjdkYWRJXfbkxa6v5yzPjSiPYQ7nQsdgtebEzE";
-// const public_key_tcoratger_wallet = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7X7";
-
-// const private_key_depay = 
-// "ed25519:4STJ43D4LEL7bbSrp3hP1JiuFLZ8gmjuVa5zafQxGpMJXNknFZ1UzYmUuPiuYPKUxDPNbfrw92JuLHDRQEvu2kLb"
-
-// const userToken = "eyJhbGciJiJFUzI1NiJ8.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjY3Njk0NDk5LCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjY3Njk4MDk5fQ.eSuX4Jx4VutnAFvs9kC48G4ccHlAuv8OoDzfKZhcFyFQCMda2LxZV4BbZGstFsT-WMoVpKEIexj8O-hg1jm2ZZ"
-
-// const networkId = "testnet";
-// // const accountId = "depay.tcoratger.testnet";
-// const accountId = "tcoratger.testnet";
-
-// const nodeUrl= "https://rpc.testnet.near.org";
-// const explorerUrl= "https://explorer.testnet.near.org";
-// const walletUrl= "https://wallet.testnet.near.org";
-// const CREDENTIALS_DIR = ".near-credentials";
-
-// const credentialsPath = path.join(userHomeDir, CREDENTIALS_DIR);
-// const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
-
-// const config = {
-//     keyStore,
-//     networkId: "testnet",
-//     nodeUrl: "https://rpc.testnet.near.org",
-// };
-
 async function main() {
 
-    console.log("toto");
-
-    const PUBLIC_KEY_USER="0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad0U1"
+    // const PUBLIC_KEY_USER="0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad0W1"
+    const PUBLIC_KEY_USER="0xB201fDd9yb14dc930bEc2c4E9f432bC1CA5Ad0f1"
     const chain = "near:testnet";
     const nearaccountId = "tcoratger.testnet"
+
+    const keyStore = await getKeyStore();
     
-    // const account = await nearGetAccount(chain, nearaccountId);
-    // const useraccountId = ("grindery" + PUBLIC_KEY_USER).toLowerCase();
-    // let useraccount = await nearGetAccount(chain, useraccountId);
+    const account = await nearGetAccount(chain, nearaccountId, keyStore);
+    const useraccountId = ("grindery" + PUBLIC_KEY_USER).toLowerCase();
+    let useraccount = await nearGetAccount(chain, useraccountId, keyStore);
 
-    // console.log("useraccountId", useraccountId);
+    console.log("useraccountId", useraccountId);
 
-    // try {
-    //     await useraccount.state()
-    // } catch (e) {
-    //     if (e.type === 'HANDLER_ERROR') {
-    //     console.log("new account to be created");
-    //     const keyStore = await getKeyStore();
-    //     const networkId = await getNetworkId(chain);
-    //     const newKeyPair = KeyPair.fromRandom('ed25519');
+    // const seed = (await hmac("grindery-near-key/" + PUBLIC_KEY_USER)).subarray(0, 32);
+    // const newkeypair = nacl.sign.keyPair.fromSeed(seed);
+    // const userkeypair = new utils.KeyPairEd25519(base_encode(newkeypair.secretKey));
 
+    // let newKeyPair = await KeyPair.fromString('ed25519:' + privateKey);
 
-    //     // const privateKey= base_encode((await hmac("grindery-web3-address-sub/" + PUBLIC_KEY_USER)).subarray(0, 64));
-    //     // let newKeyPair = await KeyPair.fromString('ed25519:' + privateKeyTmp);
+    // console.log("newKeyPair", newKeyPair);
 
 
+    try {
+        await useraccount.state()
+    } catch (e) {
+        if (e.type === 'AccountDoesNotExist') {
+        console.log("new account to be created");
+        const keyStore = await getKeyStore();
+        const networkId = await getNetworkId(chain);
 
-    //     const newPublicKey = await newKeyPair.getPublicKey();
-    //     await account.createAccount(useraccountId, newPublicKey, await utils.format.parseNearAmount('1'))
-    //     await keyStore.setKey(networkId, useraccountId, newKeyPair);
-    //     console.log("new account created with userID ", useraccountId);
-    //     }
-    // }
 
-    // await useraccount.sendMoney(useraccountId, 10000000000000);
+        // const newKeyPair = KeyPair.fromRandom('ed25519');
 
-    
+
+        // const privateKey= base_encode((await hmac("grindery-web3-address-sub/" + PUBLIC_KEY_USER)).subarray(0, 64));
+        // let newKeyPair = await KeyPair.fromString('ed25519:' + privateKeyTmp);
+
+        const seed = (await hmac("grindery-near-key/" + PUBLIC_KEY_USER)).subarray(0, 32);
+        const newkeypairtmp = nacl.sign.keyPair.fromSeed(seed);
+        const newKeyPair = new utils.KeyPairEd25519(base_encode(newkeypairtmp.secretKey));
+
+        const newPublicKey = await newKeyPair.getPublicKey();
+        await account.createAccount(useraccountId, newPublicKey, await utils.format.parseNearAmount('1'));
+
+
+        await keyStore.setKey(networkId, useraccountId, newKeyPair);
+        console.log("new account created with userID ", useraccountId);
+        }
+    }
+
+    await useraccount.sendMoney(useraccountId, 10000000000000);
+
+    console.log("fin function")
 
     
 }
 
 // main()
 
+export async function getUserAccountNear(user: string | undefined): Promise<any> {
+
+    const seed = (await hmac("grindery-near-key/" + user)).subarray(0, 32);
+    const newkeypairtmp = nacl.sign.keyPair.fromSeed(seed);
+    const newKeyPair = new utils.KeyPairEd25519(base_encode(newkeypairtmp.secretKey));
+
+    return newKeyPair;
+
+}
 
 
-
-export async function nearGetAccount(chain: string, accountId: string | undefined) {
+/**
+ * It connects to the NEAR blockchain and returns the account object for the given accountId
+ * @param {string} chain - The name of the chain you want to connect to.
+ * @param {string | undefined} accountId - The account ID of the account you want to get information
+ * about.
+ * @returns The account object.
+ */
+export async function nearGetAccount(chain: string, accountId: string | undefined, keyStore: any) {
     const networkId = await getNetworkId(chain);
-    const keyStore = await getKeyStore();
+    // const keyStore = await getKeyStore();
     const config = {
         networkId,
         keyStore,
@@ -104,6 +105,10 @@ export async function nearGetAccount(chain: string, accountId: string | undefine
     return await near.account(accountId);
 }
 
+/**
+ * It returns a keystore that is used to store the private key of the account
+ * @returns A keystore object.
+ */
 export async function getKeyStore() {
     const CREDENTIALS_DIR = ".near-credentials";
     const credentialsPath = path.join(homedir, CREDENTIALS_DIR);

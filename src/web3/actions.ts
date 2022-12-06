@@ -6,7 +6,7 @@ import {
     WebhookParams,
 } from "grindery-nexus-common-utils/dist/connector";
 
-import * as nftnear from "./near";
+import * as nftnear from "./near/nftnear";
 import * as txtestalgorand from "./algorand/txtestalgorand";
 import * as nftalgorand from "./algorand/nftalgorand";
 import { DepayActions } from "./utils";
@@ -18,8 +18,8 @@ const { connect, transactions, KeyPair, keyStores, utils, Account } = require("n
 const ACTIONS: {
     [key: string]: {SendTransactionAction(input: ConnectorInput<unknown>, depay: DepayActions<unknown>): Promise<ConnectorOutput>;};
 } = {
-    // "near:testnet:NFTMint": nftnear,
-    // "near:mainnet:NFTMint": nftnear,
+    "near:testnet:NFTMint": nftnear,
+    "near:mainnet:NFTMint": nftnear,
     "algorand:testnet:NFTMint": nftalgorand,
     "algorand:mainnet:NFTMint": nftalgorand,
     "algorand:testnet:txtest": txtestalgorand,
