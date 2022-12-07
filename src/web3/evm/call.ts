@@ -128,26 +128,28 @@ export async function callSmartContract(
         };
       }
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const paramArray = [] as any[];
       functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
       const inputs = functionInfo.inputs || [];
-      for (const i of inputs) {
-        if (!(i.name in input.fields.parameters)) {
-          throw new Error("Missing parameter " + i.name);
-        }
-        paramArray.push(input.fields.parameters[i.name]);
-      }
-    
+
       // NFT minting ipfs metadata
       if (functionInfo.name === "mintNFT") {
-        const metadata = JSON.stringify(input.fields.parameters.tokenURI);
+        paramArray.push(input.fields.parameters.recipient);
+        const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
         const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
         let ipfs = await IPFS.create(); 
         const cid = await ipfs.add(metadata);
-        const indexTokenURI = functionInfo.inputs!.findIndex(e => e.name === 'tokenURI');
-        paramArray[indexTokenURI] = "ipfs://" + cid.path 
+        paramArray.push("ipfs://" + cid.path);        
+      } else {      
+        for (const i of inputs) {
+          if (!(i.name in input.fields.parameters)) {
+            throw new Error("Missing parameter " + i.name);
+          }
+          paramArray.push(input.fields.parameters[i.name]);
+        }
       }
+
       callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
 
@@ -264,7 +266,7 @@ export async function callSmartContract(
         result = receipt;
         const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
 
-        console.log("result: " + JSON.stringify(result))
+        // console.log("result: " + JSON.stringify(result))
 
         // if (process.env.GAS_DEBIT_WEBHOOK) {
         //   axios
