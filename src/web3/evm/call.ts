@@ -139,7 +139,7 @@ export async function callSmartContract(
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
         const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import("ipfs-core")>;
-        const ipfs = await IPFS.create();
+        const ipfs = await IPFS.create({repo: "ok" + Math.random()});
         const cid = await ipfs.add(metadata);
         paramArray.push("ipfs://" + cid.path);
       } else {
