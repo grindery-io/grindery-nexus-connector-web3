@@ -19,7 +19,7 @@ import { KeyPair } from "near-api-js";
 // import path from "path";
 // import { homedir } from 'os';
 
-const { connect, transactions, keyStores } = require("near-api-js");
+const { connect, transactions, keyStores, utils } = require("near-api-js");
 const fs = require("fs");
 const path = require("path");
 const userHomeDir = require("os").homedir();
@@ -445,7 +445,7 @@ export async function callSmartContract(
         "nft_mint",
         args,
         10000000000000,
-        "10000000000000000000000"
+        await utils.format.parseNearAmount('0.1')
       ),
     ],
   });

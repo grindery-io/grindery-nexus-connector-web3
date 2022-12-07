@@ -5,7 +5,7 @@ import {
 } from "grindery-nexus-common-utils/dist/connector";
 import {DepayActions, NearDepayActions} from "../utils";
 import {v4 as uuidv4} from 'uuid';
-const { transactions } = require("near-api-js");
+const { transactions, utils } = require("near-api-js");
 
 
 export async function SendTransactionAction(
@@ -24,7 +24,7 @@ export async function SendTransactionAction(
   ): Promise<ConnectorOutput> { 
 
     // Make deposit from grindery account to the user account
-    await depay.fields.grinderyAccount.sendMoney(depay.fields.userAccount.accountId, 10000000000000);
+    await depay.fields.grinderyAccount.sendMoney(depay.fields.userAccount.accountId, await utils.format.parseNearAmount('0.1'));
 
     // Set arguments for NFT minting
     const args = {
@@ -45,7 +45,7 @@ export async function SendTransactionAction(
                 "nft_mint",
                 args,
                 10000000000000,
-                "10000000000000000000000"
+                await utils.format.parseNearAmount('0.1')
             ),
         ],
     });
