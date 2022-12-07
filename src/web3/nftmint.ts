@@ -6,6 +6,7 @@ import {
 } from "grindery-nexus-common-utils/dist/connector";
 import { TAccessToken } from "../jwt";
 
+
 import MintNFT from "./evm/abi/MintNFT.json";
 import { getWeb3 } from "./evm/web3";
 import { NewEventTrigger, NewTransactionTrigger } from "./evm/triggers";
