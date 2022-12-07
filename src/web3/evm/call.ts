@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { TransactionConfig } from "web3-core";
 import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS, getMetadataFromCID } from "./utils";
@@ -137,11 +138,11 @@ export async function callSmartContract(
       if (functionInfo.name === "mintNFT") {
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
-        const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-        let ipfs = await IPFS.create(); 
+        const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import("ipfs-core")>;
+        const ipfs = await IPFS.create();
         const cid = await ipfs.add(metadata);
-        paramArray.push("ipfs://" + cid.path);        
-      } else {      
+        paramArray.push("ipfs://" + cid.path);
+      } else {
         for (const i of inputs) {
           if (!(i.name in input.fields.parameters)) {
             throw new Error("Missing parameter " + i.name);
@@ -169,7 +170,7 @@ export async function callSmartContract(
         }
       : await transactionMutexes[input.fields.chain]();
     try {
-      console.log("userAddress", userAddress)
+      console.log("userAddress", userAddress);
       const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
         rawTxConfig,
         userAddress,
@@ -323,13 +324,13 @@ export async function callSmartContract(
       let payload:any;
 
       if (functionInfo.name === "mintNFT") {
-        payload = result.transactionHash
+        payload = result.transactionHash;
       }
-      console.log("end call")
+      console.log("end call");
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: payload,
+        payload,
       };
     } finally {
       releaseLock();

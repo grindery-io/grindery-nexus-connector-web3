@@ -2,12 +2,11 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-com
 import * as evm from "./evm";
 import * as near from "./near";
 import * as neartest from "./near";
+import * as ethereum from "./nftmint";
 import * as flow from "./flow";
-import * as algorand from "./algorand/algorand";
-import * as algorandtest from "./algorand/algorand";
+import * as algorand from "./algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { TAccessToken } from "../jwt";
-
 
 export * from "./webhook";
 
@@ -26,8 +25,8 @@ export const CHAINS: {
   "flow:mainnet": flow,
   algorand,
   "algorand:mainnet": algorand,
-  algorandtest,
-  "algorand:testnet": algorandtest,
+  ethereum,
+  "ethereum:goerli": ethereum,
 };
 
 export function getTriggerClass(
