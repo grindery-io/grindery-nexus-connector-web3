@@ -126,6 +126,20 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
+
+    if (input.fields.functionDeclaration === "getBalance") {
+
+      const address: any = input.fields.parameters.address;
+      const balance = await web3.eth.getBalance(address).then(result => web3.utils.fromWei(result));
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {balance: balance},
+      };
+
+    }
+
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
