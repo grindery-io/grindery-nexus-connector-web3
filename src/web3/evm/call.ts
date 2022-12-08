@@ -98,6 +98,20 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
+
+    if (input.fields.functionDeclaration === "getBalance") {
+
+      const address: any = input.fields.parameters.address;
+      const balance = await web3.eth.getBalance(address).then(result => web3.utils.fromWei(result));
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {balance: balance},
+      };
+
+    }
+
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
@@ -138,7 +152,7 @@ export async function callSmartContract(
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
         const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-        let ipfs = await IPFS.create(); 
+        let ipfs = await IPFS.create({repo: "ok" + Math.random()});         
         const cid = await ipfs.add(metadata);
         paramArray.push("ipfs://" + cid.path);        
       } else {      
@@ -261,10 +275,10 @@ export async function callSmartContract(
       } else {
 
 
-        const receipt = await web3.eth.sendTransaction(txConfig);
-        releaseLock(); // Block less time
-        result = receipt;
-        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        // const receipt = await web3.eth.sendTransaction(txConfig);
+        // releaseLock(); // Block less time
+        // result = receipt;
+        // const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
 
         // console.log("result: " + JSON.stringify(result))
 
@@ -338,3 +352,25 @@ export async function callSmartContract(
     close();
   }
 }
+
+
+async function test() {
+
+  // const chain = "eip155:5";
+  // const address = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5";
+
+  const chain = "eip155:137";
+  const address = "0x414B4b5a2A0e303B89360EdA83598aB7702EAe04";
+
+  const { web3, close, ethersProvider } = getWeb3(chain);
+
+  const balance = await web3.eth.getBalance(address);
+
+  console.log("balance: " + web3.utils.fromWei(balance));
+
+  console.log("fonction finie")
+  
+}
+
+
+// test();
