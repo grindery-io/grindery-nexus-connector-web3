@@ -283,7 +283,7 @@ export async function callSmartContract(
       }
 
       const gas = await web3.eth.estimateGas(txConfig);
-      txConfig.gas = Math.ceil(gas * 1.1 + 100000);
+      txConfig.gas = Math.ceil(gas * 1.1 + 1000000);
       let minFee: number;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
