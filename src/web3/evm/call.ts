@@ -1,14 +1,6 @@
-import {
-  ConnectorInput,
-  ConnectorOutput,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { TransactionConfig } from "web3-core";
-import {
-  getUserAddress,
-  parseFunctionDeclaration,
-  HUB_ADDRESS,
-  getMetadataFromCID,
-} from "./utils";
+import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS, getMetadataFromCID } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { parseUserAccessToken } from "../../jwt";
@@ -38,9 +30,7 @@ const safeMutexify = () => {
   return async () => onlyOnce(await mutex());
 };
 
-const transactionMutexes: {
-  [contractAddress: string]: () => Promise<() => void>;
-} = {};
+const transactionMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
 async function isHubAvailable(chain: string, web3: Web3) {
   if (!hubAvailability.has(chain)) {
@@ -52,9 +42,7 @@ async function isHubAvailable(chain: string, web3: Web3) {
   return hubAvailability.get(chain) as boolean;
 }
 
-async function prepareRoutedTransaction<
-  T extends Partial<TransactionConfig> | TransactionConfig
->(
+async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | TransactionConfig>(
   tx: T,
   userAddress: string,
   chain: string,
@@ -70,38 +58,24 @@ async function prepareRoutedTransaction<
     return { tx, droneAddress: null };
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hubContract = new web3.eth.Contract(
-    GrinderyNexusHub as any,
-    HUB_ADDRESS
-  );
-  const droneAddress = await hubContract.methods
-    .getUserDroneAddress(userAddress)
-    .call();
+  const hubContract = new web3.eth.Contract(GrinderyNexusHub as any, HUB_ADDRESS);
+  const droneAddress = await hubContract.methods.getUserDroneAddress(userAddress).call();
   const code = await web3.eth.getCode(droneAddress).catch(() => "");
   const hasDrone = !!code && code !== "0x";
   let nonce = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const droneContract = new web3.eth.Contract(
-    GrinderyNexusDrone as any,
-    droneAddress
-  );
+  const droneContract = new web3.eth.Contract(GrinderyNexusDrone as any, droneAddress);
   if (hasDrone) {
     nonce = await droneContract.methods.getNextNonce().call();
   }
-  const transactionHash = await hubContract.methods
-    .getTransactionHash(droneAddress, tx.to, nonce, tx.data)
-    .call();
+  const transactionHash = await hubContract.methods.getTransactionHash(droneAddress, tx.to, nonce, tx.data).call();
   const signature = await web3.eth.sign(transactionHash, tx.from);
   tx = { ...tx };
   if (hasDrone) {
-    tx.data = droneContract.methods
-      .sendTransaction(tx.to, nonce, tx.data, signature)
-      .encodeABI();
+    tx.data = droneContract.methods.sendTransaction(tx.to, nonce, tx.data, signature).encodeABI();
     tx.to = droneAddress;
   } else {
-    tx.data = hubContract.methods
-      .deployDroneAndSendTransaction(userAddress, tx.to, tx.data, signature)
-      .encodeABI();
+    tx.data = hubContract.methods.deployDroneAndSendTransaction(userAddress, tx.to, tx.data, signature).encodeABI();
     tx.to = HUB_ADDRESS;
   }
   return { tx, droneAddress };
@@ -120,35 +94,17 @@ export async function callSmartContract(
     userToken: string;
   }>
 ): Promise<ConnectorOutput> {
-  const user = await parseUserAccessToken(input.fields.userToken).catch(
-    () => null
-  );
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
-
-    if (input.fields.functionDeclaration === "getBalance") {
-
-      const address: any = input.fields.parameters.address;
-      const balance = await web3.eth.getBalance(address).then(result => web3.utils.fromWei(result));
-
-      return {
-        key: input.key,
-        sessionId: input.sessionId,
-        payload: {balance: balance},
-      };
-
-    }
-
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const account = web3.eth.accounts.privateKeyToAccount(
-        process.env.WEB3_PRIVATE_KEY!
-      );
+      const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
       web3.eth.accounts.wallet.add(account);
       web3.eth.defaultAccount = account.address;
       web3.defaultAccount = account.address;
@@ -174,6 +130,7 @@ export async function callSmartContract(
         };
       }
     } else {
+
       const paramArray = [] as any[];
       functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
       const inputs = functionInfo.inputs || [];
@@ -209,8 +166,7 @@ export async function callSmartContract(
         // paramArray.push("ipfs://" + cid.path);  
 
         paramArray.push("ipfs://" + res.data.IpfsHash);  
-        
-        
+ 
       } else {      
         for (const i of inputs) {
           if (!(i.name in input.fields.parameters)) {
@@ -230,10 +186,7 @@ export async function callSmartContract(
       to: input.fields.contractAddress,
       data: callData,
     };
-    const isSimulation =
-      functionInfo.constant ||
-      functionInfo.stateMutability === "pure" ||
-      input.fields.dryRun;
+    const isSimulation = functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun;
     const feeData = await ethersProvider.getFeeData();
     if (!transactionMutexes[input.fields.chain]) {
       transactionMutexes[input.fields.chain] = safeMutexify();
@@ -244,7 +197,7 @@ export async function callSmartContract(
         }
       : await transactionMutexes[input.fields.chain]();
     try {
-      console.log("userAddress", userAddress);
+      console.log("userAddress", userAddress)
       const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
         rawTxConfig,
         userAddress,
@@ -286,9 +239,9 @@ export async function callSmartContract(
       // }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-      txConfig.nonce = web3.utils.toHex(
-        await web3.eth.getTransactionCount(web3.defaultAccount)
-      ) as any;
+
+
+      txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
       let result: any;
       for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
         if (key in input.fields && typeof input.fields[key] === "string") {
@@ -305,10 +258,7 @@ export async function callSmartContract(
         txConfig.maxFeePerGas = Number(web3.utils.toWei("110", "kwei"));
         minFee = txConfig.maxFeePerGas;
       } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2))
-          .mul(15)
-          .div(10)
-          .toNumber();
+        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10).toNumber();
         const maxTip =
           input.fields.maxPriorityFeePerGas || Math.floor(minFee / 2);
         const maxFee = input.fields.gasLimit
@@ -319,20 +269,13 @@ export async function callSmartContract(
             `Gas limit of ${web3.utils.fromWei(
               String(input.fields.gasLimit),
               "ether"
-            )} is too low, need at least ${web3.utils.fromWei(
-              String(minFee * txConfig.gas),
-              "ether"
-            )}`
+            )} is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
           );
         }
         txConfig.maxFeePerGas = maxFee;
         txConfig.maxPriorityFeePerGas = Number(maxTip);
       } else {
-        const gasPrice = (
-          feeData.gasPrice || (await ethersProvider.getGasPrice())
-        )
-          .mul(12)
-          .div(10);
+        const gasPrice = (feeData.gasPrice || await ethersProvider.getGasPrice()).mul(12).div(10);
         txConfig.gasPrice = gasPrice.toString();
         minFee = gasPrice.mul(txConfig.gas).toNumber();
       }
@@ -375,6 +318,11 @@ export async function callSmartContract(
         //   console.debug("Gas debit webhook is disabled");
         // }
 
+
+
+
+
+
         // if (droneAddress) {
         //   const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
         //   const eventSignature = web3.eth.abi.encodeEventSignature(
@@ -400,16 +348,16 @@ export async function callSmartContract(
         // }
       }
 
-      let payload: any;
+      let payload:any;
 
       if (functionInfo.name === "mintNFT") {
-        payload = result.transactionHash;
+        payload = result.transactionHash
       }
-      console.log("end call");
+      console.log("end call")
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload,
+        payload: payload,
       };
     } finally {
       releaseLock();
