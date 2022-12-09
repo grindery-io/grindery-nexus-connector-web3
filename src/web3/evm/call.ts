@@ -4,9 +4,11 @@ import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS, getMetadataFromC
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { parseUserAccessToken } from "../../jwt";
-import axios, { AxiosResponse } from "axios";
+// import axios, { AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
+
+var axios = require('axios');
 
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
@@ -149,12 +151,37 @@ export async function callSmartContract(
 
       // NFT minting ipfs metadata
       if (functionInfo.name === "mintNFT") {
+
+
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
-        const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-        let ipfs = await IPFS.create({repo: "ok" + Math.random()});         
-        const cid = await ipfs.add(metadata);
-        paramArray.push("ipfs://" + cid.path);        
+
+
+        var config = {
+          method: 'post',
+          url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+          headers: { 
+            'Content-Type': 'application/json',
+            'pinata_api_key': process.env.PINATA_API_KEY,
+            'pinata_secret_api_key': process.env.PINATA_API_SECRET
+          },
+          data: metadata
+        };
+
+        const res = await axios(config);
+
+        // console.log(res.data);
+
+
+
+        // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
+        // let ipfs = await IPFS.create({repo: "ok" + Math.random()});         
+        // const cid = await ipfs.add(metadata);
+        // paramArray.push("ipfs://" + cid.path);  
+
+        paramArray.push("ipfs://" + res.data.IpfsHash);  
+        
+        
       } else {      
         for (const i of inputs) {
           if (!(i.name in input.fields.parameters)) {
@@ -163,6 +190,8 @@ export async function callSmartContract(
           paramArray.push(input.fields.parameters[i.name]);
         }
       }
+
+      console.log("paramArray: " + paramArray)
 
       callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
@@ -236,7 +265,7 @@ export async function callSmartContract(
       }
 
       const gas = await web3.eth.estimateGas(txConfig);
-      txConfig.gas = Math.ceil(gas * 1.1 + 100000);
+      txConfig.gas = Math.ceil(gas * 1.1 + 1000000);
       let minFee: number;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
@@ -275,10 +304,10 @@ export async function callSmartContract(
       } else {
 
 
-        // const receipt = await web3.eth.sendTransaction(txConfig);
-        // releaseLock(); // Block less time
-        // result = receipt;
-        // const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        const receipt = await web3.eth.sendTransaction(txConfig);
+        releaseLock(); // Block less time
+        result = receipt;
+        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
 
         // console.log("result: " + JSON.stringify(result))
 
@@ -356,19 +385,33 @@ export async function callSmartContract(
 
 async function test() {
 
-  // const chain = "eip155:5";
-  // const address = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5";
+  const metadataJson = {
+    name: "name",
+    description: "description",
+    image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png"
+  }
 
-  const chain = "eip155:137";
-  const address = "0x414B4b5a2A0e303B89360EdA83598aB7702EAe04";
+  const metadata = JSON.stringify(metadataJson)
 
-  const { web3, close, ethersProvider } = getWeb3(chain);
+  var config = {
+    method: 'post',
+    url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+    headers: { 
+      'Content-Type': 'application/json',
+      'pinata_api_key': process.env.PINATA_API_KEY,
+      'pinata_secret_api_key': process.env.PINATA_API_SECRET
+    },
+    data: metadata
+  };
 
-  const balance = await web3.eth.getBalance(address);
 
-  console.log("balance: " + web3.utils.fromWei(balance));
 
-  console.log("fonction finie")
+  const res = await axios(config);
+
+  console.log(res.data);
+
+  console.log("metadata", metadata)
+
   
 }
 
