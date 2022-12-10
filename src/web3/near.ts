@@ -457,13 +457,13 @@ export async function callSmartContract(
     sessionId: input.sessionId,
     payload: {
       // result,
-      // NFTAddress: result.transaction_outcome.outcome.receipt_ids
+      // transactionHash: result.transaction_outcome.outcome.receipt_ids
       // txn_hash: result.transaction.hash,
-      NFTAddress: result.transaction.hash,
+      transactionHash: result.transaction.hash,
       // public_key: result.transaction.public_key,
       // media_url: input.fields.parameters.media,
       // // signer_id: result.transaction.signer_id,
-      // NFTAddress: result.transaction.signer_id
+      // transactionHash: result.transaction.signer_id
     },
   };
 

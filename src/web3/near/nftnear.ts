@@ -56,8 +56,8 @@ export async function SendTransactionAction(
     return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: {NFTAddress: result.transaction.hash},
-        // payload: {NFTAddress: result.transactions.receipt_id}
+        payload: {transactionHash: result.transaction.hash},
+        // payload: {transactionHash: result.transactions.receipt_id}
     };
 
     throw new Error("Unsupported call");
