@@ -423,7 +423,7 @@ export async function callSmartContract(
         return {
           key: input.key,
           sessionId: input.sessionId,
-          payload: {transactionHash: result.transactionHash.toString()},
+          payload: {transactionHash: result.transactionHash},
         };
       }
 
