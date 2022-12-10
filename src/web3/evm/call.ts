@@ -353,12 +353,12 @@ export async function callSmartContract(
       } else {
 
 
-        // const receipt = await web3.eth.sendTransaction(txConfig);
-        // releaseLock(); // Block less time
-        // result = receipt;
-        // const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        const receipt = await web3.eth.sendTransaction(txConfig);
+        releaseLock(); // Block less time
+        result = receipt;
+        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
 
-        // console.log("result: " + JSON.stringify(result))
+        console.log("result: " + JSON.stringify(result))
 
         // if (process.env.GAS_DEBIT_WEBHOOK) {
         //   axios
