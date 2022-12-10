@@ -358,7 +358,7 @@ export async function callSmartContract(
         result = receipt;
         const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
 
-        console.log("result: " + JSON.stringify(result))
+        // console.log("result: " + JSON.stringify(result))
 
         // if (process.env.GAS_DEBIT_WEBHOOK) {
         //   axios
@@ -415,8 +415,19 @@ export async function callSmartContract(
       let payload:any;
 
       if (functionInfo.name === "mintNFT") {
-        payload = result.transactionHash
+        // payload = result.transactionHash
+
+        // console.log("txhash: " + result.transactionHash.toString());
+
+
+        return {
+          key: input.key,
+          sessionId: input.sessionId,
+          payload: {transactionHash: result.transactionHash.toString()},
+        };
       }
+
+
       console.log("end call")
       return {
         key: input.key,
