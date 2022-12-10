@@ -12,6 +12,8 @@ var axios = require('axios');
 
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
+import ERC20 from "./abi/ERC20.json";
+
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -100,6 +102,68 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
+
+
+    /* A function that returns the balance of an address. */
+    if (input.fields.functionDeclaration === "getBalanceNative") {
+
+      const address: any = input.fields.parameters.address;
+      const balance = await web3.eth.getBalance(address).then(result => web3.utils.fromWei(result));
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {balance: balance},
+      };
+
+    }
+    
+    /* The above code is a TypeScript function that is executed when the functionDeclaration is
+    getBalance. It takes the contractAddress and address from the input and uses them to call the
+    balanceOf() function on the contract. It then returns the balance in the payload. */
+    if (input.fields.functionDeclaration === "getBalanceERC20Token") {
+
+      const tokenAddress: any = input.fields.contractAddress;
+      const tokenHolder: any = input.fields.parameters.address;
+      const balanceOfAbi:any = ERC20;
+
+      // Define the ERC-20 token contract
+      const contract = new web3.eth.Contract(balanceOfAbi, tokenAddress) 
+
+      // Execute balanceOf() to retrieve the token balance
+      const balanceWei = await contract.methods.balanceOf(tokenHolder).call();
+      const decimals = await contract.methods.decimals().call();
+      const balanceTokenUnit = balanceWei * 10 ** -decimals;
+
+      console.log(balanceTokenUnit.toString())
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {balance: balanceTokenUnit.toString()},
+      };
+    }
+
+    /* Getting the symbol, decimals and name of the token. */
+    if (input.fields.functionDeclaration === "getInformationERC20Token") {
+
+      const abiOfToken:any = ERC20;
+      const tokenContract = new web3.eth.Contract(abiOfToken, input.fields.contractAddress);
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {
+          symbol: await tokenContract.methods.symbol().call(), 
+          decimals: (await tokenContract.methods.decimals().call()).toString(), 
+          name: await tokenContract.methods.name().call()
+        },
+      };
+
+    }
+
+
+
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
@@ -289,10 +353,10 @@ export async function callSmartContract(
       } else {
 
 
-        const receipt = await web3.eth.sendTransaction(txConfig);
-        releaseLock(); // Block less time
-        result = receipt;
-        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        // const receipt = await web3.eth.sendTransaction(txConfig);
+        // releaseLock(); // Block less time
+        // result = receipt;
+        // const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
 
         // console.log("result: " + JSON.stringify(result))
 
@@ -370,32 +434,41 @@ export async function callSmartContract(
 
 async function test() {
 
-  const metadataJson = {
-    name: "name",
-    description: "description",
-    image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png"
-  }
-
-  const metadata = JSON.stringify(metadataJson)
-
-  var config = {
-    method: 'post',
-    url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
-    headers: { 
-      'Content-Type': 'application/json',
-      'pinata_api_key': process.env.PINATA_API_KEY,
-      'pinata_secret_api_key': process.env.PINATA_API_SECRET
-    },
-    data: metadata
-  };
+  // const tokenAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+  // // const tokenAddress = "0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315";
+  // const tokenHolder = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5"
+  // const chain = "eip155:1";
 
 
 
-  const res = await axios(config);
+  const tokenAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+  // const tokenAddress = "0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315";
+  const tokenHolder = "0xaf0b0000f0210d0f421f0009c72406703b50506b"
+  const chain = "eip155:137";
 
-  console.log(res.data);
 
-  console.log("metadata", metadata)
+  const { web3, close, ethersProvider } = getWeb3(chain);
+
+  const balanceOfAbi:any = ERC20;
+
+  console.log(balanceOfAbi);
+
+  // Define the ERC-20 token contract
+  const contract = new web3.eth.Contract(balanceOfAbi, tokenAddress) 
+
+  // Execute balanceOf() to retrieve the token balance
+  const result = await contract.methods.balanceOf(tokenHolder).call(); // 29803630997051883414242659
+
+  // // Convert the value from Wei to Ether
+  // const formattedResult = web3.utils.fromWei(result); // 29803630.997051883414242659
+
+  // const balance = await contract.methods.balanceOf(tokenHolder).call();
+  const decimals = await contract.methods.decimals().call();
+
+  console.log(result * 10 ** -decimals);
+
+  // console.log(await contract.methods.decimals().call())
+
 
   
 }
