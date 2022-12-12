@@ -1,10 +1,10 @@
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
-import { TransactionConfig } from "web3-core";
-import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS, getMetadataFromCID } from "./utils";
+import { TransactionConfig, TransactionReceipt } from "web3-core";
+import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { parseUserAccessToken } from "../../jwt";
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
 
@@ -13,7 +13,6 @@ import mutexify from "mutexify/promise";
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import ERC20 from "./abi/ERC20.json";
-
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -102,67 +101,60 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
-
-
     /* A function that returns the balance of an address. */
     if (input.fields.functionDeclaration === "getBalanceNative") {
-
-      const address: any = input.fields.parameters.address;
-      const balance = await web3.eth.getBalance(address).then(result => web3.utils.fromWei(result));
+      const address = input.fields.parameters.address as string;
+      const balance = await web3.eth.getBalance(address).then((result) => web3.utils.fromWei(result));
 
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: {balance: balance},
+        payload: { balance },
       };
-
     }
-    
+
     /* The above code is a TypeScript function that is executed when the functionDeclaration is
     getBalance. It takes the contractAddress and address from the input and uses them to call the
     balanceOf() function on the contract. It then returns the balance in the payload. */
     if (input.fields.functionDeclaration === "getBalanceERC20Token") {
-
-      const tokenAddress: any = input.fields.contractAddress;
-      const tokenHolder: any = input.fields.parameters.address;
-      const balanceOfAbi:any = ERC20;
+      const tokenAddress = input.fields.contractAddress;
+      const tokenHolder = input.fields.parameters.address;
+      const balanceOfAbi = ERC20;
 
       // Define the ERC-20 token contract
-      const contract = new web3.eth.Contract(balanceOfAbi, tokenAddress) 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const contract = new web3.eth.Contract(balanceOfAbi as any, tokenAddress);
 
       // Execute balanceOf() to retrieve the token balance
       const balanceWei = await contract.methods.balanceOf(tokenHolder).call();
       const decimals = await contract.methods.decimals().call();
       const balanceTokenUnit = balanceWei * 10 ** -decimals;
 
-      console.log(balanceTokenUnit.toString())
+      console.log(balanceTokenUnit.toString());
 
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: {balance: balanceTokenUnit.toString()},
+        payload: { balance: balanceTokenUnit.toString() },
       };
     }
 
     /* Getting the symbol, decimals and name of the token. */
     if (input.fields.functionDeclaration === "getInformationERC20Token") {
-
-      const abiOfToken:any = ERC20;
-      const tokenContract = new web3.eth.Contract(abiOfToken, input.fields.contractAddress);
+      const abiOfToken = ERC20;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tokenContract = new web3.eth.Contract(abiOfToken as any, input.fields.contractAddress);
 
       return {
         key: input.key,
         sessionId: input.sessionId,
         payload: {
-          symbol: await tokenContract.methods.symbol().call(), 
-          decimals: (await tokenContract.methods.decimals().call()).toString(), 
-          name: await tokenContract.methods.name().call()
+          symbol: await tokenContract.methods.symbol().call(),
+          decimals: (await tokenContract.methods.decimals().call()).toString(),
+          name: await tokenContract.methods.name().call(),
         },
       };
-
     }
-
-
 
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
@@ -194,44 +186,42 @@ export async function callSmartContract(
         };
       }
     } else {
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const paramArray = [] as any[];
       functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
       const inputs = functionInfo.inputs || [];
 
       // NFT minting ipfs metadata
       if (functionInfo.name === "mintNFT") {
-
-
         paramArray.push(input.fields.parameters.recipient);
-        const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
+        const metadata = JSON.stringify(
+          (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
+        );
 
-
-        const config:any = {
-          method: 'post',
+        const config: AxiosRequestConfig = {
+          method: "post",
           url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-          headers: { 
-            "Content-Type': 'application/json",
-            "pinata_api_key": process.env.PINATA_API_KEY,
-            'pinata_secret_api_key': process.env.PINATA_API_SECRET
+          headers: {
+            "Content-Type": "application/json",
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            pinata_api_key: process.env.PINATA_API_KEY!,
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            pinata_secret_api_key: process.env.PINATA_API_SECRET!,
           },
-          data: metadata
+          data: metadata,
         };
 
         const res = await axios(config);
 
         // console.log(res.data);
 
-
-
         // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-        // let ipfs = await IPFS.create({repo: "ok" + Math.random()});         
+        // let ipfs = await IPFS.create({repo: "ok" + Math.random()});
         // const cid = await ipfs.add(metadata);
-        // paramArray.push("ipfs://" + cid.path);  
+        // paramArray.push("ipfs://" + cid.path);
 
-        paramArray.push("ipfs://" + res.data.IpfsHash);  
- 
-      } else {      
+        paramArray.push("ipfs://" + res.data.IpfsHash);
+      } else {
         for (const i of inputs) {
           if (!(i.name in input.fields.parameters)) {
             throw new Error("Missing parameter " + i.name);
@@ -240,7 +230,7 @@ export async function callSmartContract(
         }
       }
 
-      console.log("paramArray: " + paramArray)
+      console.log("paramArray: " + paramArray);
 
       callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
@@ -261,7 +251,7 @@ export async function callSmartContract(
         }
       : await transactionMutexes[input.fields.chain]();
     try {
-      console.log("userAddress", userAddress)
+      console.log("userAddress", userAddress);
       const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
         rawTxConfig,
         userAddress,
@@ -269,44 +259,40 @@ export async function callSmartContract(
         web3
       );
       let callResult, callResultDecoded;
-      // try {
-      //   callResult = await web3.eth.call(txConfig);
-      //   if (droneAddress) {
-      //     const decoded = web3.eth.abi.decodeParameters(
-      //       GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
-      //       callResult
-      //     );
-      //     if (!decoded.success) {
-      //       await web3.eth.call({ ...rawTxConfig, from: droneAddress });
-      //       throw new Error("Transaction failed with unknown error");
-      //     }
-      //     if (functionInfo.outputs?.length) {
-      //       callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
-      //       if (functionInfo.outputs.length === 1) {
-      //         callResultDecoded = callResultDecoded[0];
-      //       }
-      //     }
-      //   }
-      //   console.log("après comment")
-      // } catch (e) {
-      //   if (!input.fields.dryRun) {
-      //     throw e;
-      //   }
-      //   return {
-      //     key: input.key,
-      //     sessionId: input.sessionId,
-      //     payload: {
-      //       _grinderyDryRunError:
-      //         "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
-      //     },
-      //   };
-      // }
+      try {
+        callResult = await web3.eth.call(txConfig);
+        if (droneAddress) {
+          const decoded = web3.eth.abi.decodeParameters(
+            GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
+            callResult
+          );
+          if (!decoded.success) {
+            await web3.eth.call({ ...rawTxConfig, from: droneAddress });
+            throw new Error("Transaction failed with unknown error");
+          }
+          if (functionInfo.outputs?.length) {
+            callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
+            if (functionInfo.outputs.length === 1) {
+              callResultDecoded = callResultDecoded[0];
+            }
+          }
+        }
+      } catch (e) {
+        if (!input.fields.dryRun) {
+          throw e;
+        }
+        return {
+          key: input.key,
+          sessionId: input.sessionId,
+          payload: {
+            _grinderyDryRunError:
+              "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
+          },
+        };
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-
-
-
       txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
-      let result: any;
+      let result: unknown;
       for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
         if (key in input.fields && typeof input.fields[key] === "string") {
           input.fields[key] = web3.utils.toWei(input.fields[key], "ether");
@@ -323,8 +309,7 @@ export async function callSmartContract(
         minFee = txConfig.maxFeePerGas;
       } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
         minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10).toNumber();
-        const maxTip =
-          input.fields.maxPriorityFeePerGas || Math.floor(minFee / 2);
+        const maxTip = input.fields.maxPriorityFeePerGas || Math.floor(minFee / 2);
         const maxFee = input.fields.gasLimit
           ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
           : feeData.maxFeePerGas.add(maxTip).toNumber();
@@ -339,7 +324,7 @@ export async function callSmartContract(
         txConfig.maxFeePerGas = maxFee;
         txConfig.maxPriorityFeePerGas = Number(maxTip);
       } else {
-        const gasPrice = (feeData.gasPrice || await ethersProvider.getGasPrice()).mul(12).div(10);
+        const gasPrice = (feeData.gasPrice || (await ethersProvider.getGasPrice())).mul(12).div(10);
         txConfig.gasPrice = gasPrice.toString();
         minFee = gasPrice.mul(txConfig.gas).toNumber();
       }
@@ -351,8 +336,6 @@ export async function callSmartContract(
           minFee,
         };
       } else {
-
-
         const receipt = await web3.eth.sendTransaction(txConfig);
         releaseLock(); // Block less time
         result = receipt;
@@ -360,79 +343,70 @@ export async function callSmartContract(
 
         // console.log("result: " + JSON.stringify(result))
 
-        // if (process.env.GAS_DEBIT_WEBHOOK) {
-        //   axios
-        //     .post(process.env.GAS_DEBIT_WEBHOOK, {
-        //       transaction: receipt.transactionHash,
-        //       block: receipt.blockNumber,
-        //       chain: input.fields.chain,
-        //       contractAddress: input.fields.contractAddress,
-        //       user: user.sub,
-        //       gasCost: cost,
-        //     })
-        //     .catch((e) => {
-        //       const resp = e.response as AxiosResponse;
-        //       console.error(
-        //         "Failed to call gas debit webhook",
-        //         { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
-        //         e instanceof Error ? e : null
-        //       );
-        //     });
-        // } else {
-        //   console.debug("Gas debit webhook is disabled");
-        // }
+        if (process.env.GAS_DEBIT_WEBHOOK) {
+          axios
+            .post(process.env.GAS_DEBIT_WEBHOOK, {
+              transaction: receipt.transactionHash,
+              block: receipt.blockNumber,
+              chain: input.fields.chain,
+              contractAddress: input.fields.contractAddress,
+              user: user.sub,
+              gasCost: cost,
+            })
+            .catch((e) => {
+              const resp = e.response as AxiosResponse;
+              console.error(
+                "Failed to call gas debit webhook",
+                { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
+                e instanceof Error ? e : null
+              );
+            });
+        } else {
+          console.debug("Gas debit webhook is disabled");
+        }
 
-
-
-
-
-
-        // if (droneAddress) {
-        //   const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
-        //   const eventSignature = web3.eth.abi.encodeEventSignature(
-        //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        //     eventAbi as any
-        //   );
-        //   const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
-        //   if (!log) {
-        //     throw new Error("No transaction result log in receipt");
-        //   }
-        //   const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
-        //   if (resultData.success) {
-        //     if (functionInfo.outputs?.length) {
-        //       callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
-        //       if (functionInfo.outputs.length === 1) {
-        //         callResultDecoded = callResultDecoded[0];
-        //       }
-        //       result = { ...receipt, returnValue: callResultDecoded };
-        //     }
-        //   } else {
-        //     throw new Error("Unexpected failure: " + resultData.returnData);
-        //   }
-        // }
+        if (droneAddress) {
+          const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
+          const eventSignature = web3.eth.abi.encodeEventSignature(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            eventAbi as any
+          );
+          const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
+          if (!log) {
+            throw new Error("No transaction result log in receipt");
+          }
+          const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
+          if (resultData.success) {
+            if (functionInfo.outputs?.length) {
+              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
+              if (functionInfo.outputs.length === 1) {
+                callResultDecoded = callResultDecoded[0];
+              }
+              result = { ...receipt, returnValue: callResultDecoded };
+            }
+          } else {
+            throw new Error("Unexpected failure: " + resultData.returnData);
+          }
+        }
       }
-
-      let payload:any;
 
       if (functionInfo.name === "mintNFT") {
         // payload = result.transactionHash
 
         // console.log("txhash: " + result.transactionHash.toString());
 
-
         return {
           key: input.key,
           sessionId: input.sessionId,
-          payload: {transactionHash: result.transactionHash},
+          payload: { transactionHash: (result as TransactionReceipt).transactionHash },
         };
       }
 
-
-      console.log("end call")
+      // console.log("end call");
       return {
         key: input.key,
         sessionId: input.sessionId,
-        payload: payload,
+        payload: result,
       };
     } finally {
       releaseLock();
@@ -441,45 +415,3 @@ export async function callSmartContract(
     close();
   }
 }
-
-
-async function test() {
-
-  const metadata = {
-    name: "name",
-    description: "description",
-    image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png",
-  };
-
-  var config:any = {
-    method: 'post',
-    url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
-    headers: { 
-      'Content-Type': 'application/json',
-      'pinata_api_key': process.env.PINATA_API_KEY,
-      'pinata_secret_api_key': process.env.PINATA_API_SECRET
-    },
-    data: metadata
-  };
-
-  const res = await axios(config);
-
-  // console.log(res.data);
-
-
-
-  // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-  // let ipfs = await IPFS.create({repo: "ok" + Math.random()});         
-  // const cid = await ipfs.add(metadata);
-  // paramArray.push("ipfs://" + cid.path);  
-
-  console.log(res.data);
-
-  console.log("ipfs://" + res.data.IpfsHash);  
-
-
-  
-}
-
-
-// test();
