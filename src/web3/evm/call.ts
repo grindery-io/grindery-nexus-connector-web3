@@ -4,11 +4,11 @@ import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS, getMetadataFromC
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { parseUserAccessToken } from "../../jwt";
-// import axios, { AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
 
-var axios = require('axios');
+// var axios = require('axios');
 
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
@@ -207,7 +207,7 @@ export async function callSmartContract(
         const metadata = JSON.stringify((({name, description, image}) => ({name, description, image}))(input.fields.parameters));
 
 
-        var config = {
+        const config:any = {
           method: 'post',
           url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
           headers: { 
@@ -445,40 +445,37 @@ export async function callSmartContract(
 
 async function test() {
 
-  // const tokenAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-  // // const tokenAddress = "0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315";
-  // const tokenHolder = "0xB201fDd90b14cc930bEc2c4E9f432bC1CA5Ad7C5"
-  // const chain = "eip155:1";
+  const metadata = {
+    name: "name",
+    description: "description",
+    image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png",
+  };
+
+  var config:any = {
+    method: 'post',
+    url: 'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+    headers: { 
+      'Content-Type': 'application/json',
+      'pinata_api_key': process.env.PINATA_API_KEY,
+      'pinata_secret_api_key': process.env.PINATA_API_SECRET
+    },
+    data: metadata
+  };
+
+  const res = await axios(config);
+
+  // console.log(res.data);
 
 
 
-  const tokenAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
-  // const tokenAddress = "0xc0829421C1d260BD3cB3E0F06cfE2D52db2cE315";
-  const tokenHolder = "0xaf0b0000f0210d0f421f0009c72406703b50506b"
-  const chain = "eip155:137";
+  // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
+  // let ipfs = await IPFS.create({repo: "ok" + Math.random()});         
+  // const cid = await ipfs.add(metadata);
+  // paramArray.push("ipfs://" + cid.path);  
 
+  console.log(res.data);
 
-  const { web3, close, ethersProvider } = getWeb3(chain);
-
-  const balanceOfAbi:any = ERC20;
-
-  console.log(balanceOfAbi);
-
-  // Define the ERC-20 token contract
-  const contract = new web3.eth.Contract(balanceOfAbi, tokenAddress) 
-
-  // Execute balanceOf() to retrieve the token balance
-  const result = await contract.methods.balanceOf(tokenHolder).call(); // 29803630997051883414242659
-
-  // // Convert the value from Wei to Ether
-  // const formattedResult = web3.utils.fromWei(result); // 29803630.997051883414242659
-
-  // const balance = await contract.methods.balanceOf(tokenHolder).call();
-  const decimals = await contract.methods.decimals().call();
-
-  console.log(result * 10 ** -decimals);
-
-  // console.log(await contract.methods.decimals().call())
+  console.log("ipfs://" + res.data.IpfsHash);  
 
 
   
