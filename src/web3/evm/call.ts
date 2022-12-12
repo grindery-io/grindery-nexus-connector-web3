@@ -198,15 +198,14 @@ export async function callSmartContract(
           (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
         );
 
-        const config: AxiosRequestConfig = {
+
+        const config = {
           method: "post",
           url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-          headers: {
+          headers: { 
             "Content-Type": "application/json",
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            pinata_api_key: process.env.PINATA_API_KEY!,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            pinata_secret_api_key: process.env.PINATA_API_SECRET!,
+            "pinata_api_key": process.env.PINATA_API_KEY,
+            "pinata_secret_api_key": process.env.PINATA_API_SECRET
           },
           data: metadata,
         };
