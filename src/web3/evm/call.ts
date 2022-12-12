@@ -199,7 +199,7 @@ export async function callSmartContract(
         );
 
 
-        let config = {
+        const config = {
           method: "post",
           url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
           headers: { 
@@ -416,26 +416,26 @@ export async function callSmartContract(
 }
 
 
-async function test() {
+// async function test() {
 
-  const metadata = {
-    name: "name",
-    description: "description",
-    image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png",
-  };
+//   const metadata = {
+//     name: "name",
+//     description: "description",
+//     image: "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png",
+//   };
 
-  let config:any = {
-    method: "post",
-    url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-    headers: { 
-      "Content-Type": "application/json",
-      "pinata_api_key": process.env.PINATA_API_KEY,
-      "pinata_secret_api_key": process.env.PINATA_API_SECRET
-    },
-    data: metadata
-  };
+//   let config:any = {
+//     method: "post",
+//     url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+//     headers: { 
+//       "Content-Type": "application/json",
+//       "pinata_api_key": process.env.PINATA_API_KEY,
+//       "pinata_secret_api_key": process.env.PINATA_API_SECRET
+//     },
+//     data: metadata
+//   };
 
-  const res = await axios(config);
+//   const res = await axios(config);
 
   // console.log(res.data);
 
@@ -446,9 +446,9 @@ async function test() {
   // const cid = await ipfs.add(metadata);
   // paramArray.push("ipfs://" + cid.path);  
 
-  console.log(res.data);
+  // console.log(res.data);
 
-  console.log("ipfs://" + res.data.IpfsHash);  
+  // console.log("ipfs://" + res.data.IpfsHash);  
 
 
   
