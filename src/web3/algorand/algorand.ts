@@ -1,23 +1,17 @@
 import { EventEmitter } from "node:events";
 import _ from "lodash";
 import axios from "axios";
-import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
+import {
+  ConnectorInput,
+  ConnectorOutput,
+  TriggerBase,
+} from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import { hmac, parseUserAccessToken, TAccessToken } from "../../jwt";
-import Web3 from "web3";
-import algosdk, { decodeAddress, Transaction } from "algosdk";
-import { getWeb3 } from "../evm/web3";
-import * as fs from "fs";
-import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "../evm/utils";
-import { getUserAccountAlgorand, 
-  parseFunctionDeclarationAlgorand,
-  getAlgodClient,
-  setSpFee 
-} from "./utils"; 
-import { UnicodeNormalizationForm } from "ethers/lib/utils";
-import {SendTransactionAction} from "../actions";
-import {DepayActions, AlgorandDepayActions} from "../utils";
-
+import { parseUserAccessToken, TAccessToken } from "../../jwt";
+import algosdk from "algosdk";
+import { getUserAccountAlgorand, getAlgodClient } from "./utils";
+import { SendTransactionAction } from "../actions";
+import { DepayActions, AlgorandDepayActions } from "../utils";
 
 type Status = {
   catchpoint: string;
@@ -177,7 +171,9 @@ async function arApi(path: string | string[]): Promise<unknown> {
   if (Array.isArray(path)) {
     path = path.join("/");
   }
-  const response = await axios.get("https://node.algoexplorerapi.io/v2/" + path);
+  const response = await axios.get(
+    "https://node.algoexplorerapi.io/v2/" + path
+  );
   return response.data;
 }
 
@@ -219,7 +215,13 @@ class TransactionSubscriber extends EventEmitter {
     }
     this.running = false;
   }
-  subscribe({ callback, onError }: { callback: (tx: Txn) => void; onError: (error: unknown) => void }) {
+  subscribe({
+    callback,
+    onError,
+  }: {
+    callback: (tx: Txn) => void;
+    onError: (error: unknown) => void;
+  }) {
     const handler = async (tx: Txn) => {
       await callback(tx);
     };
@@ -242,12 +244,21 @@ class TransactionSubscriber extends EventEmitter {
 
 const SUBSCRIBER = new TransactionSubscriber();
 
-class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
+class NewTransactionTrigger extends TriggerBase<{
+  chain: string | string[];
+  from?: string;
+  to?: string;
+}> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
-    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    console.log(
+      `[${this.sessionId}] NewTransactionTrigger:`,
+      this.fields.chain,
+      this.fields.from,
+      this.fields.to
+    );
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
         if (tx.txn.type !== "pay") {
@@ -320,13 +331,17 @@ class NewEventTrigger extends TriggerBase<{
         const note = "note" in tx.txn ? tx.txn.note : "";
         if (note && note.length < 4096) {
           try {
-            const decoded = JSON.parse(Buffer.from(note, "base64").toString("utf-8"));
+            const decoded = JSON.parse(
+              Buffer.from(note, "base64").toString("utf-8")
+            );
             args = { ...args, ...decoded };
           } catch (e) {
             // ignore
           }
         }
-        for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
+        for (const [key, value] of Object.entries(
+          this.fields.parameterFilters
+        )) {
           if (key.startsWith("_grindery")) {
             continue;
           }
@@ -351,26 +366,29 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
+export const Triggers = new Map<
+  string,
+  new (params: ConnectorInput) => TriggerBase
+>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
-const createAccount = function() {
-  try {  
+/*
+const createAccount = function () {
+  try {
     const userAccount = algosdk.generateAccount();
     console.log("Account Address = " + userAccount.addr);
-    let account_mnemonic = algosdk.secretKeyToMnemonic(userAccount.sk);
-    console.log("Account Mnemonic = "+ account_mnemonic);
+    const account_mnemonic = algosdk.secretKeyToMnemonic(userAccount.sk);
+    console.log("Account Mnemonic = " + account_mnemonic);
     console.log("Account created. Save off Mnemonic and address");
     console.log("Add funds to account using the TestNet Dispenser: ");
     console.log("https://dispenser.testnet.aws.algodev.network/ ");
     return userAccount;
-  }
-  catch (err) {
-      console.log("err", err);
+  } catch (err) {
+    console.log("err", err);
   }
 };
-
+*/
 export async function callSmartContract(
   input: ConnectorInput<{
     chain: string;
@@ -384,42 +402,46 @@ export async function callSmartContract(
     userToken: string;
   }>
 ): Promise<ConnectorOutput> {
-
   // Verify the userToken is valid
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  const user = await parseUserAccessToken(input.fields.userToken).catch(
+    () => null
+  );
   if (!user) {
     throw new Error("User token is invalid");
   }
 
   // Get user account
   const userAccount = await getUserAccountAlgorand(user);
-  const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const grinderyAccount = algosdk.mnemonicToSecretKey(
+    process.env.ALGORAND_MNEMONIC_GRINDERY!
+  );
   const algodClient = await getAlgodClient(input.fields.chain);
 
   // Set new atomicTransactionComposer
   const comp = new algosdk.AtomicTransactionComposer();
 
   // Set the three accounts: sender (user), intermediary to pay gas fees (grindery) and receiver
-  const sender = userAccount.addr;
-  const intermediary = grinderyAccount.addr;
+  // const sender = userAccount.addr;
+  // const intermediary = grinderyAccount.addr;
   const receiver = input.fields.contractAddress;
 
   // Set depay parameters for Algorand
   const depayparameter: DepayActions<AlgorandDepayActions> = {
     fields: {
-      comp: comp,
-      algodClient: algodClient,
-      userAccount: userAccount,
-      grinderyAccount: grinderyAccount,
-      receiver: receiver
-    }
-  }
+      comp,
+      algodClient,
+      userAccount,
+      grinderyAccount,
+      receiver,
+    },
+  };
 
   return await SendTransactionAction(input, depayparameter);
 }
 
-export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
+export async function getUserDroneAddress(
+  _user: TAccessToken
+): Promise<string> {
   throw new Error("Not implemented");
 }
-
-

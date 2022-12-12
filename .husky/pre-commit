@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+if [ -d "$HOME/.nvm" ]; then
+  export NVM_DIR="$HOME/.nvm"
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+  if [ -f .nvmrc ]; then
+    nvm use
+  fi
+fi
+
+. "$(dirname -- "$0")/_/husky.sh"
+
+npx --yes lint-staged
+npm test

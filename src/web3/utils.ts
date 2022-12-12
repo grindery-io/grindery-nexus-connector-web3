@@ -1,12 +1,11 @@
-
 import algosdk from "algosdk";
 
-export async function getNetworkId(chain: string) : Promise<string> {
-    return chain.split(':')[1];
+export async function getNetworkId(chain: string): Promise<string> {
+  return chain.split(":")[1];
 }
 
 export type DepayActions<T = unknown> = {
-    fields: T;
+  fields: T;
 };
 
 /**
@@ -16,8 +15,10 @@ export type DepayActions<T = unknown> = {
  * @property {any} userAccount - The account that the user is currently logged in as.
  */
 export type NearDepayActions = {
-    grinderyAccount: any;
-    userAccount: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  grinderyAccount: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userAccount: any;
 };
 
 /**
@@ -30,9 +31,9 @@ export type NearDepayActions = {
  * @property {string} receiver - The address of the user who will receive the funds.
  */
 export type AlgorandDepayActions = {
-    comp: algosdk.AtomicTransactionComposer;
-    algodClient: algosdk.Algodv2;
-    grinderyAccount: algosdk.Account;
-    userAccount: algosdk.Account;
-    receiver: string;
+  comp: algosdk.AtomicTransactionComposer;
+  algodClient: algosdk.Algodv2;
+  grinderyAccount: algosdk.Account;
+  userAccount: algosdk.Account;
+  receiver: string;
 };

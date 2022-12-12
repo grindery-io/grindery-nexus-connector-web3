@@ -12,17 +12,14 @@ import blockingTracer from "../blockingTracer";
 import { parseUserAccessToken, TAccessToken } from "../jwt";
 import { v4 as uuidv4 } from "uuid";
 import { KeyPair } from "near-api-js";
-
+import BN from "bn.js";
 // import { connect, transactions, keyStores } from "near-api-js";
 // import * as nearAPI from "near-api-js";
 // import fs from "fs";
 // import path from "path";
 // import { homedir } from 'os';
 
-const { connect, transactions, keyStores, utils } = require("near-api-js");
-const fs = require("fs");
-const path = require("path");
-const userHomeDir = require("os").homedir();
+import { connect, transactions, keyStores, utils } from "near-api-js";
 
 type Receipt = {
   predecessor_id: string;
@@ -390,9 +387,9 @@ Triggers.set("newEvent", NewEventTrigger);
 const networkId = "mainnet";
 const CONTRACT_NAME = "nft.grindery.near";
 const keyStore = new keyStores.InMemoryKeyStore();
-const keyPair = KeyPair.fromString((process.env.PRIVATE_KEY as string));
+const keyPair = KeyPair.fromString(process.env.PRIVATE_KEY as string);
 
-keyStore.setKey(networkId, CONTRACT_NAME, keyPair.toString());
+keyStore.setKey(networkId, CONTRACT_NAME, keyPair);
 
 // #########################################################################
 // #########################################################################
@@ -411,10 +408,9 @@ export async function callSmartContract(
     userToken: string;
   }>
 ): Promise<ConnectorOutput> {
-
   const config = {
     keyStore,
-    networkId: networkId,
+    networkId,
     nodeUrl: "https://rpc.mainnet.near.org",
   };
 
@@ -425,7 +421,7 @@ export async function callSmartContract(
     throw new Error("User token is invalid");
   }
 
-  const near = await connect({ ...config, keyStore });
+  const near = await connect({ ...config, keyStore, headers: {} });
   const account = await near.account(input.fields.contractAddress);
 
   const args = {
@@ -438,14 +434,15 @@ export async function callSmartContract(
     receiver_id: input.fields.parameters.to,
   };
 
-  const result = await account.signAndSendTransaction({
+  // Need array indexing to fix TS2445
+  const result = await account["signAndSendTransaction"]({
     receiverId: input.fields.contractAddress,
     actions: [
       transactions.functionCall(
         "nft_mint",
         args,
-        10000000000000,
-        await utils.format.parseNearAmount('0.1')
+        new BN(10000000000000),
+        new BN((await utils.format.parseNearAmount("0.1")) as string)
       ),
     ],
   });

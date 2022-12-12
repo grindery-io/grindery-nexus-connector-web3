@@ -9,7 +9,14 @@
     "install": "./install.sh",
     "build": "./build.sh",
     "server": "[ -f server.js ] && node server || ts-node src/server",
-    "server:dist": "cd dist && node server"
+    "server:dist": "cd dist && node server",
+    "test": "eslint --ext js,ts src/ && tsc -p tsconfig.json --noEmit",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx}": [
+      "npx --yes prettier --write"
+    ]
   },
   "author": "",
   "license": "MIT",
@@ -50,6 +57,7 @@
     "@typescript-eslint/eslint-plugin": "^5.19.0",
     "@typescript-eslint/parser": "^5.19.0",
     "eslint": "^8.13",
+    "husky": "^8.0.0",
     "ts-node": "^10.7.0",
     "typescript": "^4.6.3"
   }
