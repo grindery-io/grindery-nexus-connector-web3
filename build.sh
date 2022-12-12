@@ -4,5 +4,5 @@ set -eu
 
 [ -d dist ] && rm -rf dist
 
-eslint src/*.ts
+eslint --ext js,ts src/
 tsc -p tsconfig.json
