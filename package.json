@@ -28,6 +28,7 @@
     "algosdk": "^1.23.2",
     "axios": "^0.26.1",
     "base58-js": "^1.0.4",
+    "bignumber.js": "^9.1.1",
     "console-log-json": "github:SAPikachu/console-log-json",
     "core-js": "^3.22",
     "dotenv": "^16.0.0",
