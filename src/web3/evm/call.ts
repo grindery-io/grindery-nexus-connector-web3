@@ -102,6 +102,7 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
+
     /* A function that returns the balance of an address. */
     if (input.fields.functionDeclaration === "getBalanceNative") {
       const address = input.fields.parameters.address as string;
@@ -151,6 +152,38 @@ export async function callSmartContract(
           symbol: await tokenContract.methods.symbol().call(),
           decimals: (await tokenContract.methods.decimals().call()).toString(),
           name: await tokenContract.methods.name().call(),
+        },
+      };
+    }
+
+    /* Getting the allowance of an ERC20 token. */
+    if (input.fields.functionDeclaration === "getAllowanceERC20Token") {
+      const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
+      const allowance = await tokenContract.methods.allowance(input.fields.parameters.owner, input.fields.parameters.spender).call();
+      const decimals = await tokenContract.methods.decimals().call();
+      const allowanceTokenUnit = new BigNumber(allowance).div(new BigNumber(10).pow(new BigNumber(decimals)));
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {
+          allowance: allowanceTokenUnit.toString(),
+        },
+      };
+    }
+
+    /* Getting the total supply of an ERC20 token. */
+    if (input.fields.functionDeclaration === "getTotalSupplyERC20Token") {
+      const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
+      const totalSupply = await tokenContract.methods.totalSupply().call();
+      const decimals = await tokenContract.methods.decimals().call();
+      const totalSupplyTokenUnit = new BigNumber(totalSupply).div(new BigNumber(10).pow(new BigNumber(decimals)));
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {
+          totalSupply: totalSupplyTokenUnit.toString(),
         },
       };
     }
@@ -228,8 +261,6 @@ export async function callSmartContract(
           paramArray.push(input.fields.parameters[i.name]);
         }
       }
-
-      console.log("paramArray: " + paramArray);
 
       callData = web3.eth.abi.encodeFunctionCall(functionInfo, paramArray);
     }
@@ -389,11 +420,9 @@ export async function callSmartContract(
         }
       }
 
-      if (functionInfo.name === "mintNFT") {
-        // payload = result.transactionHash
-
-        // console.log("txhash: " + result.transactionHash.toString());
-
+      if (functionInfo.name === "mintNFT" || functionInfo.name === "transferFrom" || functionInfo.name === "approve"
+      || functionInfo.name === "decreaseAllowance" || functionInfo.name === "transfer" || functionInfo.name === "transfer" 
+      || functionInfo.name === "increaseAllowance") {
         return {
           key: input.key,
           sessionId: input.sessionId,
@@ -401,7 +430,6 @@ export async function callSmartContract(
         };
       }
 
-      // console.log("end call");
       return {
         key: input.key,
         sessionId: input.sessionId,
