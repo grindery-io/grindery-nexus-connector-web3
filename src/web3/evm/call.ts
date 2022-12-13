@@ -420,9 +420,10 @@ export async function callSmartContract(
         }
       }
 
-      if (functionInfo.name === "mintNFT" || functionInfo.name === "transferFrom" || functionInfo.name === "approve"
-      || functionInfo.name === "decreaseAllowance" || functionInfo.name === "transfer" || functionInfo.name === "transfer" 
-      || functionInfo.name === "increaseAllowance") {
+      // if (functionInfo.name === "mintNFT" || functionInfo.name === "transferFrom" || functionInfo.name === "approve"
+      // || functionInfo.name === "decreaseAllowance" || functionInfo.name === "transfer" || functionInfo.name === "transfer" 
+      // || functionInfo.name === "increaseAllowance") {
+      if (functionInfo.name === "mintNFT") {
         return {
           key: input.key,
           sessionId: input.sessionId,
