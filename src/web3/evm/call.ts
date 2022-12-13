@@ -7,7 +7,6 @@ import { parseUserAccessToken } from "../../jwt";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
-import BN from "bn.js";
 import BigNumber from "bignumber.js";
 
 // var axios = require('axios');
@@ -132,8 +131,6 @@ export async function callSmartContract(
       const decimals = await contract.methods.decimals().call();
       const balanceTokenUnit = new BigNumber(balanceWei).div(new BigNumber(10).pow(new BigNumber(decimals)));
 
-      console.log(balanceTokenUnit.toString());
-      
       return {
         key: input.key,
         sessionId: input.sessionId,
@@ -417,24 +414,3 @@ export async function callSmartContract(
     close();
   }
 }
-
-
-
-
-async function test() {
-
-  const balanceWei = 1;
-  const decimals = 2;
-
-  const test = new BigNumber(balanceWei).multipliedBy(new BigNumber(10).pow(new BigNumber(decimals)))
-
-  // const balanceTokenUnittest = new BN(balanceWei).mul(new BN(10).pow(new BN(- decimals)));
-
-
-  // console.log(balanceTokenUnittest.toString())
-
-  console.log(test.toString())
-
-}
-
-// test();
