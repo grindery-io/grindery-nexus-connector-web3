@@ -32,7 +32,9 @@ const safeMutexify = () => {
   return async () => onlyOnce(await mutex());
 };
 
-const transactionMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
+const transactionMutexes: {
+  [contractAddress: string]: () => Promise<() => void>;
+} = {};
 
 async function isHubAvailable(chain: string, web3: Web3) {
   if (!hubAvailability.has(chain)) {
@@ -102,7 +104,6 @@ export async function callSmartContract(
   }
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
-
     /* A function that returns the balance of an address. */
     if (input.fields.functionDeclaration === "getBalanceNative") {
       const address = input.fields.parameters.address as string;
@@ -158,8 +159,11 @@ export async function callSmartContract(
 
     /* Getting the allowance of an ERC20 token. */
     if (input.fields.functionDeclaration === "getAllowanceERC20Token") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
-      const allowance = await tokenContract.methods.allowance(input.fields.parameters.owner, input.fields.parameters.spender).call();
+      const allowance = await tokenContract.methods
+        .allowance(input.fields.parameters.owner, input.fields.parameters.spender)
+        .call();
       const decimals = await tokenContract.methods.decimals().call();
       const allowanceTokenUnit = new BigNumber(allowance).div(new BigNumber(10).pow(new BigNumber(decimals)));
 
@@ -174,6 +178,7 @@ export async function callSmartContract(
 
     /* Getting the total supply of an ERC20 token. */
     if (input.fields.functionDeclaration === "getTotalSupplyERC20Token") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
       const totalSupply = await tokenContract.methods.totalSupply().call();
       const decimals = await tokenContract.methods.decimals().call();
@@ -387,7 +392,12 @@ export async function callSmartContract(
               const resp = e.response as AxiosResponse;
               console.error(
                 "Failed to call gas debit webhook",
-                { code: resp?.status, body: resp?.data, headers: resp?.headers, config: resp?.config },
+                {
+                  code: resp?.status,
+                  body: resp?.data,
+                  headers: resp?.headers,
+                  config: resp?.config,
+                },
                 e instanceof Error ? e : null
               );
             });
@@ -424,7 +434,9 @@ export async function callSmartContract(
         return {
           key: input.key,
           sessionId: input.sessionId,
-          payload: { transactionHash: (result as TransactionReceipt).transactionHash },
+          payload: {
+            transactionHash: (result as TransactionReceipt).transactionHash,
+          },
         };
       }
 
