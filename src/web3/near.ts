@@ -20,6 +20,8 @@ import BN from "bn.js";
 // import { homedir } from 'os';
 
 import { connect, transactions, keyStores, utils } from "near-api-js";
+import { nearGetAccount, normalizeAddress } from "./near/utils";
+import { Transaction } from "ethers";
 
 type Receipt = {
   predecessor_id: string;
@@ -53,17 +55,24 @@ class ReceiptSubscriber extends EventEmitter {
     super();
     this.setMaxListeners(1000);
   }
+  /**
+   * It connects to the NEAR blockchain, and then it loops forever, getting the latest block, getting
+   * the receipts from that block, and then calling the "process" event listeners with each receipt
+   * @returns a promise.
+   */
   async main() {
     blockingTracer.tag("near.ReceiptSubscriber.main");
     if (this.running) {
       return;
     }
+    const networkId = "testnet";
+
     const config = {
-      networkId: "mainnet",
-      nodeUrl: "https://rpc.mainnet.near.org",
-      walletUrl: "https://wallet.mainnet.near.org",
-      helperUrl: "https://helper.mainnet.near.org",
-      explorerUrl: "https://explorer.mainnet.near.org",
+      networkId: networkId,
+      nodeUrl: `https://rpc.${networkId}.near.org`,
+      walletUrl: `https://wallet.${networkId}.near.org`,
+      helperUrl: `https://helper.${networkId}.near.org`,
+      explorerUrl: `https://explorer.${networkId}.near.org`,
       headers: {},
     };
     const near = await connect(config);
@@ -118,12 +127,14 @@ class ReceiptSubscriber extends EventEmitter {
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const block of pendingBlocks) {
           const receipts = [] as Receipt[];
+          const txs = [] as any[];
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
                 const chunkDetails = await near.connection.provider.chunk(
                   chunk.chunk_hash
                 );
+                txs.splice(txs.length, 0, ...chunkDetails.transactions);
                 receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
               },
               {
@@ -139,13 +150,22 @@ class ReceiptSubscriber extends EventEmitter {
               }
             );
           }
-          for (const receipt of receipts as Receipt[]) {
-            for (const listener of this.listeners("process")) {
-              await listener(receipt);
-            }
-          }
+          // for (const receipt of receipts as Receipt[]) {
+          //   for (const listener of this.listeners("process")) {
+          //     await listener(receipt);
+          //   }
+          // }
+
           currentHash = block.header.hash;
           currentHeight = block.header.height;
+
+          for (const tx of txs as any[]) {
+            for (const listener of this.listeners("process")) {
+              await listener({ currentHeight, currentHash, tx});
+            }
+          }
+          // currentHash = block.header.hash;
+          // currentHeight = block.header.height;
         }
       } catch (e) {
         console.error("[Near] Error in Near event loop:", e);
@@ -164,15 +184,23 @@ class ReceiptSubscriber extends EventEmitter {
     this.running = false;
     console.log("[Near] event main loop stopped");
   }
+
+
+  /**
+   * It subscribes to the "process" event, and when it receives a receipt, it calls the callback
+   * function
+   * @param  - `callback` is the function that will be called when a new receipt is received.
+   * @returns A function that removes the event listener.
+   */
   subscribe({
     callback,
     onError,
   }: {
-    callback: (receipt: Receipt) => void;
+    callback: (tx: any) => void;
     onError: (error: unknown) => void;
   }) {
-    const handler = async (receipt: Receipt) => {
-      await callback(receipt);
+    const handler = async (tx: any) => {
+      await callback(tx);
     };
     const errorHandler = (error: unknown) => {
       onError(error);
@@ -193,23 +221,8 @@ class ReceiptSubscriber extends EventEmitter {
 
 const SUBSCRIBER = new ReceiptSubscriber();
 
-function normalizeAddress<T>(address: T): T {
-  if (!address) {
-    return address;
-  }
-  if (typeof address !== "string") {
-    return address;
-  }
-  if (/^0x[0-9a-f]+$/i.test(address)) {
-    return address.slice(2) as unknown as T;
-  }
-  const m = /^ed25519:([0-9a-z]+)$/i.exec(address);
-  if (!m) {
-    return address;
-  }
-  return base58_to_binary(m[1]).toString("hex");
-}
-
+/* It subscribes to the `SUBSCRIBER` and sends a notification to the user when a transaction is
+received */
 class NewTransactionTrigger extends TriggerBase<{
   chain: string | string[];
   from?: string;
@@ -228,37 +241,83 @@ class NewTransactionTrigger extends TriggerBase<{
       this.fields.to
     );
     const unsubscribe = SUBSCRIBER.subscribe({
-      callback: async (receipt: Receipt) => {
+      callback: async (tx: any) => {
         blockingTracer.tag("near.NewTransactionTrigger");
         // console.log(receipt);
+
+        // console.log("transaction", tx.tx);
+        // console.log("transaction callback", tx.tx.actions);
+        // console.log("#######################################");
+
+
         if (
           this.fields.from &&
-          this.fields.from !==
-            normalizeAddress(receipt.receipt.Action?.signer_id) &&
-          this.fields.from !==
-            normalizeAddress(receipt.receipt.Action?.signer_public_key)
+          this.fields.from !== normalizeAddress(tx.tx.signer_id) &&
+          this.fields.from !== normalizeAddress(tx.tx.public_key)
         ) {
           return;
         }
         if (
           this.fields.to &&
-          this.fields.to !== normalizeAddress(receipt.receiver_id)
+          this.fields.to !== normalizeAddress(tx.tx.receiver_id)
         ) {
           return;
         }
-        for (const action of receipt.receipt.Action?.actions ?? []) {
+        for (const action of tx.tx.actions ?? []) {
           if (!("Transfer" in action)) {
             continue;
           }
           const transfer = action.Transfer;
+
+          console.log("transfer", transfer);
+          console.log("tx hash", tx.tx.hash);
+          console.log("block heigh", tx.currentHeight);
+          console.log("block hash", tx.currentHash);
+          console.log("deposit", transfer.deposit)
+
           this.sendNotification({
-            _grinderyChain: this.fields.chain,
-            from: receipt.receipt.Action?.signer_id,
-            to: receipt.receiver_id,
-            value: transfer.deposit,
-            ...receipt,
+            from: tx.tx.signer_id,
+            to: tx.tx.receiver_id,
+            amount: transfer.deposit,
+            txHash: tx.tx.hash,
+            blockHash:tx.currentHash,
+            blockHeight:tx.currentHeight,
           });
         }
+
+
+
+        // if (
+        //   this.fields.from &&
+        //   this.fields.from !==
+        //     normalizeAddress(receipt.receipt.Action?.signer_id) &&
+        //   this.fields.from !==
+        //     normalizeAddress(receipt.receipt.Action?.signer_public_key)
+        // ) {
+        //   return;
+        // }
+        // if (
+        //   this.fields.to &&
+        //   this.fields.to !== normalizeAddress(receipt.receiver_id)
+        // ) {
+        //   return;
+        // }
+        // for (const action of receipt.receipt.Action?.actions ?? []) {
+        //   if (!("Transfer" in action)) {
+        //     continue;
+        //   }
+        //   const transfer = action.Transfer;
+
+        //   console.log("transfert", transfer);
+        //   console.log("receipt", receipt);
+        //   this.sendNotification({
+        //     _grinderyChain: this.fields.chain,
+        //     from: receipt.receipt.Action?.signer_id,
+        //     to: receipt.receiver_id,
+        //     value: transfer.deposit,
+        //     ...receipt,
+        //   });
+        // }
       },
       onError: (error: unknown) => {
         this.interrupt(error);
@@ -271,6 +330,10 @@ class NewTransactionTrigger extends TriggerBase<{
     }
   }
 }
+
+
+
+/* It subscribes to the blockchain and sends a notification whenever a contract emits an event */
 class NewEventTrigger extends TriggerBase<{
   chain: string | string[];
   contractAddress?: string;

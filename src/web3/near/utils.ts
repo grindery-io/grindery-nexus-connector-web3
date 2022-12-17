@@ -2,9 +2,39 @@ import { getNetworkId } from "../utils";
 import { hmac } from "../../jwt";
 import { base_encode } from "./serialize";
 import nacl from "tweetnacl";
+import { base58_to_binary } from "base58-js";
 
 import { connect, keyStores, utils } from "near-api-js";
 
+
+
+/**
+ * It takes an address, and if it's a base58 encoded address, it converts it to a hex encoded address
+ * @param {T} address - The address to normalize.
+ * @returns The address is being returned.
+ */
+export function normalizeAddress<T>(address: T): T {
+  if (!address) {
+    return address;
+  }
+  if (typeof address !== "string") {
+    return address;
+  }
+  if (/^0x[0-9a-f]+$/i.test(address)) {
+    return address.slice(2) as unknown as T;
+  }
+  const m = /^ed25519:([0-9a-z]+)$/i.exec(address);
+  if (!m) {
+    return address;
+  }
+  return base58_to_binary(m[1]).toString("hex");
+}
+
+/**
+ * It takes a user's name, and returns a keypair that can be used to sign transactions
+ * @param {string | undefined} user - The user's username.
+ * @returns A new keypair
+ */
 export async function getUserAccountNear(
   user: string | undefined
 ): Promise<unknown> {
