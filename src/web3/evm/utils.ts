@@ -34,10 +34,7 @@ export function onNewBlockMultiChain(
     });
     cleanUpFunctions.push(
       onNewBlock(
-        (block, memoCall) =>
-          Promise.resolve(callback({ chain, web3, block, memoCall })).catch(
-            onError
-          ),
+        (block, memoCall) => Promise.resolve(callback({ chain, web3, block, memoCall })).catch(onError),
         onError
       )
     );
@@ -60,9 +57,7 @@ export function isSameAddress(a, b) {
   return a === b;
 }
 export function parseEventDeclaration(eventDeclaration: string): AbiItem {
-  const m = /^\s*(event +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(
-    eventDeclaration
-  );
+  const m = /^\s*(event +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(eventDeclaration);
   if (!m) {
     throw new Error("Invalid event declaration");
   }
@@ -89,9 +84,7 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
   };
 }
 export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
-  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*(.*)$/.exec(
-    functionDeclaration
-  );
+  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*(.*)$/.exec(functionDeclaration);
   if (!m) {
     throw new Error("Invalid function declaration");
   }
@@ -138,10 +131,7 @@ export async function getUserAddress(user: TAccessToken) {
   let userAddress: string;
   if ("workspace" in user) {
     userAddress = Web3.utils.toChecksumAddress(
-      "0x" +
-        (await hmac("grindery-web3-address-workspace/" + user.workspace))
-          .subarray(0, 20)
-          .toString("hex")
+      "0x" + (await hmac("grindery-web3-address-workspace/" + user.workspace)).subarray(0, 20).toString("hex")
     );
   } else {
     const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
@@ -152,10 +142,7 @@ export async function getUserAddress(user: TAccessToken) {
       }
     } else {
       userAddress = Web3.utils.toChecksumAddress(
-        "0x" +
-          (await hmac("grindery-web3-address-sub/" + user.sub))
-            .subarray(0, 20)
-            .toString("hex")
+        "0x" + (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, 20).toString("hex")
       );
     }
   }
@@ -163,10 +150,7 @@ export async function getUserAddress(user: TAccessToken) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getMetadataFromCID(
-  ipfs: any,
-  cid: string
-): Promise<string> {
+export async function getMetadataFromCID(ipfs: any, cid: string): Promise<string> {
   // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
   // let ipfs = await IPFS.create();
   const stream = await ipfs.cat(cid);

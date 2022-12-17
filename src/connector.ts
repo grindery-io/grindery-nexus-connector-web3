@@ -8,6 +8,7 @@ import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { convert } from "./web3/evm/unitConverter";
 import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
 import { callSmartContractWebHook } from "./web3";
+import { genericAbiAction, genericAbiActionInputProvider } from "./web3/evm/actions/genericAbiAction";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sanitizeParameters(input: ConnectorInput<any>) {
@@ -53,7 +54,8 @@ export async function callSmartContract(params: ConnectorInput): Promise<Connect
 }
 
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
-  actions: { callSmartContract },
+  actions: { callSmartContract, genericAbiAction },
   triggers: { newTransaction: { factory: setupSignal }, newEvent: { factory: setupSignal } },
+  inputProviders: { genericAbiAction: genericAbiActionInputProvider },
   webhooks: { callSmartContract: callSmartContractWebHook },
 };

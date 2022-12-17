@@ -430,9 +430,9 @@ export async function callSmartContract(
   );
 
   // Get grindery account
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const grinderyAccount = await nearGetAccount(
     input.fields.chain,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     process.env.NEAR_ACCOUNT_ID!,
     keyStore
   );

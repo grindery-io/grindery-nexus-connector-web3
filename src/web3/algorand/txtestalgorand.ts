@@ -1,7 +1,4 @@
-import {
-  ConnectorInput,
-  ConnectorOutput,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { DepayActions, AlgorandDepayActions } from "../utils";
 import { parseFunctionDeclarationAlgorand, setSpFee } from "./utils";
 import algosdk, { Transaction } from "algosdk";
@@ -23,10 +20,7 @@ export async function SendTransactionAction(
   // We initialize the common parameters here, they'll be passed to all the transactions
   // since they happen to be the same
   const spNoFee = await setSpFee(0, depay.fields.algodClient);
-  const spFullFee = await setSpFee(
-    3 * algosdk.ALGORAND_MIN_TX_FEE,
-    depay.fields.algodClient
-  );
+  const spFullFee = await setSpFee(3 * algosdk.ALGORAND_MIN_TX_FEE, depay.fields.algodClient);
 
   // Transaction from the user to the dApp (amount = 0 and fees = 0)
   const txn = algosdk.makePaymentTxnWithSuggestedParams(
@@ -46,9 +40,7 @@ export async function SendTransactionAction(
   const commonParamsFullFee = {
     sender: depay.fields.grinderyAccount.addr,
     suggestedParams: spFullFee,
-    signer: algosdk.makeBasicAccountTransactionSigner(
-      depay.fields.grinderyAccount
-    ),
+    signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
   };
 
   depay.fields.comp.addMethodCall({
@@ -67,9 +59,7 @@ export async function SendTransactionAction(
           ...spNoFee,
         }),
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        signer: algosdk.makeBasicAccountTransactionSigner(
-          depay.fields.grinderyAccount!
-        ),
+        signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount!),
       },
       0,
     ],
