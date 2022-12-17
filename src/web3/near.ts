@@ -65,14 +65,12 @@ class ReceiptSubscriber extends EventEmitter {
     if (this.running) {
       return;
     }
-    const networkId = "testnet";
-
     const config = {
-      networkId: networkId,
-      nodeUrl: `https://rpc.${networkId}.near.org`,
-      walletUrl: `https://wallet.${networkId}.near.org`,
-      helperUrl: `https://helper.${networkId}.near.org`,
-      explorerUrl: `https://explorer.${networkId}.near.org`,
+      networkId: "testnet",
+      nodeUrl: "https://rpc.testnet.near.org",
+      walletUrl: "https://wallet.testnet.near.org",
+      helperUrl: "https://helper.testnet.near.org",
+      explorerUrl: "https://explorer.testnet.near.org",
       headers: {},
     };
     const near = await connect(config);
@@ -273,15 +271,15 @@ class NewTransactionTrigger extends TriggerBase<{
           console.log("tx hash", tx.tx.hash);
           console.log("block heigh", tx.currentHeight);
           console.log("block hash", tx.currentHash);
-          console.log("deposit", transfer.deposit)
+          console.log("deposit", transfer.deposit);
 
           this.sendNotification({
             from: tx.tx.signer_id,
             to: tx.tx.receiver_id,
             amount: transfer.deposit,
             txHash: tx.tx.hash,
-            blockHash:tx.currentHash,
-            blockHeight:tx.currentHeight,
+            blockHash: tx.currentHash,
+            blockHeight: tx.currentHeight,
           });
         }
 
