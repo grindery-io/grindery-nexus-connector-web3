@@ -461,13 +461,40 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
+  
+  const algodClient = await getAlgodClient(input.fields.chain);
+  
+  /* The above code is using the Algorand Standard Asset API to get information about an asset. */
+  if (input.fields.functionDeclaration === "getInformationAsset") {
+    let accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
+    for (let idx = 0; idx < accountInfo['created-assets'].length; idx++) {
+      let scrutinizedAsset = accountInfo['created-assets'][idx];
+      if (scrutinizedAsset['index'] == input.fields.parameters.assetid) {
+        console.log("symbol", scrutinizedAsset['params']['unit-name']);
+        console.log("name", scrutinizedAsset['params'].name);
+        console.log("decimals", scrutinizedAsset['params'].decimals);
+        console.log("creator", scrutinizedAsset['params'].creator);
+        console.log("assetid", scrutinizedAsset['index']);
+        return {
+          key: input.key,
+          sessionId: input.sessionId,
+          payload: { 
+            symbol: scrutinizedAsset['params']['unit-name'],
+            name: scrutinizedAsset['params'].name,
+            decimals: scrutinizedAsset['params'].decimals,
+            creator: scrutinizedAsset['params'].creator,
+            assetid: scrutinizedAsset['index']
+          },
+        };
+      }
+    }
+  }
 
   // Get user account
   const userAccount = await getUserAccountAlgorand(user);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
-  const algodClient = await getAlgodClient(input.fields.chain);
-
+  
   // Set new atomicTransactionComposer
   const comp = new algosdk.AtomicTransactionComposer();
 
@@ -493,24 +520,3 @@ export async function callSmartContract(
 export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
   throw new Error("Not implemented");
 }
-
-
-async function main() { 
-
-  const algodClient = await getAlgodClient("algorand:testnet");
-  const status = await arApi("status");
-  let currentHeight = status["last-round"];
-  let block = await algodClient.block(currentHeight).do();
-
-  let stwad:any;
-  for (const txn of block.block.txns) {
-    console.log("une transaction", txn);
-    stwad = new SignedTransactionWithAD(
-      block.block.gh,
-      block.block.gen,
-      txn
-    );
-  }
-}
-
-// main();
