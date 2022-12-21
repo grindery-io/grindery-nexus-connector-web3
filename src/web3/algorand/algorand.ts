@@ -8,10 +8,10 @@ import algosdk from "algosdk";
 import { getUserAccountAlgorand, getAlgodClient, SignedTransactionWithAD } from "./utils";
 import { SendTransactionAction } from "../actions";
 import { DepayActions, AlgorandDepayActions } from "../utils";
-import { transactions } from "near-api-js";
-import * as msgpack from "algo-msgpack-with-bigint";
-import { PublicKey } from "near-api-js/lib/utils";
-import { consoleLogger } from "@influxdata/influxdb-client";
+// import { transactions } from "near-api-js";
+// import * as msgpack from "algo-msgpack-with-bigint";
+// import { PublicKey } from "near-api-js/lib/utils";
+// import { consoleLogger } from "@influxdata/influxdb-client";
 import BigNumber from "bignumber.js";
 
 type Status = {
@@ -31,115 +31,115 @@ type Status = {
   "stopped-at-unsupported-round": boolean;
   "time-since-last-round": number;
 };
-type TxnDetails =
-  | {
-      amt: number;
-      fee: number;
-      fv: number;
-      gen: string;
-      gh: string;
-      lv: number;
-      note: string;
-      rcv: string;
-      snd: string;
-      type: "pay";
-    }
-  | {
-      close: string;
-      fee: number;
-      fv: number;
-      gen: string;
-      gh: string;
-      lv: number;
-      rcv: string;
-      snd: string;
-      type: "pay";
-    }
-  | {
-      fee: number;
-      fv: number;
-      gh: string;
-      lv: number;
-      selkey: string;
-      snd: string;
-      type: "keyreg";
-      votefst: number;
-      votekd: number;
-      votekey: string;
-      votelst: number;
-    }
-  | {
-      fee: number;
-      fv: number;
-      gh: string;
-      lv: number;
-      snd: string;
-      type: "keyreg";
-    }
-  | {
-      apar?: Partial<{
-        am: string;
-        an: string;
-        au: string;
-        c: string;
-        dc: number;
-        f: string;
-        m: string;
-        r: string;
-        t: number;
-        un: string;
-      }>;
-      fee: number;
-      fv: number;
-      gh: string;
-      lv: number;
-      snd: string;
-      type: "acfg";
-    }
-  | {
-      aamt: number;
-      arcv: string;
-      asnd: string;
-      fee: number;
-      fv: number;
-      gh: string;
-      lv: number;
-      snd: string;
-      type: "axfer";
-      xaid: number;
-    }
-  | {
-      afrz: boolean;
-      fadd: string;
-      faid: number;
-      fee: number;
-      fv: number;
-      gh: string;
-      lv: number;
-      snd: string;
-      type: "afrz";
-    }
-  | {
-      apan?: number;
-      apap?: string;
-      apgs?: {
-        nbs: number;
-        nui: number;
-      };
-      apid?: number;
-      apls?: {
-        nbs: number;
-        nui: number;
-      };
-      apsu?: string;
-      fee: number;
-      fv: number;
-      gh: string;
-      lv: number;
-      note: string;
-      snd: string;
-      type: "appl";
-    };
+// type TxnDetails =
+//   | {
+//       amt: number;
+//       fee: number;
+//       fv: number;
+//       gen: string;
+//       gh: string;
+//       lv: number;
+//       note: string;
+//       rcv: string;
+//       snd: string;
+//       type: "pay";
+//     }
+//   | {
+//       close: string;
+//       fee: number;
+//       fv: number;
+//       gen: string;
+//       gh: string;
+//       lv: number;
+//       rcv: string;
+//       snd: string;
+//       type: "pay";
+//     }
+//   | {
+//       fee: number;
+//       fv: number;
+//       gh: string;
+//       lv: number;
+//       selkey: string;
+//       snd: string;
+//       type: "keyreg";
+//       votefst: number;
+//       votekd: number;
+//       votekey: string;
+//       votelst: number;
+//     }
+//   | {
+//       fee: number;
+//       fv: number;
+//       gh: string;
+//       lv: number;
+//       snd: string;
+//       type: "keyreg";
+//     }
+//   | {
+//       apar?: Partial<{
+//         am: string;
+//         an: string;
+//         au: string;
+//         c: string;
+//         dc: number;
+//         f: string;
+//         m: string;
+//         r: string;
+//         t: number;
+//         un: string;
+//       }>;
+//       fee: number;
+//       fv: number;
+//       gh: string;
+//       lv: number;
+//       snd: string;
+//       type: "acfg";
+//     }
+//   | {
+//       aamt: number;
+//       arcv: string;
+//       asnd: string;
+//       fee: number;
+//       fv: number;
+//       gh: string;
+//       lv: number;
+//       snd: string;
+//       type: "axfer";
+//       xaid: number;
+//     }
+//   | {
+//       afrz: boolean;
+//       fadd: string;
+//       faid: number;
+//       fee: number;
+//       fv: number;
+//       gh: string;
+//       lv: number;
+//       snd: string;
+//       type: "afrz";
+//     }
+//   | {
+//       apan?: number;
+//       apap?: string;
+//       apgs?: {
+//         nbs: number;
+//         nui: number;
+//       };
+//       apid?: number;
+//       apls?: {
+//         nbs: number;
+//         nui: number;
+//       };
+//       apsu?: string;
+//       fee: number;
+//       fv: number;
+//       gh: string;
+//       lv: number;
+//       note: string;
+//       snd: string;
+//       type: "appl";
+//     };
 // interface Txn {
 //   hgi?: boolean;
 //   sig?: string;
@@ -151,21 +151,21 @@ type TxnDetails =
 // }
 
 
-type AnyTransaction = algosdk.PaymentTxn 
-| algosdk.KeyRegistrationTxn 
-| algosdk.AssetCreateTxn 
-| algosdk.AssetConfigTxn 
-| algosdk.AssetDestroyTxn 
-| algosdk.AssetFreezeTxn 
-| algosdk.AssetTransferTxn 
-| algosdk.AppCreateTxn 
-| algosdk.AppUpdateTxn 
-| algosdk.AppDeleteTxn 
-| algosdk.AppOptInTxn 
-| algosdk.AppCloseOutTxn 
-| algosdk.AppClearStateTxn 
-| algosdk.AppNoOpTxn 
-| algosdk.StateProofTxn;
+// type AnyTransaction = algosdk.PaymentTxn 
+// | algosdk.KeyRegistrationTxn 
+// | algosdk.AssetCreateTxn 
+// | algosdk.AssetConfigTxn 
+// | algosdk.AssetDestroyTxn 
+// | algosdk.AssetFreezeTxn 
+// | algosdk.AssetTransferTxn 
+// | algosdk.AppCreateTxn 
+// | algosdk.AppUpdateTxn 
+// | algosdk.AppDeleteTxn 
+// | algosdk.AppOptInTxn 
+// | algosdk.AppCloseOutTxn 
+// | algosdk.AppClearStateTxn 
+// | algosdk.AppNoOpTxn 
+// | algosdk.StateProofTxn;
 
 type Txn = {
   hgi?: boolean;
@@ -229,7 +229,7 @@ class TransactionSubscriber extends EventEmitter {
     let currentHeight = status["last-round"];
     this.running = true;
     const algodClient = await getAlgodClient("algorand:mainnet");
-    while (this.listenerCount("process") > 0) {      
+    while (this.listenerCount("process") > 0) {
       try {
         const blockHash = await arApi(["blocks", currentHeight.toString(), "hash"]);
         const block = await algodClient.block(currentHeight).do();
@@ -237,7 +237,7 @@ class TransactionSubscriber extends EventEmitter {
           for (const txn of block.block.txns) {
             for (const listener of this.listeners("process")) {
               await listener({
-                txn, 
+                txn,
                 blockHash: blockHash.blockHash,
                 blockRnd: block.block.rnd,
                 blockgh: block.block.gh,
@@ -248,8 +248,8 @@ class TransactionSubscriber extends EventEmitter {
         }
         currentHeight++;
       } catch (e) {
-        if (e.isAxiosError && e.response?.status === 404)
-          continue;
+        if (e.isAxiosError && e.response?.status === 404) {
+          continue;}
         if (e.isAxiosError && e.response?.status >= 500) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
@@ -461,29 +461,27 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
-  
   const algodClient = await getAlgodClient(input.fields.chain);
-  
   /* The above code is using the Algorand Standard Asset API to get information about an asset. */
   if (input.fields.functionDeclaration === "getInformationAsset") {
-    let accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
-    for (let idx = 0; idx < accountInfo['created-assets'].length; idx++) {
-      let scrutinizedAsset = accountInfo['created-assets'][idx];
-      if (scrutinizedAsset['index'] == input.fields.parameters.assetid) {
-        console.log("symbol", scrutinizedAsset['params']['unit-name']);
-        console.log("name", scrutinizedAsset['params'].name);
-        console.log("decimals", scrutinizedAsset['params'].decimals);
-        console.log("creator", scrutinizedAsset['params'].creator);
-        console.log("assetid", scrutinizedAsset['index']);
+    const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
+    for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
+      let scrutinizedAsset = accountInfo["created-assets"][idx];
+      if (scrutinizedAsset["index"] == input.fields.parameters.assetid) {
+        console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
+        console.log("name", scrutinizedAsset["params"].name);
+        console.log("decimals", scrutinizedAsset["params"].decimals);
+        console.log("creator", scrutinizedAsset["params"].creator);
+        console.log("assetid", scrutinizedAsset["index"]);
         return {
           key: input.key,
           sessionId: input.sessionId,
-          payload: { 
-            symbol: scrutinizedAsset['params']['unit-name'],
-            name: scrutinizedAsset['params'].name,
-            decimals: scrutinizedAsset['params'].decimals,
-            creator: scrutinizedAsset['params'].creator,
-            assetid: scrutinizedAsset['index']
+          payload: {
+            symbol: scrutinizedAsset["params"]["unit-name"],
+            name: scrutinizedAsset["params"].name,
+            decimals: scrutinizedAsset["params"].decimals,
+            creator: scrutinizedAsset["params"].creator,
+            assetid: scrutinizedAsset["index"]
           },
         };
       }

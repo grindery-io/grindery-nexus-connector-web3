@@ -1,6 +1,5 @@
 import { EventEmitter } from "node:events";
 import _ from "lodash";
-import { base58_to_binary } from "base58-js";
 import {
   ConnectorInput,
   ConnectorOutput,
@@ -20,8 +19,7 @@ import BN from "bn.js";
 // import { homedir } from 'os';
 
 import { connect, transactions, keyStores, utils } from "near-api-js";
-import { nearGetAccount, normalizeAddress } from "./near/utils";
-import { Transaction } from "ethers";
+import { normalizeAddress } from "./near/utils";
 
 type Receipt = {
   predecessor_id: string;
@@ -207,12 +205,11 @@ class ReceiptSubscriber extends EventEmitter {
 
           currentHash = block.header.hash;
           currentHeight = block.header.height;
-
           for (const tx of txs as Tx[]) {
             for (const listener of this.listeners("process")) {
-              await listener({ 
-                currentHeight: block.header.hash, 
-                currentHash: block.header.height, 
+              await listener({
+                currentHeight: block.header.hash,
+                currentHash: block.header.height,
                 txReceipt: {},
                 // await near.connection.provider.txStatus(tx.hash, tx.signer_id), 
                 tx
