@@ -55,7 +55,12 @@ export async function callSmartContract(params: ConnectorInput): Promise<Connect
 
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   actions: { callSmartContract, genericAbiAction },
-  triggers: { newTransaction: { factory: setupSignal }, newEvent: { factory: setupSignal } },
+  // add newGasPrice to setupSignal factory in the connector
+  triggers: {
+    newTransaction: { factory: setupSignal },
+    newEvent: { factory: setupSignal },
+    newGasPrice: { factory: setupSignal },
+  },
   inputProviders: { genericAbiAction: genericAbiActionInputProvider },
   webhooks: { callSmartContract: callSmartContractWebHook },
 };
