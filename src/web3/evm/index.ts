@@ -1,6 +1,6 @@
 import { ConnectorInput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { TAccessToken } from "../../jwt";
-import { NewTransactionTrigger, NewEventTrigger } from "./triggers";
+import { NewTransactionTrigger, NewEventTrigger, GasMonitorTrigger } from "./triggers";
 import { getUserAddress, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 
@@ -11,6 +11,7 @@ import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
+Triggers.set("GasMonitorTrigger", GasMonitorTrigger);
 
 const droneAddressCache = new Map<string, string>();
 

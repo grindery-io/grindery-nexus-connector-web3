@@ -269,3 +269,39 @@ export class NewEventTrigger extends TriggerBase<{
     unsubscribe();
   }
 }
+
+export class GasMonitorTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
+  async main() {
+    if (!this.fields.chain || !this.fields.chain.length) {
+      throw new InvalidParamsError("chain is required");
+    }
+    if (!this.fields.from && !this.fields.to) {
+      throw new InvalidParamsError("from or to is required");
+    }
+    console.log(`[${this.sessionId}] GasMonitorTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    const unsubscribe = onNewBlockMultiChain(
+      this.fields.chain,
+      async ({ block, chain }) => {
+        blockingTracer.tag("evm.GasMonitorTrigger");
+        for (const transaction of block.transactions) {
+          if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
+            continue;
+          }
+          if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
+            continue;
+          }
+          console.log(`[${this.sessionId}] GasMonitorTrigger: Sending transaction ${transaction.gasPrice}`);
+          this.sendNotification({ gas: transaction.gasPrice, userAddress: this.fields.to, _grinderyChain: chain });
+        }
+      },
+      (e) => this.interrupt(e)
+    );
+    try {
+      await this.waitForStop();
+    } catch (e) {
+      console.error("Error while monitoring transactions:", e);
+    } finally {
+      unsubscribe();
+    }
+  }
+}
