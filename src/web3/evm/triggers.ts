@@ -3,6 +3,7 @@ import abi from "web3-eth-abi";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./utils";
 import blockingTracer from "../../blockingTracer";
+import { getWeb3 } from "./web3";
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -278,7 +279,7 @@ export class GasMonitorTrigger extends TriggerBase<{ chain: string | string[]; f
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
-    console.log(`[${this.sessionId}] GasMonitorTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    const { web3 } = getWeb3(this.fields.chain as string);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
       async ({ block, chain }) => {
@@ -290,12 +291,24 @@ export class GasMonitorTrigger extends TriggerBase<{ chain: string | string[]; f
           if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
             continue;
           }
-          console.log(`[${this.sessionId}] GasMonitorTrigger: Sending transaction ${transaction.gasPrice}`);
-          this.sendNotification({ gas: transaction.gasPrice, userAddress: this.fields.to, _grinderyChain: chain });
+          const gasPriceToWEther = web3.utils.fromWei(transaction.gasPrice);
+          console.log(
+            `[${this.sessionId}] GasMonitorTrigger: gas price: ${gasPriceToWEther} userAddress: ${transaction.from}`
+          );
+          this.sendNotification({ gasPrice: gasPriceToWEther, userAddress: this.fields.to, _grinderyChain: chain });
         }
       },
       (e) => this.interrupt(e)
     );
+    blockingTracer.tag("evm.GasMonitorTrigger");
+    // const { web3 } = getWeb3(this.fields.chain as string);
+    // const blocks = await web3.eth.getBlock("latest");
+
+    // for (const transactionHash of blocks.transactions) {
+    //   const transaction = await web3.eth.getTransaction(transactionHash);
+    //   console.log(`[${this.sessionId}] GasMonitorTrigger: gas price: ${transaction.gasPrice} userAddress: ${transaction.from}`);
+    //   this.sendNotification({ gasPrice: transaction.gasPrice, userAddress: transaction.from });
+    // }
     try {
       await this.waitForStop();
     } catch (e) {
