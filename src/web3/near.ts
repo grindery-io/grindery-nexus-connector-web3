@@ -57,7 +57,12 @@ type Tx = {
   signature: string;
   signer_id: string;
 };
-
+type TxReceipt = {
+  status: Txstatus;
+  transaction: any;
+  transaction_outcome: ExecutionOutcomeWithId;
+  receipts_outcome: ExecutionOutcomeWithId[];
+};
 type TxBlock = {
   currentHeight: number;
   currentHash: string;
@@ -89,14 +94,6 @@ type ExecutionOutcomeWithId = {
     status: Txstatus;
   };
 };
-
-type TxReceipt = {
-  status: Txstatus;
-  transaction: any;
-  transaction_outcome: ExecutionOutcomeWithId;
-  receipts_outcome: ExecutionOutcomeWithId[];
-};
-
 class ReceiptSubscriber extends EventEmitter {
   private running = false;
   constructor() {
@@ -211,7 +208,6 @@ class ReceiptSubscriber extends EventEmitter {
                 currentHeight: block.header.hash,
                 currentHash: block.header.height,
                 txReceipt: {},
-                // await near.connection.provider.txStatus(tx.hash, tx.signer_id), 
                 tx
               });
             }
@@ -293,16 +289,13 @@ class NewTransactionTrigger extends TriggerBase<{
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: TxBlock) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-
         const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id) 
         && this.fields.from !== normalizeAddress(tx.tx.public_key);
         const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
         const failure = tx.txReceipt.status.Failure;
-
         if (notSameFrom || notSameTo || failure) {
           return;
         }
-
         for (const action of tx.tx.actions ?? []) {
           if (!("Transfer" in action)) {
             continue;
@@ -520,17 +513,6 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
-
-  // #################################################################
-  // #################################################################
-  // #################################################################
-
-  
-
-  // #################################################################
-  // #################################################################
-  // #################################################################
-
   const near = await connect({ ...config, keyStore, headers: {} });
   const account = await near.account(input.fields.contractAddress);
 
