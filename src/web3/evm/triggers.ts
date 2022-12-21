@@ -3,6 +3,8 @@ import abi from "web3-eth-abi";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./utils";
 import blockingTracer from "../../blockingTracer";
+import { getWeb3 } from "./web3";
+import BigNumber from "bignumber.js";
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -12,6 +14,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
+    const { web3, close, ethersProvider } = getWeb3(this.fields.chain as string);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
@@ -25,7 +28,13 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
             continue;
           }
           console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
-          this.sendNotification({ ...transaction, _grinderyChain: chain });
+          const transactionReceipt = await web3.eth.getTransactionReceipt(transaction.hash);
+          const txfees = new BigNumber(transactionReceipt.gasUsed).multipliedBy(new BigNumber(transactionReceipt.effectiveGasPrice));
+          this.sendNotification({
+            ...transaction,
+            _grinderyChain: chain,
+            txfees: txfees.toString()
+          });
         }
       },
       (e) => this.interrupt(e)
