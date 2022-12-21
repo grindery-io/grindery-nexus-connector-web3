@@ -57,6 +57,22 @@ type Tx = {
   signature: string;
   signer_id: string;
 };
+type Txstatus = {
+  SuccessValue?: string;
+  Failure?: {
+    error_message: string;
+    error_type: string;
+  };
+};
+type ExecutionOutcomeWithId = {
+  id: string;
+  outcome: {
+    logs: string[];
+    receipt_ids: string[];
+    gas_burnt: number;
+    status: Txstatus;
+  };
+};
 type TxReceipt = {
   status: Txstatus;
   transaction: any;
@@ -66,33 +82,8 @@ type TxReceipt = {
 type TxBlock = {
   currentHeight: number;
   currentHash: string;
-  // status: {
-  //   SuccessValue?: string;
-  //   Failure?: {
-  //     error_message: string;
-  //     error_type: string;
-  //   };
-  // };
   tx: Tx;
   txReceipt: TxReceipt;
-};
-
-type Txstatus = {
-  SuccessValue?: string;
-  Failure?: {
-    error_message: string;
-    error_type: string;
-  };
-};
-
-type ExecutionOutcomeWithId = {
-  id: string;
-  outcome: {
-    logs: string[];
-    receipt_ids: string[];
-    gas_burnt: number;
-    status: Txstatus;
-  };
 };
 class ReceiptSubscriber extends EventEmitter {
   private running = false;
@@ -289,7 +280,7 @@ class NewTransactionTrigger extends TriggerBase<{
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: TxBlock) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id) 
+        const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id)
         && this.fields.from !== normalizeAddress(tx.tx.public_key);
         const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
         const failure = tx.txReceipt.status.Failure;
