@@ -5,9 +5,14 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-com
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { parseUserAccessToken, TAccessToken } from "../../jwt";
 import algosdk from "algosdk";
-import { getUserAccountAlgorand, getAlgodClient } from "./utils";
+import { getUserAccountAlgorand, getAlgodClient, SignedTransactionWithAD } from "./utils";
 import { SendTransactionAction } from "../actions";
 import { DepayActions, AlgorandDepayActions } from "../utils";
+import { transactions } from "near-api-js";
+import * as msgpack from "algo-msgpack-with-bigint";
+import { PublicKey } from "near-api-js/lib/utils";
+import { consoleLogger } from "@influxdata/influxdb-client";
+import BigNumber from "bignumber.js";
 
 type Status = {
   catchpoint: string;
@@ -135,11 +140,44 @@ type TxnDetails =
       snd: string;
       type: "appl";
     };
-interface Txn {
+// interface Txn {
+//   hgi?: boolean;
+//   sig?: string;
+//   txn: TxnDetails;
+//   blockHash?: string;
+//   blockRnd?: string;
+//   blockgh: Buffer;
+//   blockgen: string;
+// }
+
+
+type AnyTransaction = algosdk.PaymentTxn 
+| algosdk.KeyRegistrationTxn 
+| algosdk.AssetCreateTxn 
+| algosdk.AssetConfigTxn 
+| algosdk.AssetDestroyTxn 
+| algosdk.AssetFreezeTxn 
+| algosdk.AssetTransferTxn 
+| algosdk.AppCreateTxn 
+| algosdk.AppUpdateTxn 
+| algosdk.AppDeleteTxn 
+| algosdk.AppOptInTxn 
+| algosdk.AppCloseOutTxn 
+| algosdk.AppClearStateTxn 
+| algosdk.AppNoOpTxn 
+| algosdk.StateProofTxn;
+
+type Txn = {
   hgi?: boolean;
-  sig?: string;
-  txn: TxnDetails;
+  sig?: Buffer;
+  txn: Record<string, any>;
+  blockHash?: string;
+  blockRnd?: string;
+  blockgh: Buffer;
+  blockgen: string;
 }
+
+
 interface Block {
   earn: number;
   fees: string;
@@ -161,13 +199,19 @@ type BlockResponse = {
   block: Block;
 };
 
+type BlockHashResponse = {
+  blockHash: string;
+}
+
 async function arApi(path: "status"): Promise<Status>;
 async function arApi(path: ["blocks", string]): Promise<BlockResponse>;
+async function arApi(path: ["blocks", string, "hash"]): Promise<BlockHashResponse>;
 async function arApi(path: string | string[]): Promise<unknown> {
   if (Array.isArray(path)) {
     path = path.join("/");
   }
   const response = await axios.get("https://node.algoexplorerapi.io/v2/" + path);
+  // const response = await axios.get("https://node.testnet.algoexplorerapi.io/v2/" + path);
   return response.data;
 }
 
@@ -177,13 +221,6 @@ class TransactionSubscriber extends EventEmitter {
     super();
     this.setMaxListeners(1000);
   }
-  async handleBlock(block: BlockResponse) {
-    for (const txn of block.block.txns) {
-      for (const listener of this.listeners("process")) {
-        await listener(txn);
-      }
-    }
-  }
   async main() {
     if (this.running) {
       return;
@@ -191,12 +228,28 @@ class TransactionSubscriber extends EventEmitter {
     const status = await arApi("status");
     let currentHeight = status["last-round"];
     this.running = true;
-    while (this.listenerCount("process") > 0) {
+    const algodClient = await getAlgodClient("algorand:mainnet");
+    while (this.listenerCount("process") > 0) {      
       try {
-        const response = await arApi(["blocks", currentHeight.toString()]);
-        await this.handleBlock(response);
+        const blockHash = await arApi(["blocks", currentHeight.toString(), "hash"]);
+        const block = await algodClient.block(currentHeight).do();
+        if (block.block.txns && block.block.txns.length > 0) {
+          for (const txn of block.block.txns) {
+            for (const listener of this.listeners("process")) {
+              await listener({
+                txn, 
+                blockHash: blockHash.blockHash,
+                blockRnd: block.block.rnd,
+                blockgh: block.block.gh,
+                blockgen: block.block.gen
+              });
+            }
+          }
+        }
         currentHeight++;
       } catch (e) {
+        if (e.isAxiosError && e.response?.status === 404)
+          continue;
         if (e.isAxiosError && e.response?.status >= 500) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
@@ -244,25 +297,50 @@ class NewTransactionTrigger extends TriggerBase<{
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
-        if (tx.txn.type !== "pay") {
+        if (tx.txn.txn.type !== "pay") {
           return;
         }
-        if (this.fields.from && this.fields.from !== tx.txn.snd) {
+        if (this.fields.from && this.fields.from !== algosdk.encodeAddress(tx.txn.txn.snd)) {
           return;
         }
-        if (this.fields.to && this.fields.to !== tx.txn.rcv) {
+        if (this.fields.to && tx.txn.txn.rcv && this.fields.to !== algosdk.encodeAddress(tx.txn.txn.rcv)) {
           return;
         }
-        if (!("amt" in tx.txn)) {
+        if (!("amt" in tx.txn.txn)) {
           return;
         }
+        const stwad = new SignedTransactionWithAD(
+          tx.blockgh,
+          tx.blockgen,
+          tx.txn
+        );
+        const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
+        const tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
+        const tx_amount = new BigNumber(tx.txn.txn.amt).div(
+          new BigNumber(10).pow(new BigNumber(6))
+        );
+        const tx_id = stwad.txn.txn.txID();
+        console.log("from", tx_from);
+        console.log("to", tx_to);
+        console.log("amount", tx_amount.toString());
+        console.log("txID", tx_id);
+        console.log("blockHash", tx.blockHash);
+        console.log("blockRnd", tx.blockRnd?.toString());
         this.sendNotification({
-          _grinderyChain: this.fields.chain,
-          from: tx.txn.snd,
-          to: tx.txn.rcv,
-          value: tx.txn.amt,
-          ...tx.txn,
+          from: tx_from,
+          to: tx_to,
+          amount: tx_amount,
+          txHash: tx_id,
+          blockHash: tx.blockHash,
+          blockHeight: tx.blockRnd?.toString(),
         });
+        // this.sendNotification({
+        //   _grinderyChain: this.fields.chain,
+        //   from: tx.txn.snd,
+        //   to: tx.txn.rcv,
+        //   value: tx.txn.amt,
+        //   ...tx.txn,
+        // });
       },
       onError: (error: unknown) => {
         this.interrupt(error);
@@ -282,66 +360,66 @@ class NewEventTrigger extends TriggerBase<{
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
-    console.log(
-      `[${this.sessionId}] NewEventTrigger:`,
-      this.fields.chain,
-      this.fields.contractAddress,
-      this.fields.eventDeclaration,
-      this.fields.parameterFilters
-    );
-    if (this.fields.contractAddress === "0x0") {
-      delete this.fields.contractAddress;
-    }
-    const unsubscribe = SUBSCRIBER.subscribe({
-      callback: async (tx: Txn) => {
-        if (tx.txn.type !== this.fields.eventDeclaration) {
-          return;
-        }
-        if (this.fields.contractAddress) {
-          if (tx.txn.type === "appl") {
-            if (tx.txn.apid?.toString() !== this.fields.contractAddress) {
-              return;
-            }
-          } else if ("xaid" in tx.txn) {
-            if (tx.txn.xaid?.toString() !== this.fields.contractAddress) {
-              return;
-            }
-          } else {
-            return;
-          }
-        }
-        let args = tx.txn;
-        const note = "note" in tx.txn ? tx.txn.note : "";
-        if (note && note.length < 4096) {
-          try {
-            const decoded = JSON.parse(Buffer.from(note, "base64").toString("utf-8"));
-            args = { ...args, ...decoded };
-          } catch (e) {
-            // ignore
-          }
-        }
-        for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
-          if (key.startsWith("_grindery")) {
-            continue;
-          }
-          if (_.get(args, key) !== value) {
-            return;
-          }
-        }
-        this.sendNotification({
-          _grinderyChain: this.fields.chain,
-          ...args,
-        });
-      },
-      onError: (error: unknown) => {
-        this.interrupt(error);
-      },
-    });
-    try {
-      await this.waitForStop();
-    } finally {
-      unsubscribe();
-    }
+    // console.log(
+    //   `[${this.sessionId}] NewEventTrigger:`,
+    //   this.fields.chain,
+    //   this.fields.contractAddress,
+    //   this.fields.eventDeclaration,
+    //   this.fields.parameterFilters
+    // );
+    // if (this.fields.contractAddress === "0x0") {
+    //   delete this.fields.contractAddress;
+    // }
+    // const unsubscribe = SUBSCRIBER.subscribe({
+    //   callback: async (tx: Txn) => {
+    //     if (tx.txn.type !== this.fields.eventDeclaration) {
+    //       return;
+    //     }
+    //     if (this.fields.contractAddress) {
+    //       if (tx.txn.type === "appl") {
+    //         if (tx.txn.apid?.toString() !== this.fields.contractAddress) {
+    //           return;
+    //         }
+    //       } else if ("xaid" in tx.txn) {
+    //         if (tx.txn.xaid?.toString() !== this.fields.contractAddress) {
+    //           return;
+    //         }
+    //       } else {
+    //         return;
+    //       }
+    //     }
+    //     let args = tx.txn;
+    //     const note = "note" in tx.txn ? tx.txn.note : "";
+    //     if (note && note.length < 4096) {
+    //       try {
+    //         const decoded = JSON.parse(Buffer.from(note, "base64").toString("utf-8"));
+    //         args = { ...args, ...decoded };
+    //       } catch (e) {
+    //         // ignore
+    //       }
+    //     }
+    //     for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
+    //       if (key.startsWith("_grindery")) {
+    //         continue;
+    //       }
+    //       if (_.get(args, key) !== value) {
+    //         return;
+    //       }
+    //     }
+    //     this.sendNotification({
+    //       _grinderyChain: this.fields.chain,
+    //       ...args,
+    //     });
+    //   },
+    //   onError: (error: unknown) => {
+    //     this.interrupt(error);
+    //   },
+    // });
+    // try {
+    //   await this.waitForStop();
+    // } finally {
+    //   unsubscribe();
+    // }
   }
 }
 
@@ -383,13 +461,40 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
+  
+  const algodClient = await getAlgodClient(input.fields.chain);
+  
+  /* The above code is using the Algorand Standard Asset API to get information about an asset. */
+  if (input.fields.functionDeclaration === "getInformationAsset") {
+    let accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
+    for (let idx = 0; idx < accountInfo['created-assets'].length; idx++) {
+      let scrutinizedAsset = accountInfo['created-assets'][idx];
+      if (scrutinizedAsset['index'] == input.fields.parameters.assetid) {
+        console.log("symbol", scrutinizedAsset['params']['unit-name']);
+        console.log("name", scrutinizedAsset['params'].name);
+        console.log("decimals", scrutinizedAsset['params'].decimals);
+        console.log("creator", scrutinizedAsset['params'].creator);
+        console.log("assetid", scrutinizedAsset['index']);
+        return {
+          key: input.key,
+          sessionId: input.sessionId,
+          payload: { 
+            symbol: scrutinizedAsset['params']['unit-name'],
+            name: scrutinizedAsset['params'].name,
+            decimals: scrutinizedAsset['params'].decimals,
+            creator: scrutinizedAsset['params'].creator,
+            assetid: scrutinizedAsset['index']
+          },
+        };
+      }
+    }
+  }
 
   // Get user account
   const userAccount = await getUserAccountAlgorand(user);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
-  const algodClient = await getAlgodClient(input.fields.chain);
-
+  
   // Set new atomicTransactionComposer
   const comp = new algosdk.AtomicTransactionComposer();
 

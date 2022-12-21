@@ -49,6 +49,56 @@ type Receipt = {
   receiver_id: string;
 };
 
+
+type Tx = {
+  actions: Array<any>;
+  hash: string;
+  nonce: BN;
+  public_key: string;
+  receiver_id: string;
+  signature: string;
+  signer_id: string;
+};
+
+type TxBlock = {
+  currentHeight: number;
+  currentHash: string;
+  // status: {
+  //   SuccessValue?: string;
+  //   Failure?: {
+  //     error_message: string;
+  //     error_type: string;
+  //   };
+  // };
+  tx: Tx;
+  txReceipt: TxReceipt;
+};
+
+type Txstatus = {
+  SuccessValue?: string;
+  Failure?: {
+    error_message: string;
+    error_type: string;
+  };
+};
+
+type ExecutionOutcomeWithId = {
+  id: string;
+  outcome: {
+    logs: string[];
+    receipt_ids: string[];
+    gas_burnt: number;
+    status: Txstatus;
+  };
+};
+
+type TxReceipt = {
+  status: Txstatus;
+  transaction: any;
+  transaction_outcome: ExecutionOutcomeWithId;
+  receipts_outcome: ExecutionOutcomeWithId[];
+};
+
 class ReceiptSubscriber extends EventEmitter {
   private running = false;
   constructor() {
@@ -124,15 +174,16 @@ class ReceiptSubscriber extends EventEmitter {
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const block of pendingBlocks) {
+          // const receipts = [] as Receipt[];
           const receipts = [] as Receipt[];
-          const txs = [] as any[];
+          const txs = [] as Tx[];
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
                 const chunkDetails = await near.connection.provider.chunk(
                   chunk.chunk_hash
                 );
-                txs.splice(txs.length, 0, ...chunkDetails.transactions);
+                txs.splice(txs.length, 0, ...chunkDetails.transactions as any[]);
                 receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
               },
               {
@@ -148,7 +199,7 @@ class ReceiptSubscriber extends EventEmitter {
               }
             );
           }
-          // for (const receipt of receipts as Receipt[]) {
+          // for (const receipt of receipts as any[]) {
           //   for (const listener of this.listeners("process")) {
           //     await listener(receipt);
           //   }
@@ -157,13 +208,17 @@ class ReceiptSubscriber extends EventEmitter {
           currentHash = block.header.hash;
           currentHeight = block.header.height;
 
-          for (const tx of txs as any[]) {
+          for (const tx of txs as Tx[]) {
             for (const listener of this.listeners("process")) {
-              await listener({ currentHeight, currentHash, tx});
+              await listener({ 
+                currentHeight: block.header.hash, 
+                currentHash: block.header.height, 
+                txReceipt: {},
+                // await near.connection.provider.txStatus(tx.hash, tx.signer_id), 
+                tx
+              });
             }
           }
-          // currentHash = block.header.hash;
-          // currentHeight = block.header.height;
         }
       } catch (e) {
         console.error("[Near] Error in Near event loop:", e);
@@ -194,10 +249,10 @@ class ReceiptSubscriber extends EventEmitter {
     callback,
     onError,
   }: {
-    callback: (tx: any) => void;
+    callback: (tx: TxBlock) => void;
     onError: (error: unknown) => void;
   }) {
-    const handler = async (tx: any) => {
+    const handler = async (tx: TxBlock) => {
       await callback(tx);
     };
     const errorHandler = (error: unknown) => {
@@ -239,28 +294,18 @@ class NewTransactionTrigger extends TriggerBase<{
       this.fields.to
     );
     const unsubscribe = SUBSCRIBER.subscribe({
-      callback: async (tx: any) => {
+      callback: async (tx: TxBlock) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        // console.log(receipt);
 
-        // console.log("transaction", tx.tx);
-        // console.log("transaction callback", tx.tx.actions);
-        // console.log("#######################################");
+        const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id) 
+        && this.fields.from !== normalizeAddress(tx.tx.public_key);
+        const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
+        const failure = tx.txReceipt.status.Failure;
 
-
-        if (
-          this.fields.from &&
-          this.fields.from !== normalizeAddress(tx.tx.signer_id) &&
-          this.fields.from !== normalizeAddress(tx.tx.public_key)
-        ) {
+        if (notSameFrom || notSameTo || failure) {
           return;
         }
-        if (
-          this.fields.to &&
-          this.fields.to !== normalizeAddress(tx.tx.receiver_id)
-        ) {
-          return;
-        }
+
         for (const action of tx.tx.actions ?? []) {
           if (!("Transfer" in action)) {
             continue;
@@ -271,20 +316,17 @@ class NewTransactionTrigger extends TriggerBase<{
           console.log("tx hash", tx.tx.hash);
           console.log("block heigh", tx.currentHeight);
           console.log("block hash", tx.currentHash);
-          console.log("deposit", transfer.deposit);
+          console.log("deposit", utils.format.formatNearAmount(transfer.deposit));
 
           this.sendNotification({
             from: tx.tx.signer_id,
             to: tx.tx.receiver_id,
-            amount: transfer.deposit,
+            amount: utils.format.formatNearAmount(transfer.deposit),
             txHash: tx.tx.hash,
             blockHash: tx.currentHash,
             blockHeight: tx.currentHeight,
           });
         }
-
-
-
         // if (
         //   this.fields.from &&
         //   this.fields.from !==
@@ -354,7 +396,7 @@ class NewEventTrigger extends TriggerBase<{
         ? [this.fields.eventDeclaration]
         : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
-      callback: async (receipt: Receipt) => {
+      callback: async (receipt: any) => {
         blockingTracer.tag("near.NewEventTrigger");
         if (
           this.fields.contractAddress &&
@@ -481,6 +523,16 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
+
+  // #################################################################
+  // #################################################################
+  // #################################################################
+
+  
+
+  // #################################################################
+  // #################################################################
+  // #################################################################
 
   const near = await connect({ ...config, keyStore, headers: {} });
   const account = await near.account(input.fields.contractAddress);
