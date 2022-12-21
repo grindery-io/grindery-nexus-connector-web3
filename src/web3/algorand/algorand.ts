@@ -8,10 +8,6 @@ import algosdk from "algosdk";
 import { getUserAccountAlgorand, getAlgodClient, SignedTransactionWithAD } from "./utils";
 import { SendTransactionAction } from "../actions";
 import { DepayActions, AlgorandDepayActions } from "../utils";
-// import { transactions } from "near-api-js";
-// import * as msgpack from "algo-msgpack-with-bigint";
-// import { PublicKey } from "near-api-js/lib/utils";
-// import { consoleLogger } from "@influxdata/influxdb-client";
 import BigNumber from "bignumber.js";
 
 type Status = {
@@ -31,142 +27,6 @@ type Status = {
   "stopped-at-unsupported-round": boolean;
   "time-since-last-round": number;
 };
-// type TxnDetails =
-//   | {
-//       amt: number;
-//       fee: number;
-//       fv: number;
-//       gen: string;
-//       gh: string;
-//       lv: number;
-//       note: string;
-//       rcv: string;
-//       snd: string;
-//       type: "pay";
-//     }
-//   | {
-//       close: string;
-//       fee: number;
-//       fv: number;
-//       gen: string;
-//       gh: string;
-//       lv: number;
-//       rcv: string;
-//       snd: string;
-//       type: "pay";
-//     }
-//   | {
-//       fee: number;
-//       fv: number;
-//       gh: string;
-//       lv: number;
-//       selkey: string;
-//       snd: string;
-//       type: "keyreg";
-//       votefst: number;
-//       votekd: number;
-//       votekey: string;
-//       votelst: number;
-//     }
-//   | {
-//       fee: number;
-//       fv: number;
-//       gh: string;
-//       lv: number;
-//       snd: string;
-//       type: "keyreg";
-//     }
-//   | {
-//       apar?: Partial<{
-//         am: string;
-//         an: string;
-//         au: string;
-//         c: string;
-//         dc: number;
-//         f: string;
-//         m: string;
-//         r: string;
-//         t: number;
-//         un: string;
-//       }>;
-//       fee: number;
-//       fv: number;
-//       gh: string;
-//       lv: number;
-//       snd: string;
-//       type: "acfg";
-//     }
-//   | {
-//       aamt: number;
-//       arcv: string;
-//       asnd: string;
-//       fee: number;
-//       fv: number;
-//       gh: string;
-//       lv: number;
-//       snd: string;
-//       type: "axfer";
-//       xaid: number;
-//     }
-//   | {
-//       afrz: boolean;
-//       fadd: string;
-//       faid: number;
-//       fee: number;
-//       fv: number;
-//       gh: string;
-//       lv: number;
-//       snd: string;
-//       type: "afrz";
-//     }
-//   | {
-//       apan?: number;
-//       apap?: string;
-//       apgs?: {
-//         nbs: number;
-//         nui: number;
-//       };
-//       apid?: number;
-//       apls?: {
-//         nbs: number;
-//         nui: number;
-//       };
-//       apsu?: string;
-//       fee: number;
-//       fv: number;
-//       gh: string;
-//       lv: number;
-//       note: string;
-//       snd: string;
-//       type: "appl";
-//     };
-// interface Txn {
-//   hgi?: boolean;
-//   sig?: string;
-//   txn: TxnDetails;
-//   blockHash?: string;
-//   blockRnd?: string;
-//   blockgh: Buffer;
-//   blockgen: string;
-// }
-
-
-// type AnyTransaction = algosdk.PaymentTxn 
-// | algosdk.KeyRegistrationTxn 
-// | algosdk.AssetCreateTxn 
-// | algosdk.AssetConfigTxn 
-// | algosdk.AssetDestroyTxn 
-// | algosdk.AssetFreezeTxn 
-// | algosdk.AssetTransferTxn 
-// | algosdk.AppCreateTxn 
-// | algosdk.AppUpdateTxn 
-// | algosdk.AppDeleteTxn 
-// | algosdk.AppOptInTxn 
-// | algosdk.AppCloseOutTxn 
-// | algosdk.AppClearStateTxn 
-// | algosdk.AppNoOpTxn 
-// | algosdk.StateProofTxn;
-
 type Txn = {
   hgi?: boolean;
   sig?: Buffer;
@@ -176,8 +36,6 @@ type Txn = {
   blockgh: Buffer;
   blockgen: string;
 }
-
-
 interface Block {
   earn: number;
   fees: string;

@@ -198,7 +198,7 @@ export class SignedTransactionWithAD {
     if ("msig" in stib) {
       stxn.msig = stib.msig;
     }
-    if ("sgnr" in stib) { 
+    if ("sgnr" in stib) {
       stxn.sgnr = stib.sgnr;
     }
     this.txn = stxn;
