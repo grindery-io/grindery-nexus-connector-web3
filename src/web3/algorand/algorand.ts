@@ -107,7 +107,8 @@ class TransactionSubscriber extends EventEmitter {
         currentHeight++;
       } catch (e) {
         if (e.isAxiosError && e.response?.status === 404) {
-          continue;}
+          continue;
+        }
         if (e.isAxiosError && e.response?.status >= 500) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
@@ -324,8 +325,8 @@ export async function callSmartContract(
   if (input.fields.functionDeclaration === "getInformationAsset") {
     const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
     for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
-      let scrutinizedAsset = accountInfo["created-assets"][idx];
-      if (scrutinizedAsset["index"] == input.fields.parameters.assetid) {
+      const scrutinizedAsset = accountInfo["created-assets"][idx];
+      if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
         console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
         console.log("name", scrutinizedAsset["params"].name);
         console.log("decimals", scrutinizedAsset["params"].decimals);
@@ -350,7 +351,7 @@ export async function callSmartContract(
   const userAccount = await getUserAccountAlgorand(user);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
-  
+
   // Set new atomicTransactionComposer
   const comp = new algosdk.AtomicTransactionComposer();
 
