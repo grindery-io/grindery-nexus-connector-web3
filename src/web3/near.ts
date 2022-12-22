@@ -462,6 +462,7 @@ export const Triggers = new Map<
   new (params: ConnectorInput) => TriggerBase
 >();
 Triggers.set("newTransaction", NewTransactionTrigger);
+Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
 // #########################################################################
