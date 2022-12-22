@@ -156,8 +156,8 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
     } catch (error) {
       // handle abi retrieving  error
     }
-    if (abi?.result) {
-      ret.inputFields[2]["default"] = abi?.result;
+    if (abi?.data?.result) {
+      ret.inputFields[2]["default"] = abi.data.result;
     }
   }
   if (fieldData?._grinderyAbi) {
