@@ -35,7 +35,7 @@ type Txn = {
   blockRnd?: string;
   blockgh: Buffer;
   blockgen: string;
-}
+};
 interface Block {
   earn: number;
   fees: string;
@@ -52,18 +52,44 @@ interface Block {
   ts: number;
   txn: string;
   txns: Txn[];
-}
+};
 type BlockResponse = {
   block: Block;
 };
-
 type BlockHashResponse = {
   blockHash: string;
+};
+type AssetParams = {
+  index: number;
+  params: {
+    creator: string;
+    decimals: number | bigint;
+    total: number | bigint;
+    clawback?: string;
+    defaultFrozen?: boolean;
+    freeze?: string;
+    manager?: string;
+    metadataHash?: Uint8Array;
+    name?: string;
+    nameB64?: Uint8Array;
+    reserve?: string;
+    unitName?: string;
+    unitNameB64?: Uint8Array;
+    url?: string;
+    urlB64?: Uint8Array;
+  };
 }
 
+/**
+ * It takes a string or an array of strings, joins them with slashes, and then makes a GET request to
+ * the Algorand API
+ * @param {string | string[]} path - "status"
+ * @returns The return type is unknown.
+ */
 async function arApi(path: "status"): Promise<Status>;
 async function arApi(path: ["blocks", string]): Promise<BlockResponse>;
 async function arApi(path: ["blocks", string, "hash"]): Promise<BlockHashResponse>;
+async function arApi(path: ["assets", string]): Promise<AssetParams>;
 async function arApi(path: string | string[]): Promise<unknown> {
   if (Array.isArray(path)) {
     path = path.join("/");
@@ -89,6 +115,7 @@ class TransactionSubscriber extends EventEmitter {
     const algodClient = await getAlgodClient("algorand:mainnet");
     while (this.listenerCount("process") > 0) {
       try {
+        /* Processing the transactions in a block. */
         const blockHash = await arApi(["blocks", currentHeight.toString(), "hash"]);
         const block = await algodClient.block(currentHeight).do();
         if (block.block.txns && block.block.txns.length > 0) {
@@ -156,35 +183,60 @@ class NewTransactionTrigger extends TriggerBase<{
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
-        if (tx.txn.txn.type !== "pay") {
+        /* Checking if the transaction is a payment or an asset transfer. */
+        if ((this.key === "newTransaction" && tx.txn.txn.type !== "pay")
+        || (this.key === "newTransactionAsset" && tx.txn.txn.type !== "axfer")) {
           return;
         }
+        /* Checking if the transaction is from the correct sender. */
         if (this.fields.from && this.fields.from !== algosdk.encodeAddress(tx.txn.txn.snd)) {
           return;
         }
+        /* Checking if the recipient address matches
+        the address we are looking for. */
         if (this.fields.to && tx.txn.txn.rcv && this.fields.to !== algosdk.encodeAddress(tx.txn.txn.rcv)) {
           return;
         }
-        if (!("amt" in tx.txn.txn)) {
+        /* Checking if the transaction is a new transaction and if the transaction has an amount. */
+        if ((this.key === "newTransaction" && !("amt" in tx.txn.txn))
+        || (this.key === "newTransactionAsset" && !("aamt" in tx.txn.txn))) {
           return;
         }
+        /* Creating a new instance of the SignedTransactionWithAD class. */
         const stwad = new SignedTransactionWithAD(
           tx.blockgh,
           tx.blockgen,
           tx.txn
         );
         const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
-        const tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
-        const tx_amount = new BigNumber(tx.txn.txn.amt).div(
-          new BigNumber(10).pow(new BigNumber(6))
-        );
         const tx_id = stwad.txn.txn.txID();
+        let tx_to:string = "";
+        let tx_amount:string = "";
+        /* Converting the transaction amount from microalgos to algos. */
+        if (this.key === "newTransaction") {
+          tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
+          tx_amount = (new BigNumber(tx.txn.txn.amt).div(
+            new BigNumber(10).pow(new BigNumber(6))
+          )).toString();
+        }
+        /* The above code is checking if the transaction is an asset transfer. If it is, it will get
+        the asset information from the Algorand blockchain. */
+        let assetInfo = {} as AssetParams;
+        if (this.key === "newTransactionAsset") {
+          tx_to = algosdk.encodeAddress(tx.txn.txn.arcv);
+          assetInfo = await arApi(["assets", tx.txn.txn.xaid.toString()]);
+          tx_amount = (new BigNumber(tx.txn.txn.aamt).div(
+            new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString()))
+          )).toString();
+        }
+        /* Printing the transaction details to the console. */
         console.log("from", tx_from);
         console.log("to", tx_to);
-        console.log("amount", tx_amount.toString());
+        console.log("amount", tx_amount);
         console.log("txID", tx_id);
         console.log("blockHash", tx.blockHash);
         console.log("blockRnd", tx.blockRnd?.toString());
+        /* Sending a notification to the user. */
         this.sendNotification({
           from: tx_from,
           to: tx_to,
@@ -192,15 +244,10 @@ class NewTransactionTrigger extends TriggerBase<{
           txHash: tx_id,
           blockHash: tx.blockHash,
           blockHeight: tx.blockRnd?.toString(),
+          assetInfo
         });
-        // this.sendNotification({
-        //   _grinderyChain: this.fields.chain,
-        //   from: tx.txn.snd,
-        //   to: tx.txn.rcv,
-        //   value: tx.txn.amt,
-        //   ...tx.txn,
-        // });
       },
+      /* A callback function that is called when an error occurs. */
       onError: (error: unknown) => {
         this.interrupt(error);
       },
@@ -219,71 +266,72 @@ class NewEventTrigger extends TriggerBase<{
   parameterFilters: { [key: string]: unknown };
 }> {
   async main() {
-    // console.log(
-    //   `[${this.sessionId}] NewEventTrigger:`,
-    //   this.fields.chain,
-    //   this.fields.contractAddress,
-    //   this.fields.eventDeclaration,
-    //   this.fields.parameterFilters
-    // );
-    // if (this.fields.contractAddress === "0x0") {
-    //   delete this.fields.contractAddress;
-    // }
-    // const unsubscribe = SUBSCRIBER.subscribe({
-    //   callback: async (tx: Txn) => {
-    //     if (tx.txn.type !== this.fields.eventDeclaration) {
-    //       return;
-    //     }
-    //     if (this.fields.contractAddress) {
-    //       if (tx.txn.type === "appl") {
-    //         if (tx.txn.apid?.toString() !== this.fields.contractAddress) {
-    //           return;
-    //         }
-    //       } else if ("xaid" in tx.txn) {
-    //         if (tx.txn.xaid?.toString() !== this.fields.contractAddress) {
-    //           return;
-    //         }
-    //       } else {
-    //         return;
-    //       }
-    //     }
-    //     let args = tx.txn;
-    //     const note = "note" in tx.txn ? tx.txn.note : "";
-    //     if (note && note.length < 4096) {
-    //       try {
-    //         const decoded = JSON.parse(Buffer.from(note, "base64").toString("utf-8"));
-    //         args = { ...args, ...decoded };
-    //       } catch (e) {
-    //         // ignore
-    //       }
-    //     }
-    //     for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
-    //       if (key.startsWith("_grindery")) {
-    //         continue;
-    //       }
-    //       if (_.get(args, key) !== value) {
-    //         return;
-    //       }
-    //     }
-    //     this.sendNotification({
-    //       _grinderyChain: this.fields.chain,
-    //       ...args,
-    //     });
-    //   },
-    //   onError: (error: unknown) => {
-    //     this.interrupt(error);
-    //   },
-    // });
-    // try {
-    //   await this.waitForStop();
-    // } finally {
-    //   unsubscribe();
-    // }
+    console.log(
+      `[${this.sessionId}] NewEventTrigger:`,
+      this.fields.chain,
+      this.fields.contractAddress,
+      this.fields.eventDeclaration,
+      this.fields.parameterFilters
+    );
+    if (this.fields.contractAddress === "0x0") {
+      delete this.fields.contractAddress;
+    }
+    const unsubscribe = SUBSCRIBER.subscribe({
+      callback: async (tx: Txn) => {
+        if (tx.txn.type !== this.fields.eventDeclaration) {
+          return;
+        }
+        if (this.fields.contractAddress) {
+          if (tx.txn.type === "appl") {
+            if (tx.txn.apid?.toString() !== this.fields.contractAddress) {
+              return;
+            }
+          } else if ("xaid" in tx.txn) {
+            if (tx.txn.xaid?.toString() !== this.fields.contractAddress) {
+              return;
+            }
+          } else {
+            return;
+          }
+        }
+        let args = tx.txn;
+        const note = "note" in tx.txn ? tx.txn.note : "";
+        if (note && note.length < 4096) {
+          try {
+            const decoded = JSON.parse(Buffer.from(note, "base64").toString("utf-8"));
+            args = { ...args, ...decoded };
+          } catch (e) {
+            // ignore
+          }
+        }
+        for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
+          if (key.startsWith("_grindery")) {
+            continue;
+          }
+          if (_.get(args, key) !== value) {
+            return;
+          }
+        }
+        this.sendNotification({
+          _grinderyChain: this.fields.chain,
+          ...args,
+        });
+      },
+      onError: (error: unknown) => {
+        this.interrupt(error);
+      },
+    });
+    try {
+      await this.waitForStop();
+    } finally {
+      unsubscribe();
+    }
   }
 }
 
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
+Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
 /*
@@ -323,28 +371,37 @@ export async function callSmartContract(
   const algodClient = await getAlgodClient(input.fields.chain);
   /* The above code is using the Algorand Standard Asset API to get information about an asset. */
   if (input.fields.functionDeclaration === "getInformationAsset") {
-    const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
-    for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
-      const scrutinizedAsset = accountInfo["created-assets"][idx];
-      if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
-        console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
-        console.log("name", scrutinizedAsset["params"].name);
-        console.log("decimals", scrutinizedAsset["params"].decimals);
-        console.log("creator", scrutinizedAsset["params"].creator);
-        console.log("assetid", scrutinizedAsset["index"]);
+    // const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
+    // for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
+    //   const scrutinizedAsset = accountInfo["created-assets"][idx];
+    //   if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
+
+        const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
+
+        // console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
+        // console.log("name", scrutinizedAsset["params"].name);
+        // console.log("decimals", scrutinizedAsset["params"].decimals);
+        // console.log("creator", scrutinizedAsset["params"].creator);
+        // console.log("assetid", scrutinizedAsset["index"]);
+
+        console.log("scrutinizedAsset", scrutinizedAsset)
+
         return {
           key: input.key,
           sessionId: input.sessionId,
           payload: {
-            symbol: scrutinizedAsset["params"]["unit-name"],
-            name: scrutinizedAsset["params"].name,
-            decimals: scrutinizedAsset["params"].decimals,
-            creator: scrutinizedAsset["params"].creator,
-            assetid: scrutinizedAsset["index"]
+            index: scrutinizedAsset.index,
+            scrutinizedAsset
+            // symbol: scrutinizedAsset["params"]["unit-name"],
+            // name: scrutinizedAsset["params"].name,
+            // decimals: scrutinizedAsset["params"].decimals,
+            // creator: scrutinizedAsset["params"].creator,
+            // assetid: scrutinizedAsset["index"]
           },
         };
-      }
-    }
+   /*  */
+    //   }
+    // }
   }
 
   // Get user account
