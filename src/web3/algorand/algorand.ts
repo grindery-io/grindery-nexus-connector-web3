@@ -183,69 +183,69 @@ class NewTransactionTrigger extends TriggerBase<{
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
-        // /* Checking if the transaction is a payment or an asset transfer. */
-        // if ((this.key === "newTransaction" && tx.txn.txn.type !== "pay")
-        // || (this.key === "newTransactionAsset" && tx.txn.txn.type !== "axfer")) {
-        //   return;
-        // }
-        // /* Checking if the transaction is from the correct sender. */
-        // if (this.fields.from && this.fields.from !== algosdk.encodeAddress(tx.txn.txn.snd)) {
-        //   return;
-        // }
-        // /* Checking if the recipient address matches
-        // the address we are looking for. */
-        // if (this.fields.to && tx.txn.txn.rcv && this.fields.to !== algosdk.encodeAddress(tx.txn.txn.rcv)) {
-        //   return;
-        // }
-        // /* Checking if the transaction is a new transaction and if the transaction has an amount. */
-        // if ((this.key === "newTransaction" && !("amt" in tx.txn.txn))
-        // || (this.key === "newTransactionAsset" && !("aamt" in tx.txn.txn))) {
-        //   return;
-        // }
-        // /* Creating a new instance of the SignedTransactionWithAD class. */
-        // const stwad = new SignedTransactionWithAD(
-        //   tx.blockgh,
-        //   tx.blockgen,
-        //   tx.txn
-        // );
-        // const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
-        // const tx_id = stwad.txn.txn.txID();
-        // let tx_to = "";
-        // let tx_amount = "";
-        // /* Converting the transaction amount from microalgos to algos. */
-        // if (this.key === "newTransaction") {
-        //   tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
-        //   tx_amount = (new BigNumber(tx.txn.txn.amt).div(
-        //     new BigNumber(10).pow(new BigNumber(6))
-        //   )).toString();
-        // }
-        // /* The above code is checking if the transaction is an asset transfer. If it is, it will get
-        // the asset information from the Algorand blockchain. */
-        // let assetInfo = {} as AssetParams;
-        // if (this.key === "newTransactionAsset") {
-        //   tx_to = algosdk.encodeAddress(tx.txn.txn.arcv);
-        //   assetInfo = await arApi(["assets", tx.txn.txn.xaid.toString()]);
-        //   tx_amount = (new BigNumber(tx.txn.txn.aamt).div(
-        //     new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString()))
-        //   )).toString();
-        // }
-        // /* Printing the transaction details to the console. */
-        // console.log("from", tx_from);
-        // console.log("to", tx_to);
-        // console.log("amount", tx_amount);
-        // console.log("txID", tx_id);
-        // console.log("blockHash", tx.blockHash);
-        // console.log("blockRnd", tx.blockRnd?.toString());
-        // /* Sending a notification to the user. */
-        // this.sendNotification({
-        //   from: tx_from,
-        //   to: tx_to,
-        //   amount: tx_amount,
-        //   txHash: tx_id,
-        //   blockHash: tx.blockHash,
-        //   blockHeight: tx.blockRnd?.toString(),
-        //   assetInfo
-        // });
+        /* Checking if the transaction is a payment or an asset transfer. */
+        if ((this.key === "newTransaction" && tx.txn.txn.type !== "pay")
+        || (this.key === "newTransactionAsset" && tx.txn.txn.type !== "axfer")) {
+          return;
+        }
+        /* Checking if the transaction is from the correct sender. */
+        if (this.fields.from && this.fields.from !== algosdk.encodeAddress(tx.txn.txn.snd)) {
+          return;
+        }
+        /* Checking if the recipient address matches
+        the address we are looking for. */
+        if (this.fields.to && tx.txn.txn.rcv && this.fields.to !== algosdk.encodeAddress(tx.txn.txn.rcv)) {
+          return;
+        }
+        /* Checking if the transaction is a new transaction and if the transaction has an amount. */
+        if ((this.key === "newTransaction" && !("amt" in tx.txn.txn))
+        || (this.key === "newTransactionAsset" && !("aamt" in tx.txn.txn))) {
+          return;
+        }
+        /* Creating a new instance of the SignedTransactionWithAD class. */
+        const stwad = new SignedTransactionWithAD(
+          tx.blockgh,
+          tx.blockgen,
+          tx.txn
+        );
+        const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
+        const tx_id = stwad.txn.txn.txID();
+        let tx_to = "";
+        let tx_amount = "";
+        /* Converting the transaction amount from microalgos to algos. */
+        if (this.key === "newTransaction") {
+          tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
+          tx_amount = (new BigNumber(tx.txn.txn.amt).div(
+            new BigNumber(10).pow(new BigNumber(6))
+          )).toString();
+        }
+        /* The above code is checking if the transaction is an asset transfer. If it is, it will get
+        the asset information from the Algorand blockchain. */
+        let assetInfo = {} as AssetParams;
+        if (this.key === "newTransactionAsset") {
+          tx_to = algosdk.encodeAddress(tx.txn.txn.arcv);
+          assetInfo = await arApi(["assets", tx.txn.txn.xaid.toString()]);
+          tx_amount = (new BigNumber(tx.txn.txn.aamt).div(
+            new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString()))
+          )).toString();
+        }
+        /* Printing the transaction details to the console. */
+        console.log("from", tx_from);
+        console.log("to", tx_to);
+        console.log("amount", tx_amount);
+        console.log("txID", tx_id);
+        console.log("blockHash", tx.blockHash);
+        console.log("blockRnd", tx.blockRnd?.toString());
+        /* Sending a notification to the user. */
+        this.sendNotification({
+          from: tx_from,
+          to: tx_to,
+          amount: tx_amount,
+          txHash: tx_id,
+          blockHash: tx.blockHash,
+          blockHeight: tx.blockRnd?.toString(),
+          assetInfo
+        });
       },
       /* A callback function that is called when an error occurs. */
       onError: (error: unknown) => {
@@ -371,41 +371,35 @@ export async function callSmartContract(
   const algodClient = await getAlgodClient(input.fields.chain);
   /* The above code is using the Algorand Standard Asset API to get information about an asset. */
   if (input.fields.functionDeclaration === "getInformationAsset") {
-    // const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
-    // for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
-    //   const scrutinizedAsset = accountInfo["created-assets"][idx];
-    //   if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
-
-        const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
-
-        // console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
-        // console.log("name", scrutinizedAsset["params"].name);
-        // console.log("decimals", scrutinizedAsset["params"].decimals);
-        // console.log("creator", scrutinizedAsset["params"].creator);
-        // console.log("assetid", scrutinizedAsset["index"]);
-
-        console.log("index", scrutinizedAsset.index);
-        console.log("params", scrutinizedAsset.params);
-
-        const params = scrutinizedAsset.params;
-
-        return {
-          key: input.key,
-          sessionId: input.sessionId,
-          payload: {
-            index: scrutinizedAsset.index,
-            params
-            // symbol: scrutinizedAsset["params"]["unit-name"],
-            // name: scrutinizedAsset["params"].name,
-            // decimals: scrutinizedAsset["params"].decimals,
-            // creator: scrutinizedAsset["params"].creator,
-            // assetid: scrutinizedAsset["index"]
-          },
-        };
-
-   /*  */
-    //   }
-    // }
+    const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
+    /* Printing out the values of the fields of the scrutinizedAsset object. */
+    console.log("index", scrutinizedAsset.index.toString());
+    console.log("clawback", scrutinizedAsset.params.clawback);
+    console.log("creator", scrutinizedAsset.params.creator);
+    console.log("decimals", scrutinizedAsset.params.decimals.toString());
+    console.log("freeze", scrutinizedAsset.params.freeze);
+    console.log("manager", scrutinizedAsset.params.manager);
+    console.log("name", scrutinizedAsset.params.name);
+    console.log("reserve", scrutinizedAsset.params.reserve);
+    console.log("total", scrutinizedAsset.params.total.toString());
+    console.log("unit-name", scrutinizedAsset.params["unit-name"]);
+    /* Returning the asset information in a format that the frontend can understand. */
+    return {
+      key: input.key,
+      sessionId: input.sessionId,
+      payload: {
+        index: scrutinizedAsset.index.toString(),
+        clawback: scrutinizedAsset.params.clawback,
+        creator: scrutinizedAsset.params.creator,
+        decimals: scrutinizedAsset.params.decimals.toString(),
+        freeze: scrutinizedAsset.params.freeze,
+        manager: scrutinizedAsset.params.manager,
+        name: scrutinizedAsset.params.name,
+        reserve: scrutinizedAsset.params.reserve,
+        total: scrutinizedAsset.params.total.toString(),
+        unitname: scrutinizedAsset.params["unit-name"]
+      },
+    };
   }
 
   // Get user account
