@@ -386,12 +386,14 @@ export async function callSmartContract(
 
         console.log("scrutinizedAsset", scrutinizedAsset);
 
+        const params = scrutinizedAsset.params;
+
         return {
           key: input.key,
           sessionId: input.sessionId,
           payload: {
             index: scrutinizedAsset.index,
-            scrutinizedAsset
+            params
             // symbol: scrutinizedAsset["params"]["unit-name"],
             // name: scrutinizedAsset["params"].name,
             // decimals: scrutinizedAsset["params"].decimals,
