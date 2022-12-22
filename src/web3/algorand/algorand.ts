@@ -376,31 +376,47 @@ export async function callSmartContract(
     //   const scrutinizedAsset = accountInfo["created-assets"][idx];
     //   if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
 
-        const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
 
-        // console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
-        // console.log("name", scrutinizedAsset["params"].name);
-        // console.log("decimals", scrutinizedAsset["params"].decimals);
-        // console.log("creator", scrutinizedAsset["params"].creator);
-        // console.log("assetid", scrutinizedAsset["index"]);
+    return {
+      key: input.key,
+      sessionId: input.sessionId,
+      payload: {
+        index: 0
+      }
+    };
 
-        console.log("scrutinizedAsset", scrutinizedAsset);
 
-        const params = scrutinizedAsset.params;
+        // const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
 
-        return {
-          key: input.key,
-          sessionId: input.sessionId,
-          payload: {
-            index: scrutinizedAsset.index,
-            params
-            // symbol: scrutinizedAsset["params"]["unit-name"],
-            // name: scrutinizedAsset["params"].name,
-            // decimals: scrutinizedAsset["params"].decimals,
-            // creator: scrutinizedAsset["params"].creator,
-            // assetid: scrutinizedAsset["index"]
-          },
-        };
+        // // console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
+        // // console.log("name", scrutinizedAsset["params"].name);
+        // // console.log("decimals", scrutinizedAsset["params"].decimals);
+        // // console.log("creator", scrutinizedAsset["params"].creator);
+        // // console.log("assetid", scrutinizedAsset["index"]);
+
+        // console.log("index", scrutinizedAsset.index);
+        // console.log("params", scrutinizedAsset.params);
+
+        // const params = scrutinizedAsset.params;
+
+        // return {
+        //   key: input.key,
+        //   sessionId: input.sessionId,
+        //   payload: {
+        //     index: scrutinizedAsset.index,
+        //     params
+        //     // symbol: scrutinizedAsset["params"]["unit-name"],
+        //     // name: scrutinizedAsset["params"].name,
+        //     // decimals: scrutinizedAsset["params"].decimals,
+        //     // creator: scrutinizedAsset["params"].creator,
+        //     // assetid: scrutinizedAsset["index"]
+        //   },
+        // };
+
+
+
+
+
    /*  */
     //   }
     // }
