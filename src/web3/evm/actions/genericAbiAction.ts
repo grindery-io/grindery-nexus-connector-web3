@@ -138,17 +138,13 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
         type: "address",
         label: "Contract address",
       },
-      {
-        key: "_grinderyAbi",
-        required: true,
-        type: "text",
-        label: "ABI",
-      },
     ],
   };
+
+  // Get ABI if chain and contract specified
+  let abi: any;
   if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyAbi) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let abi: any;
     try {
       abi = await axios.get(
         `https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${fieldData?._grinderyChain}&address=${fieldData?._grinderyContractAddress}`
@@ -156,13 +152,22 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
     } catch (error) {
       // handle abi retrieving  error
     }
-    console.log("genericAbiActionInputProvider fetch abi response", abi?.data);
-    if (abi?.data?.result) {
-      ret.inputFields[2]["default"] = abi.data.result;
-    }
   }
-  if (fieldData?._grinderyAbi) {
-    const cds = getCDS(fieldData._grinderyAbi);
+
+  // Add abi field only if chain and address specified
+  if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress) {
+    ret.inputFields.push({
+      key: "_grinderyAbi",
+      required: true,
+      type: "text",
+      label: "ABI",
+      default: abi?.data?.result || undefined, // return abi as default value if exists
+    });
+  }
+
+  // Convert abi to cds if specified by user or fetched automatically
+  if (fieldData?._grinderyAbi || abi?.data?.result) {
+    const cds = getCDS(fieldData?._grinderyAbi || abi?.data?.result);
     ret.inputFields.push({
       key: "_grinderyFunction",
       required: true,
