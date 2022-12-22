@@ -167,7 +167,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
   }
 
   // Convert abi to cds if specified by user or fetched automatically
-  if (fieldData?._grinderyAbi || abi?.data?.result) {
+  if (fieldData?._grinderyAbi || isJson(abi?.data?.result)) {
     const cds = getCDS(fieldData?._grinderyAbi || abi?.data?.result);
     ret.inputFields.push({
       key: "_grinderyFunction",
