@@ -52,7 +52,7 @@ interface Block {
   ts: number;
   txn: string;
   txns: Txn[];
-};
+}
 type BlockResponse = {
   block: Block;
 };
@@ -210,8 +210,8 @@ class NewTransactionTrigger extends TriggerBase<{
         );
         const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
         const tx_id = stwad.txn.txn.txID();
-        let tx_to:string = "";
-        let tx_amount:string = "";
+        let tx_to = "";
+        let tx_amount = "";
         /* Converting the transaction amount from microalgos to algos. */
         if (this.key === "newTransaction") {
           tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
@@ -384,7 +384,7 @@ export async function callSmartContract(
         // console.log("creator", scrutinizedAsset["params"].creator);
         // console.log("assetid", scrutinizedAsset["index"]);
 
-        console.log("scrutinizedAsset", scrutinizedAsset)
+        console.log("scrutinizedAsset", scrutinizedAsset);
 
         return {
           key: input.key,
