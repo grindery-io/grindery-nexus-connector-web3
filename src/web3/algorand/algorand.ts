@@ -371,28 +371,37 @@ export async function callSmartContract(
   const algodClient = await getAlgodClient(input.fields.chain);
   /* The above code is using the Algorand Standard Asset API to get information about an asset. */
   if (input.fields.functionDeclaration === "getInformationAsset") {
-    const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
-    for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
-      const scrutinizedAsset = accountInfo["created-assets"][idx];
-      if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
-        console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
-        console.log("name", scrutinizedAsset["params"].name);
-        console.log("decimals", scrutinizedAsset["params"].decimals);
-        console.log("creator", scrutinizedAsset["params"].creator);
-        console.log("assetid", scrutinizedAsset["index"]);
+    // const accountInfo = await algodClient.accountInformation(input.fields.contractAddress).do();
+    // for (let idx = 0; idx < accountInfo["created-assets"].length; idx++) {
+    //   const scrutinizedAsset = accountInfo["created-assets"][idx];
+    //   if (scrutinizedAsset["index"] === input.fields.parameters.assetid) {
+
+        const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
+
+        // console.log("symbol", scrutinizedAsset["params"]["unit-name"]);
+        // console.log("name", scrutinizedAsset["params"].name);
+        // console.log("decimals", scrutinizedAsset["params"].decimals);
+        // console.log("creator", scrutinizedAsset["params"].creator);
+        // console.log("assetid", scrutinizedAsset["index"]);
+
+        console.log("scrutinizedAsset", scrutinizedAsset)
+
         return {
           key: input.key,
           sessionId: input.sessionId,
           payload: {
-            symbol: scrutinizedAsset["params"]["unit-name"],
-            name: scrutinizedAsset["params"].name,
-            decimals: scrutinizedAsset["params"].decimals,
-            creator: scrutinizedAsset["params"].creator,
-            assetid: scrutinizedAsset["index"]
+            index: scrutinizedAsset.index,
+            scrutinizedAsset
+            // symbol: scrutinizedAsset["params"]["unit-name"],
+            // name: scrutinizedAsset["params"].name,
+            // decimals: scrutinizedAsset["params"].decimals,
+            // creator: scrutinizedAsset["params"].creator,
+            // assetid: scrutinizedAsset["index"]
           },
         };
-      }
-    }
+   /*  */
+    //   }
+    // }
   }
 
   // Get user account
