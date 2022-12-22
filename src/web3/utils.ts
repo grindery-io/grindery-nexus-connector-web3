@@ -37,3 +37,18 @@ export type AlgorandDepayActions = {
   userAccount: algosdk.Account;
   receiver: string;
 };
+/**
+ * It takes an object and returns a new object with all the nested objects flattened
+ * @param obj - Record<string, unknown>
+ */
+export const flattenObject = (obj: Record<string, unknown>): Record<string, unknown> =>
+  Object.entries(obj).reduce((acc, [key, value]) => {
+    if (typeof value === "object" && value !== null) {
+      Object.entries(value).forEach(([iKey, iValue]) => {
+        acc[`${key}-${iKey}`] = iValue;
+      });
+    } else {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
