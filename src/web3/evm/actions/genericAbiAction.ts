@@ -156,6 +156,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
     } catch (error) {
       // handle abi retrieving  error
     }
+    console.log("genericAbiActionInputProvider fetch abi response", abi?.data);
     if (abi?.data?.result) {
       ret.inputFields[2]["default"] = abi.data.result;
     }
