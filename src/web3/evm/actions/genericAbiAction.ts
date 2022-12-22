@@ -2,6 +2,7 @@ import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput }
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { AbiItem, AbiInput, AbiOutput } from "web3-utils";
 import axios from "axios";
+import { isJson } from "../../utils";
 
 type Fields = {
   _grinderyChain: string;
@@ -161,7 +162,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
       required: true,
       type: "text",
       label: "ABI",
-      default: abi?.data?.result || undefined, // return abi as default value if exists
+      default: (isJson(abi?.data?.result) && abi?.data?.result) || undefined, // return abi as default value if exists
     });
   }
 
