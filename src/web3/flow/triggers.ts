@@ -382,4 +382,5 @@ class NewEventTrigger extends TriggerBase<{
 
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
+Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);

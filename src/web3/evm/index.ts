@@ -10,6 +10,7 @@ import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
+Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
 const droneAddressCache = new Map<string, string>();
