@@ -147,6 +147,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
     ],
   };
   if(fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyAbi){
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let abi: any
     try {
       abi = await axios.get(`https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${fieldData?._grinderyChain}&address=${fieldData?._grinderyContractAddress}`)
