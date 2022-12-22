@@ -36,7 +36,7 @@
     "ethers": "^5.7.0",
     "ethers-eip712": "^0.2.0",
     "exponential-backoff": "^3.1.0",
-    "grindery-nexus-common-utils": "^1.0.51",
+    "grindery-nexus-common-utils": "^1.0.52",
     "ipfs-core": "^0.17.0",
     "ipfs-http-client": "^59.0.0",
     "jose": "^4.10.0",
