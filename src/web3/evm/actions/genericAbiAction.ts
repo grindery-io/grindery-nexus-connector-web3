@@ -1,6 +1,7 @@
 import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput } from "grindery-nexus-common-utils";
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { AbiItem, AbiInput, AbiOutput } from "web3-utils";
+import axios from 'axios'
 
 type Fields = {
   _grinderyChain: string;
@@ -145,6 +146,17 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
       },
     ],
   };
+  if(fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyAbi){
+    let abi: any
+    try {
+      abi = await axios.get(`https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${fieldData?._grinderyChain}&address=${fieldData?._grinderyContractAddress}`)
+    } catch(error){
+      // handle abi retrieving  error
+    }
+    if(abi?.result){
+      ret.inputFields[2]['default'] = abi?.result
+    }
+  }
   if (fieldData?._grinderyAbi) {
     const cds = getCDS(fieldData._grinderyAbi);
     ret.inputFields.push({
