@@ -9,14 +9,9 @@ import * as msgpack from "algo-msgpack-with-bigint";
  * @param {TAccessToken} user - TAccessToken - the user object that is passed to the function.
  * @returns an object with two properties: addr and sk.
  */
-export async function getUserAccountAlgorand(
-  user: TAccessToken
-): Promise<algosdk.Account> {
+export async function getUserAccountAlgorand(user: TAccessToken): Promise<algosdk.Account> {
   const lengthSecretKey = nacl.box.secretKeyLength;
-  const seed = (await hmac("grindery-algorand-key/" + user.sub)).subarray(
-    0,
-    lengthSecretKey
-  );
+  const seed = (await hmac("grindery-algorand-key/" + user.sub)).subarray(0, lengthSecretKey);
   const keypair = nacl.sign.keyPair.fromSeed(seed);
   const encodedPk = algosdk.encodeAddress(keypair.publicKey);
 
@@ -29,12 +24,8 @@ export async function getUserAccountAlgorand(
  * @param {string} functionDeclaration - The function declaration string.
  * @returns ABIMethod
  */
-export function parseFunctionDeclarationAlgorand(
-  functionDeclaration: string
-): algosdk.ABIMethod {
-  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*(.*)$/.exec(
-    functionDeclaration
-  );
+export function parseFunctionDeclarationAlgorand(functionDeclaration: string): algosdk.ABIMethod {
+  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*(.*)$/.exec(functionDeclaration);
   if (!m) {
     throw new Error("Invalid function declaration");
   }
@@ -99,10 +90,7 @@ export async function setSpFee(fees: number, algodClient: algosdk.Algodv2) {
  * @param algodClient - The Algod client object that you created in the previous step.
  * @returns The balance of the account.
  */
-export async function getbalance(
-  account: algosdk.Account,
-  algodClient: algosdk.Algodv2
-): Promise<unknown> {
+export async function getbalance(account: algosdk.Account, algodClient: algosdk.Algodv2): Promise<unknown> {
   const accountInfo = await algodClient.accountInformation(account.addr).do();
   return accountInfo.amount;
 }
@@ -122,14 +110,8 @@ export async function feedAccount(
   algodClient: algosdk.Algodv2
 ): Promise<Record<string, unknown>> {
   // Check balances
-  console.log(
-    "Grindery account balance: %d microAlgos",
-    await getbalance(from, algodClient)
-  );
-  console.log(
-    "User account balance: %d microAlgos",
-    await getbalance(to, algodClient)
-  );
+  console.log("Grindery account balance: %d microAlgos", await getbalance(from, algodClient));
+  console.log("User account balance: %d microAlgos", await getbalance(to, algodClient));
 
   // Transaction to feed the user account
   const txnToFeedUser = algosdk.makePaymentTxnWithSuggestedParams(
@@ -151,26 +133,15 @@ export async function feedAccount(
   // Wait for confirmation
   const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
   //Get the completed Transaction
-  console.log(
-    "Transaction " +
-      txId +
-      " confirmed in round " +
-      confirmedTxn["confirmed-round"]
-  );
+  console.log("Transaction " + txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
   // let mytxinfo = JSON.stringify(confirmedTxn.txn.txn, undefined, 2);
   // console.log("Transaction information: %o", mytxinfo);
   const string = new TextDecoder().decode(confirmedTxn.txn.txn.note);
   console.log("Note field: ", string);
 
   // Check balances
-  console.log(
-    "Grindery account balance: %d microAlgos",
-    await getbalance(from, algodClient)
-  );
-  console.log(
-    "User account balance: %d microAlgos",
-    await getbalance(to, algodClient)
-  );
+  console.log("Grindery account balance: %d microAlgos", await getbalance(from, algodClient));
+  console.log("User account balance: %d microAlgos", await getbalance(to, algodClient));
 
   console.log("Transaction Amount: %d microAlgos", confirmedTxn.txn.txn.amt);
   console.log("Transaction Fee: %d microAlgos", confirmedTxn.txn.txn.fee);
@@ -181,6 +152,7 @@ export async function feedAccount(
 /* It takes a SignedTransactionWithAD object, and returns a SignedTransaction object */
 export class SignedTransactionWithAD {
   txn: algosdk.SignedTransaction;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(gh: Buffer, gen: string, stib: any) {
     const t = stib.txn as algosdk.EncodedTransaction;
     // Manually add gh/gen to construct a correct transaction object

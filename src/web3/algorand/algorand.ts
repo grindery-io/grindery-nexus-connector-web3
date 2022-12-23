@@ -30,6 +30,7 @@ type Status = {
 type Txn = {
   hgi?: boolean;
   sig?: Buffer;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   txn: Record<string, any>;
   blockHash?: string;
   blockRnd?: string;
@@ -78,7 +79,7 @@ type AssetParams = {
     url?: string;
     urlB64?: Uint8Array;
   };
-}
+};
 
 /**
  * It takes a string or an array of strings, joins them with slashes, and then makes a GET request to
@@ -126,7 +127,7 @@ class TransactionSubscriber extends EventEmitter {
                 blockHash: blockHash.blockHash,
                 blockRnd: block.block.rnd,
                 blockgh: block.block.gh,
-                blockgen: block.block.gen
+                blockgen: block.block.gen,
               });
             }
           }
@@ -184,8 +185,10 @@ class NewTransactionTrigger extends TriggerBase<{
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
         /* Checking if the transaction is a payment or an asset transfer. */
-        if ((this.key === "newTransaction" && tx.txn.txn.type !== "pay")
-        || (this.key === "newTransactionAsset" && tx.txn.txn.type !== "axfer")) {
+        if (
+          (this.key === "newTransaction" && tx.txn.txn.type !== "pay") ||
+          (this.key === "newTransactionAsset" && tx.txn.txn.type !== "axfer")
+        ) {
           return;
         }
         /* Checking if the transaction is from the correct sender. */
@@ -198,16 +201,14 @@ class NewTransactionTrigger extends TriggerBase<{
           return;
         }
         /* Checking if the transaction is a new transaction and if the transaction has an amount. */
-        if ((this.key === "newTransaction" && !("amt" in tx.txn.txn))
-        || (this.key === "newTransactionAsset" && !("aamt" in tx.txn.txn))) {
+        if (
+          (this.key === "newTransaction" && !("amt" in tx.txn.txn)) ||
+          (this.key === "newTransactionAsset" && !("aamt" in tx.txn.txn))
+        ) {
           return;
         }
         /* Creating a new instance of the SignedTransactionWithAD class. */
-        const stwad = new SignedTransactionWithAD(
-          tx.blockgh,
-          tx.blockgen,
-          tx.txn
-        );
+        const stwad = new SignedTransactionWithAD(tx.blockgh, tx.blockgen, tx.txn);
         const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
         const tx_id = stwad.txn.txn.txID();
         let tx_to = "";
@@ -215,9 +216,7 @@ class NewTransactionTrigger extends TriggerBase<{
         /* Converting the transaction amount from microalgos to algos. */
         if (this.key === "newTransaction") {
           tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
-          tx_amount = (new BigNumber(tx.txn.txn.amt).div(
-            new BigNumber(10).pow(new BigNumber(6))
-          )).toString();
+          tx_amount = new BigNumber(tx.txn.txn.amt).div(new BigNumber(10).pow(new BigNumber(6))).toString();
         }
         /* The above code is checking if the transaction is an asset transfer. If it is, it will get
         the asset information from the Algorand blockchain. */
@@ -225,9 +224,9 @@ class NewTransactionTrigger extends TriggerBase<{
         if (this.key === "newTransactionAsset") {
           tx_to = algosdk.encodeAddress(tx.txn.txn.arcv);
           assetInfo = await arApi(["assets", tx.txn.txn.xaid.toString()]);
-          tx_amount = (new BigNumber(tx.txn.txn.aamt).div(
-            new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString()))
-          )).toString();
+          tx_amount = new BigNumber(tx.txn.txn.aamt)
+            .div(new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString())))
+            .toString();
         }
         /* Printing the transaction details to the console. */
         console.log("from", tx_from);
@@ -244,7 +243,7 @@ class NewTransactionTrigger extends TriggerBase<{
           txHash: tx_id,
           blockHash: tx.blockHash,
           blockHeight: tx.blockRnd?.toString(),
-          assetInfo
+          assetInfo,
         });
       },
       /* A callback function that is called when an error occurs. */
@@ -397,7 +396,7 @@ export async function callSmartContract(
         name: scrutinizedAsset.params.name,
         reserve: scrutinizedAsset.params.reserve,
         total: scrutinizedAsset.params.total.toString(),
-        unitname: scrutinizedAsset.params["unit-name"]
+        unitname: scrutinizedAsset.params["unit-name"],
       },
     };
   }

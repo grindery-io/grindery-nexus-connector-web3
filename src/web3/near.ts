@@ -1,10 +1,6 @@
 import { EventEmitter } from "node:events";
 import _ from "lodash";
-import {
-  ConnectorInput,
-  ConnectorOutput,
-  TriggerBase,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../blockingTracer";
@@ -47,8 +43,8 @@ type Receipt = {
   receiver_id: string;
 };
 
-
 type Tx = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actions: Array<any>;
   hash: string;
   nonce: BN;
@@ -75,6 +71,7 @@ type ExecutionOutcomeWithId = {
 };
 type TxReceipt = {
   status: Txstatus;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transaction: any;
   transaction_outcome: ExecutionOutcomeWithId;
   receipts_outcome: ExecutionOutcomeWithId[];
@@ -129,24 +126,14 @@ class ReceiptSubscriber extends EventEmitter {
           continue;
         }
         const pendingBlocks = [response];
-        while (
-          currentHash &&
-          pendingBlocks[0].header.prev_hash !== currentHash
-        ) {
+        while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
           pendingBlocks.unshift(
             await near.connection.provider.block({
               blockId: pendingBlocks[0].header.prev_hash,
             })
           );
-          if (
-            currentHeight &&
-            pendingBlocks[0].header.height <= currentHeight
-          ) {
-            console.log(
-              "[Near] Last block was removed:",
-              currentHeight,
-              currentHash
-            );
+          if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
+            console.log("[Near] Last block was removed:", currentHeight, currentHash);
             if (pendingBlocks[0].header.height < currentHeight) {
               pendingBlocks.shift();
             }
@@ -154,9 +141,7 @@ class ReceiptSubscriber extends EventEmitter {
           }
         }
         if (pendingBlocks.length > 10) {
-          console.warn(
-            `[Near] Too many blocks in a row: ${pendingBlocks.length}`
-          );
+          console.warn(`[Near] Too many blocks in a row: ${pendingBlocks.length}`);
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const block of pendingBlocks) {
@@ -166,10 +151,9 @@ class ReceiptSubscriber extends EventEmitter {
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
-                const chunkDetails = await near.connection.provider.chunk(
-                  chunk.chunk_hash
-                );
-                txs.splice(txs.length, 0, ...chunkDetails.transactions as any[]);
+                const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                txs.splice(txs.length, 0, ...(chunkDetails.transactions as any[]));
                 receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
               },
               {
@@ -199,7 +183,7 @@ class ReceiptSubscriber extends EventEmitter {
                 currentHeight: block.header.hash,
                 currentHash: block.header.height,
                 txReceipt: {},
-                tx
+                tx,
               });
             }
           }
@@ -222,20 +206,13 @@ class ReceiptSubscriber extends EventEmitter {
     console.log("[Near] event main loop stopped");
   }
 
-
   /**
    * It subscribes to the "process" event, and when it receives a receipt, it calls the callback
    * function
    * @param  - `callback` is the function that will be called when a new receipt is received.
    * @returns A function that removes the event listener.
    */
-  subscribe({
-    callback,
-    onError,
-  }: {
-    callback: (tx: TxBlock) => void;
-    onError: (error: unknown) => void;
-  }) {
+  subscribe({ callback, onError }: { callback: (tx: TxBlock) => void; onError: (error: unknown) => void }) {
     const handler = async (tx: TxBlock) => {
       await callback(tx);
     };
@@ -271,17 +248,14 @@ class NewTransactionTrigger extends TriggerBase<{
     }
     this.fields.from = normalizeAddress(this.fields.from);
     this.fields.to = normalizeAddress(this.fields.to);
-    console.log(
-      `[${this.sessionId}] NewTransactionTrigger:`,
-      this.fields.chain,
-      this.fields.from,
-      this.fields.to
-    );
+    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: TxBlock) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id)
-        && this.fields.from !== normalizeAddress(tx.tx.public_key);
+        const notSameFrom =
+          this.fields.from &&
+          this.fields.from !== normalizeAddress(tx.tx.signer_id) &&
+          this.fields.from !== normalizeAddress(tx.tx.public_key);
         const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
         const failure = tx.txReceipt.status.Failure;
         if (notSameFrom || notSameTo || failure) {
@@ -352,8 +326,6 @@ class NewTransactionTrigger extends TriggerBase<{
   }
 }
 
-
-
 /* It subscribes to the blockchain and sends a notification whenever a contract emits an event */
 class NewEventTrigger extends TriggerBase<{
   chain: string | string[];
@@ -373,16 +345,12 @@ class NewEventTrigger extends TriggerBase<{
       this.fields.contractAddress = undefined;
     }
     const functions =
-      typeof this.fields.eventDeclaration === "string"
-        ? [this.fields.eventDeclaration]
-        : this.fields.eventDeclaration;
+      typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       callback: async (receipt: any) => {
         blockingTracer.tag("near.NewEventTrigger");
-        if (
-          this.fields.contractAddress &&
-          this.fields.contractAddress !== receipt.receiver_id
-        ) {
+        if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
           return;
         }
         for (const action of receipt.receipt.Action?.actions ?? []) {
@@ -396,19 +364,14 @@ class NewEventTrigger extends TriggerBase<{
           let args;
           if (functionCall.args.length < 4096) {
             try {
-              args = JSON.parse(
-                Buffer.from(functionCall.args, "base64").toString("utf-8")
-              );
+              args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
             } catch (e) {
               // Fall through
             }
             if (!args) {
               try {
                 args = {
-                  _argsDecoded: Buffer.from(
-                    functionCall.args,
-                    "base64"
-                  ).toString("utf-8"),
+                  _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
                 };
               } catch (e) {
                 // Fall through
@@ -420,18 +383,12 @@ class NewEventTrigger extends TriggerBase<{
               _rawArgs: functionCall.args,
             };
           }
-          args._from =
-            receipt.receipt.Action?.signer_id ||
-            normalizeAddress(receipt.receipt.Action?.signer_public_key);
-          for (const [key, value] of Object.entries(
-            this.fields.parameterFilters
-          )) {
+          args._from = receipt.receipt.Action?.signer_id || normalizeAddress(receipt.receipt.Action?.signer_public_key);
+          for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
             if (key.startsWith("_grindery")) {
               continue;
             }
-            if (
-              normalizeAddress(_.get(args, key)) !== normalizeAddress(value)
-            ) {
+            if (normalizeAddress(_.get(args, key)) !== normalizeAddress(value)) {
               return;
             }
           }
@@ -457,10 +414,7 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-export const Triggers = new Map<
-  string,
-  new (params: ConnectorInput) => TriggerBase
->();
+export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
@@ -499,9 +453,7 @@ export async function callSmartContract(
     nodeUrl: "https://rpc.mainnet.near.org",
   };
 
-  const user = await parseUserAccessToken(input.fields.userToken).catch(
-    () => null
-  );
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
@@ -552,8 +504,6 @@ export async function callSmartContract(
   // throw new Error("Not implemented");
 }
 
-export async function getUserDroneAddress(
-  _user: TAccessToken
-): Promise<string> {
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
   throw new Error("Not implemented");
 }

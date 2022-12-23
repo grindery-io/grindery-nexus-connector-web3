@@ -1,7 +1,7 @@
 import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput } from "grindery-nexus-common-utils";
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { AbiItem, AbiInput, AbiOutput } from "web3-utils";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { isJson } from "../../utils";
 
 type Fields = {
@@ -143,7 +143,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
   };
 
   // Get ABI if chain and contract specified
-  let abi: any;
+  let abi: AxiosResponse | undefined = undefined;
   if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyAbi) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     try {
