@@ -1,8 +1,5 @@
 import axios from "axios";
-import {
-  ConnectorInput,
-  ConnectorOutput,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { DepayActions, AlgorandDepayActions } from "../utils";
 import { setSpFee, feedAccount, getbalance } from "./utils";
 import algosdk from "algosdk";
@@ -23,17 +20,11 @@ export async function SendTransactionAction(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
     dryRun?: boolean;
-    userToken: string;
   }>,
   depay: DepayActions<AlgorandDepayActions>
 ): Promise<ConnectorOutput> {
   // Feed the user account
-  await feedAccount(
-    depay.fields.grinderyAccount,
-    depay.fields.userAccount,
-    200000,
-    depay.fields.algodClient
-  );
+  await feedAccount(depay.fields.grinderyAccount, depay.fields.userAccount, 200000, depay.fields.algodClient);
 
   console.log("");
   console.log("==> CREATE ASSET");
@@ -115,10 +106,7 @@ export async function SendTransactionAction(
 
   const metadata = new Uint8Array(hash.digest()); // use this in your code
   const spNoFee = await setSpFee(0, depay.fields.algodClient);
-  const spFullFee = await setSpFee(
-    2 * algosdk.ALGORAND_MIN_TX_FEE,
-    depay.fields.algodClient
-  );
+  const spFullFee = await setSpFee(2 * algosdk.ALGORAND_MIN_TX_FEE, depay.fields.algodClient);
 
   // signing and sending "txn" allows "addr" to create an asset
   const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
@@ -153,9 +141,7 @@ export async function SendTransactionAction(
 
   depay.fields.comp.addTransaction({
     txn: txnToPayGas,
-    signer: algosdk.makeBasicAccountTransactionSigner(
-      depay.fields.grinderyAccount
-    ),
+    signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
   });
 
   const result = await depay.fields.comp.execute(depay.fields.algodClient, 2);

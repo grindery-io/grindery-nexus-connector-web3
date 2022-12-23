@@ -360,10 +360,11 @@ export async function callSmartContract(
     gasLimit?: string | number; // Note: This is in ETH instead of gas unit
     dryRun?: boolean;
     userToken: string;
+    _grinderyUserToken: string;
   }>
 ): Promise<ConnectorOutput> {
   // Verify the userToken is valid
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  const user = await parseUserAccessToken(input.fields._grinderyUserToken || input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }

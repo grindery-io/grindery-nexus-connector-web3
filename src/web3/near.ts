@@ -445,6 +445,7 @@ export async function callSmartContract(
     gasLimit?: string | number;
     dryRun?: boolean;
     userToken: string;
+    _grinderyUserToken: string;
   }>
 ): Promise<ConnectorOutput> {
   const config = {
@@ -453,7 +454,7 @@ export async function callSmartContract(
     nodeUrl: "https://rpc.mainnet.near.org",
   };
 
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  const user = await parseUserAccessToken(input.fields._grinderyUserToken || input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
