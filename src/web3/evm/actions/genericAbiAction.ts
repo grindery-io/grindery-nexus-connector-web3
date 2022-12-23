@@ -175,13 +175,13 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
       type: "string",
       label: "Function",
       choices: cds.actions.map((x) => ({
-        value: x.key,
-        sample: x.key,
+        value: x.operation.signature,
+        sample: x.operation.signature,
         label: x.operation.signature,
       })),
     });
     if (fieldData?._grinderyFunction) {
-      const action = cds.actions.find((x) => x.key === fieldData._grinderyFunction);
+      const action = cds.actions.find((x) => x.operation.signature === fieldData._grinderyFunction);
       if (action) {
         ret.inputFields = ret.inputFields.concat(
           action.operation.inputFields.map((x) => ({ ...x, updateFieldDefinition: false } as FieldSchema))
