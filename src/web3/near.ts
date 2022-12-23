@@ -70,7 +70,7 @@ type ExecutionOutcomeWithId = {
   };
 };
 type TxReceipt = {
-  status: Txstatus;
+  status?: Txstatus;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transaction: any;
   transaction_outcome: ExecutionOutcomeWithId;
@@ -257,7 +257,7 @@ class NewTransactionTrigger extends TriggerBase<{
           this.fields.from !== normalizeAddress(tx.tx.signer_id) &&
           this.fields.from !== normalizeAddress(tx.tx.public_key);
         const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
-        const failure = tx.txReceipt.status.Failure;
+        const failure = tx.txReceipt.status?.Failure;
         if (notSameFrom || notSameTo || failure) {
           return;
         }
