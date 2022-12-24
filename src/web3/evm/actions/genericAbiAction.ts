@@ -173,7 +173,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
 
   if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress) {
     // Allow user to manually set ABI
-    if (fetchedAbi) {
+    if (fetchedAbi || fieldData?._grinderyUseCustomAbi) {
       ret.inputFields.push({
         key: "_grinderyUseCustomAbi",
         type: "boolean",
