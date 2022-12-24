@@ -2,6 +2,8 @@ import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput }
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { AbiItem, AbiInput, AbiOutput } from "web3-utils";
 import axios from "axios";
+import { callSmartContract } from "../call";
+import { sanitizeParameters } from "../../../utils";
 
 type Fields = {
   _grinderyChain: string;
@@ -178,6 +180,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
         key: "_grinderyUseCustomAbi",
         type: "boolean",
         label: "Use custom ABI",
+        default: "false",
       });
     }
     // Add abi field only if chain and address specified, and we can't fetch ABI from explorer site
@@ -220,6 +223,17 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
 }
 
 export async function genericAbiAction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
-  console.log(input);
-  return { payload: {} };
+  const fields = input.fields as Fields;
+  return await callSmartContract(
+    await sanitizeParameters({
+      ...input,
+      fields: {
+        ...fields,
+        chain: fields._grinderyChain,
+        contractAddress: fields._grinderyContractAddress,
+        functionDeclaration: fields._grinderyFunction || "INVALID",
+        parameters: fields,
+      },
+    })
+  );
 }
