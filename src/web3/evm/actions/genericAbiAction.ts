@@ -1,14 +1,14 @@
 import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput } from "grindery-nexus-common-utils";
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { AbiItem, AbiInput, AbiOutput } from "web3-utils";
-import axios, { AxiosResponse } from "axios";
-import { isJson } from "../../utils";
+import axios from "axios";
 
 type Fields = {
   _grinderyChain: string;
   _grinderyContractAddress: string;
   _grinderyAbi?: string;
   _grinderyFunction?: string;
+  _grinderyUseCustomAbi?: boolean;
 };
 
 function mapType(abiType: string) {
@@ -123,6 +123,8 @@ const getCDS = (ABI: string) => {
   return cds;
 };
 
+const fetchAbiCache = new Map<string, string | { missing: true; timestamp: number }>();
+
 export async function genericAbiActionInputProvider(params: InputProviderInput<unknown>): Promise<InputProviderOutput> {
   const fieldData = params.fieldData as Fields;
   const ret: InputProviderOutput = {
@@ -143,32 +145,56 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
   };
 
   // Get ABI if chain and contract specified
-  let abi: AxiosResponse | undefined = undefined;
-  if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyAbi) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    try {
-      abi = await axios.get(
-        `https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${fieldData?._grinderyChain}&address=${fieldData?._grinderyContractAddress}`
-      );
-    } catch (error) {
-      // handle abi retrieving  error
+  let fetchedAbi = undefined as string | undefined;
+  if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyUseCustomAbi) {
+    const cacheKey = `${fieldData._grinderyChain}/${fieldData._grinderyContractAddress}`;
+    let cached = fetchAbiCache.get(cacheKey);
+    if (typeof cached === "string") {
+      fetchedAbi = cached;
+    } else if (cached?.missing && Date.now() - cached.timestamp > 60000) {
+      cached = undefined;
+    }
+    if (!cached) {
+      try {
+        const resp = await axios.get(
+          `https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${fieldData?._grinderyChain}&address=${fieldData?._grinderyContractAddress}`
+        );
+        const rawAbi = resp.data?.result;
+        getCDS(rawAbi);
+        // At this point we can confirm that the fetched ABI is valid
+        fetchAbiCache.set(cacheKey, rawAbi);
+        fetchedAbi = rawAbi;
+      } catch (error) {
+        // handle abi retrieving  error
+        fetchAbiCache.set(cacheKey, { missing: true, timestamp: Date.now() });
+      }
     }
   }
 
-  // Add abi field only if chain and address specified
   if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress) {
-    ret.inputFields.push({
-      key: "_grinderyAbi",
-      required: true,
-      type: "text",
-      label: "ABI",
-      default: (isJson(abi?.data?.result) && abi?.data?.result) || undefined, // return abi as default value if exists
-    });
+    // Allow user to manually set ABI
+    if (fetchedAbi) {
+      ret.inputFields.push({
+        key: "_grinderyUseCustomAbi",
+        type: "boolean",
+        label: "Use custom ABI",
+      });
+    }
+    // Add abi field only if chain and address specified, and we can't fetch ABI from explorer site
+    if (!fetchedAbi || fieldData?._grinderyUseCustomAbi) {
+      ret.inputFields.push({
+        key: "_grinderyAbi",
+        required: true,
+        type: "text",
+        label: "ABI",
+      });
+    }
   }
 
+  const abiJson = fieldData?._grinderyUseCustomAbi ? fieldData?._grinderyAbi : fetchedAbi;
   // Convert abi to cds if specified by user or fetched automatically
-  if (fieldData?._grinderyAbi || isJson(abi?.data?.result)) {
-    const cds = getCDS(fieldData?._grinderyAbi || abi?.data?.result);
+  if (abiJson) {
+    const cds = getCDS(abiJson);
     ret.inputFields.push({
       key: "_grinderyFunction",
       required: true,
