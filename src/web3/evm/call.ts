@@ -426,7 +426,7 @@ export async function callSmartContract(
               if (functionInfo.outputs.length === 1) {
                 callResultDecoded = callResultDecoded[0];
               }
-              result = { ...receipt, returnValue: callResultDecoded };
+              result = { ...receipt, returnValue: callResultDecoded, contractAddress: input.fields.contractAddress };
             }
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
