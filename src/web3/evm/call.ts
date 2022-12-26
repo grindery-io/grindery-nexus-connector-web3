@@ -429,6 +429,7 @@ export async function callSmartContract(
                 callResultDecoded = callResultDecoded[0];
               }
               result = { ...receipt, returnValue: callResultDecoded, contractAddress: input.fields.contractAddress };
+              console.log(result);
             }
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
