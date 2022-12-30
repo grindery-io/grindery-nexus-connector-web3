@@ -45,6 +45,13 @@ type ParsedEvent = EventHeader & {
   body: ParsedEventBody;
 };
 
+/**
+ * It takes a path and a set of parameters, and returns a promise that resolves to either a list of
+ * blocks or a list of events
+ * @param {string} path - The path of the API endpoint you want to call.
+ * @param params - { [key: string]: string }
+ * @returns Block[] | BlockEvent[] | unknown
+ */
 async function flowApi(path: "blocks", params: { [key: string]: string }): Promise<Block[]>;
 async function flowApi(path: "events", params: { [key: string]: string }): Promise<BlockEvent[]>;
 async function flowApi(path: string, params: { [key: string]: string }): Promise<unknown> {
@@ -53,6 +60,7 @@ async function flowApi(path: string, params: { [key: string]: string }): Promise
   });
   return response.data;
 }
+/* It fetches events from the Flow blockchain and stores them in a map */
 class EventAggregator {
   private transactions = new Map<string, { [key: string]: ParsedEvent[] }>();
   private addedEvents = new Set<string>();
@@ -139,12 +147,19 @@ class EventAggregator {
     return this.endHeight;
   }
 }
+/* It subscribes to events on a Flow contract, and calls a callback function for each event that
+matches the given parameters */
 class ContractSubscriber extends EventEmitter {
   private running = false;
   constructor(private contractAddress: string) {
     super();
     this.setMaxListeners(1000);
   }
+  /**
+   * It loops over all the listeners of the `process` event, and calls them with an `EventAggregator`
+   * object
+   * @returns a promise that resolves to the block height of the latest block.
+   */
   async main() {
     blockingTracer.tag("flow.ContractSubscriber.main");
     if (this.running) {
@@ -176,6 +191,13 @@ class ContractSubscriber extends EventEmitter {
     }
     this.running = false;
   }
+  /**
+   * It subscribes to a Flow event, and calls the callback function when the event is emitted
+   * @param  - `eventDeclaration` is a string that describes the events you want to subscribe to. It's
+   * a slash-separated list of event names. The first event name is the primary event, and the rest are
+   * secondary events.
+   * @returns A function that removes the event handler and error handler from the event emitter.
+   */
   subscribe({
     eventDeclaration,
     parameterFilters,
@@ -291,6 +313,11 @@ class ContractSubscriber extends EventEmitter {
   }
 }
 const subscribers = new Map<string, ContractSubscriber>();
+/**
+ * If the contract address is not in the subscribers map, add it, then return the subscriber
+ * @param {string} contractAddress - The address of the contract you want to subscribe to.
+ * @returns A ContractSubscriber object.
+ */
 function getSubscriber(contractAddress: string): ContractSubscriber {
   if (!subscribers.has(contractAddress)) {
     subscribers.set(contractAddress, new ContractSubscriber(contractAddress));
@@ -298,7 +325,13 @@ function getSubscriber(contractAddress: string): ContractSubscriber {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return subscribers.get(contractAddress)!;
 }
-class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; to?: string }> {
+/* It subscribes to the `TokensDeposited` and `TokensWithdrawn` events of the `FlowToken` contract, and
+sends a notification for each event that matches the `from` and `to` parameters */
+class NewTransactionTrigger extends TriggerBase<{
+  chain: string;
+  from?: string;
+  to?: string
+}> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
@@ -306,6 +339,8 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; 
     const contract = "A.1654653399040a61.FlowToken";
     const subscriber = getSubscriber(contract);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.from, this.fields.to);
+    /* Subscribing to the event TokensDeposited/TokensWithdrawn[amount] on the contract at the address
+    contract. */
     const unsubscribe = subscriber.subscribe({
       eventDeclaration: "TokensDeposited/TokensWithdrawn[amount]",
       parameterFilters: {
@@ -313,6 +348,7 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; 
         ...(this.fields.to ? { to: this.fields.to } : {}),
       },
       callback: (output) => {
+        console.log("toto");
         console.log(`[${this.sessionId}] Sending notification:`, output._metadata.transactionId);
         this.sendNotification({
           _grinderyChain: this.fields.chain,
@@ -329,6 +365,7 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; 
         this.interrupt(e);
       },
     });
+    /* Waiting for the stop event to occur and then unsubscribing from the event. */
     try {
       await this.waitForStop();
     } finally {
@@ -336,6 +373,7 @@ class NewTransactionTrigger extends TriggerBase<{ chain: string; from?: string; 
     }
   }
 }
+/* It subscribes to a contract event, and sends a notification whenever the event is triggered */
 class NewEventTrigger extends TriggerBase<{
   chain: string;
   contractAddress: string;

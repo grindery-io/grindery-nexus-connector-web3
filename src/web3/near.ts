@@ -19,7 +19,7 @@ import BN from "bn.js";
 // import { homedir } from 'os';
 
 import { connect, transactions, keyStores, utils } from "near-api-js";
-import { normalizeAddress } from "./near/utils";
+import { normalizeAddress, receiptIdFromTx } from "./near/utils";
 
 type Receipt = {
   predecessor_id: string;
@@ -45,6 +45,7 @@ type Receipt = {
   };
   receipt_id: string;
   receiver_id: string;
+  txhash: string;
 };
 
 
@@ -85,6 +86,110 @@ type TxBlock = {
   tx: Tx;
   txReceipt: TxReceipt;
 };
+// type TxHashReceipt = {
+//   txhashparent: string;
+//   receiptIdparent: string;
+//   receiptID: string;
+//   receiptIndex: number;
+//   blockHashparent: string;
+//   blockHash: string;
+//   blockHeight: number;
+//   level: number;
+// };
+// type SubReceiptLayers = {
+//   receiptId: string;
+//   blockHash: string;
+//   blockHeight: number;
+// };
+type SubReceipts = {
+  receiptId: string;
+  blockHash: string;
+  blockHeight: number;
+};
+// type ReceiptInfos = {
+//   receiptIdparent: string;
+//   blockHashparent: string;
+//   blockHeightparent: number;
+//   subreceipts: SubReceipts[];
+// };
+type BlockInfos = {
+  blockHash: string;
+  blockHeight: number;
+};
+type TxHashReceipt = {
+  txhash: string;
+  blockHash: string;
+  blockHeight: number;
+  topReceiptBlock: BlockInfos;
+  topReceiptBlockPost: BlockInfos;
+  // receipts: SubReceipts[][];
+  receipts: string[][];
+};
+type ReceiptsIndex = {
+  txIndex: number;
+  layerIndex: number;
+  nestedIndex: number;
+};
+
+const findIndex = (array, value) => {
+  if (!Array.isArray(array)) {return;}
+  let i = array.indexOf(value), temp;
+  if (i !== -1) {return [i];}
+  i = array.findIndex(v => temp = findIndex(v, value));
+  if (i !== -1) {return [i, ...temp];}
+};
+
+async function getIndexReceipt(arr: any[], receipt: any): Promise<ReceiptsIndex> {
+  // const result = [] as ReceiptsIndex[];
+  const result: ReceiptsIndex = {
+    txIndex: -1,
+    layerIndex: -1,
+    nestedIndex: -1
+  };
+  arr.every((t, i) => {
+    t.receipts.every((r, j) => {
+        // r.forEach((n, k) => {
+        //   if (n.receiptId === receipt) {
+        //     result.push({
+        //       txIndex: i,
+        //       layerIndex: j,
+        //       nestedIndex: k
+        //     });
+        //   }
+        // });
+
+        result.nestedIndex = r.findIndex(e => e === receipt);
+
+        if (result.nestedIndex !== -1) {
+          result.txIndex = i;
+          result.layerIndex = j;
+          return false;
+        }
+        return true;
+      // return (result.length === 0) ? true : false;
+    });
+    return (result.nestedIndex === -1) ? true : false;
+  });
+  return result;
+}
+
+
+// async function updateBlockInfoReceipt(txReceipt, idx, blockinfos): Promise<void> {
+//   for (let i=0; i<idx.length; i++) {
+//     const j = idx[i].txIndex;
+//     const k = idx[i].layerIndex;
+//     const l = idx[i].nestedIndex;
+//     txReceipt[j].receipts[k][l].blockHash = blockinfos[i].blockHash;
+//     txReceipt[j].receipts[k][l].blockHeight = blockinfos[i].blockHeight;
+//   }
+// }
+
+async function updateBlockInfoReceipt(arr, block): Promise<void> {
+  arr.blockHash = block.header.hash;
+  arr.blockHeight = block.header.height;
+}
+
+
 class ReceiptSubscriber extends EventEmitter {
   private running = false;
   constructor() {
@@ -115,10 +220,15 @@ class ReceiptSubscriber extends EventEmitter {
     let lastErrorHeight = 0;
     this.running = true;
     console.log("[Near] event main loop started");
+    let txReceipt = [] as TxHashReceipt[]; //new Array<TxHashReceipt>;
+    let testreceipts = [] as Receipt[];
     while (this.listenerCount("process") > 0) {
       try {
-        const response = await near.connection.provider.block({
+        const responsePost = await near.connection.provider.block({
           finality: "final",
+        });
+        const response = await near.connection.provider.block({
+          blockId: responsePost.header.prev_hash,
         });
         if (currentHash === response.header.hash) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -153,24 +263,133 @@ class ReceiptSubscriber extends EventEmitter {
             break;
           }
         }
+        // pendingBlocks.unshift(await near.connection.provider.block({
+        //   blockId: pendingBlocks[0].header.prev_hash,
+        // }));
         if (pendingBlocks.length > 10) {
           console.warn(
             `[Near] Too many blocks in a row: ${pendingBlocks.length}`
           );
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
-        for (const block of pendingBlocks) {
-          // const receipts = [] as Receipt[];
+
+        // for (const [ib, block] of pendingBlocks.slice(0, -1).entries()) {
+        // for (const block of pendingBlocks) {
+        for (const [ib, block] of pendingBlocks.entries()) {
+          const isLastBlock = ib === pendingBlocks.length-1;
+          // const blockinfos = [] as BlockInfos[];
+          // blockinfos.push({
+          //   blockHash: block.header.hash,
+          //   blockHeight: block.header.height
+          // });
+          // blockinfos.push({
+          //   blockHash: isLastBlock ? responsePost.header.hash : pendingBlocks[ib+1].header.hash,
+          //   blockHeight: isLastBlock ? responsePost.header.height : pendingBlocks[ib+1].header.height
+          // });
+
+          const nextblockinfos = isLastBlock ? responsePost : pendingBlocks[ib+1];
           const receipts = [] as Receipt[];
           const txs = [] as Tx[];
+          // txReceipt = txReceipt.filter(({blockHeight}) => (block.header.height - blockHeight) < 1000);
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
                 const chunkDetails = await near.connection.provider.chunk(
                   chunk.chunk_hash
                 );
-                txs.splice(txs.length, 0, ...chunkDetails.transactions as any[]);
-                receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
+                // txs.splice(txs.length, 0, ...chunkDetails.transactions as any[]);
+                // receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
+
+                for (const tx of chunkDetails.transactions) {
+                  txReceipt.push({
+                    txhash: tx.hash,
+                    blockHash: block.header.hash,
+                    blockHeight: block.header.height,
+                    topReceiptBlock: {blockHash: "", blockHeight: 0},
+                    topReceiptBlockPost: {blockHash: "", blockHeight: 0},
+                    receipts: [[
+                      await receiptIdFromTx(tx.hash, block.header.hash, 0),
+                    ]],
+                  });
+                }
+
+                for (const receipt of chunkDetails.receipts) {
+                  const idx = await getIndexReceipt(txReceipt, receipt.receipt_id);
+
+                  if (idx.txIndex !== -1) {
+
+                    const r = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex];
+                    const topReceipt = txReceipt[idx.txIndex].receipts[0][0];
+                    const isFirstLayer = txReceipt[idx.txIndex].receipts[idx.layerIndex].length <= 2;
+
+                    if (txReceipt[idx.txIndex].receipts.length === 1) {
+                      txReceipt[idx.txIndex].topReceiptBlock = {
+                        blockHash: block.header.hash,
+                        blockHeight: block.header.height
+                      };
+                      txReceipt[idx.txIndex].topReceiptBlockPost = {
+                        blockHash: nextblockinfos.header.hash,
+                        blockHeight: nextblockinfos.header.height
+                      };
+                    } else {
+                      const receiptIndex = (txReceipt[idx.txIndex].receipts[idx.layerIndex].length - 2)/2;
+                      txReceipt[idx.txIndex].receipts[idx.layerIndex].push(
+                        await receiptIdFromTx(r, block.header.hash, receiptIndex),
+                        await receiptIdFromTx(r, nextblockinfos.header.hash, receiptIndex)
+                      );
+                    }
+
+                    if (isFirstLayer) {
+                      txReceipt[idx.txIndex].receipts.push([
+                        await receiptIdFromTx(topReceipt, txReceipt[idx.txIndex].topReceiptBlock.blockHash, idx.layerIndex),
+                        await receiptIdFromTx(topReceipt, txReceipt[idx.txIndex].topReceiptBlockPost.blockHash, idx.layerIndex)
+                      ]);
+                    }
+                    receipt.txhash = txReceipt[idx.txIndex].txhash;
+                  }
+
+
+                  receipts.push(receipt);
+                  testreceipts.push(receipt);
+
+                  // if (!receipt.txHash) {
+                  //   console.log(receipt);
+                  // }
+
+                  // if (idx.txIndex === -1) {
+                  //   console.log(receipt);
+                  //   console.log(block.header.height);
+
+                  //   const jsonData = JSON.stringify(txReceipt, null, 4);
+                  //   const jsonreceipts = JSON.stringify(testreceipts, null, 4);
+
+                  //   var fs = require('fs');
+                  //   fs.writeFile("test.txt", jsonData, function(err) {
+                  //     if (err) {
+                  //       console.log(err);
+                  //     }
+                  //   });
+
+                  //   fs.writeFile("jsonreceipts.txt", jsonreceipts, function(err) {
+                  //     if (err) {
+                  //       console.log(err);
+                  //     }
+                  //   });
+                  // }
+
+                  // const jsonresult = JSON.stringify(receipt, null, 4);
+
+                  // var fs = require('fs');
+                  //   fs.writeFile("jsonresult.txt", jsonresult, function(err) {
+                  //     if (err) {
+                  //       console.log(err);
+                  //     }
+                  //   });
+
+                  // console.log(receipt);
+
+
+                }
               },
               {
                 maxDelay: 10000,
@@ -280,34 +499,37 @@ class NewTransactionTrigger extends TriggerBase<{
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: TxBlock) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id)
-        && this.fields.from !== normalizeAddress(tx.tx.public_key);
-        const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
-        const failure = tx.txReceipt.status.Failure;
-        if (notSameFrom || notSameTo || failure) {
-          return;
-        }
-        for (const action of tx.tx.actions ?? []) {
-          if (!("Transfer" in action)) {
-            continue;
-          }
-          const transfer = action.Transfer;
+        // const notSameFrom = this.fields.from && this.fields.from !== normalizeAddress(tx.tx.signer_id)
+        // && this.fields.from !== normalizeAddress(tx.tx.public_key);
+        // const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
+        // const failure = tx.txReceipt.status.Failure;
+        // if (notSameFrom || notSameTo || failure) {
+        //   return;
+        // }
+        // for (const action of tx.tx.actions ?? []) {
+        //   if (!("Transfer" in action)) {
+        //     continue;
+        //   }
+        //   const transfer = action.Transfer;
 
-          console.log("transfer", transfer);
-          console.log("tx hash", tx.tx.hash);
-          console.log("block heigh", tx.currentHeight);
-          console.log("block hash", tx.currentHash);
-          console.log("deposit", utils.format.formatNearAmount(transfer.deposit));
+        //   console.log("transfer", transfer);
+        //   console.log("tx hash", tx.tx.hash);
+        //   console.log("block heigh", tx.currentHeight);
+        //   console.log("block hash", tx.currentHash);
+        //   console.log("deposit", utils.format.formatNearAmount(transfer.deposit));
 
-          this.sendNotification({
-            from: tx.tx.signer_id,
-            to: tx.tx.receiver_id,
-            amount: utils.format.formatNearAmount(transfer.deposit),
-            txHash: tx.tx.hash,
-            blockHash: tx.currentHash,
-            blockHeight: tx.currentHeight,
-          });
-        }
+        //   this.sendNotification({
+        //     from: tx.tx.signer_id,
+        //     to: tx.tx.receiver_id,
+        //     amount: utils.format.formatNearAmount(transfer.deposit),
+        //     txHash: tx.tx.hash,
+        //     blockHash: tx.currentHash,
+        //     blockHeight: tx.currentHeight,
+        //   });
+        // }
+
+
+
         // if (
         //   this.fields.from &&
         //   this.fields.from !==
@@ -557,3 +779,151 @@ export async function getUserDroneAddress(
 ): Promise<string> {
   throw new Error("Not implemented");
 }
+
+
+
+import crypto from "crypto";
+import { createHash } from "crypto";
+import { serialize, deserialize } from "borsh";
+import { base_encode } from "./near/serialize";
+import { base58_to_binary, binary_to_base58 } from "base58-js";
+import { checkProperties } from "ethers/lib/utils";
+
+async function hash(string: string): Promise<string> {
+  const utf8 = new TextEncoder().encode(string);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", utf8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray
+    .map((bytes) => bytes.toString(16).padStart(2, "0"))
+    .join("");
+  return hashHex;
+}
+
+
+async function main() {
+
+  const config = {
+    networkId: "mainnet",
+    nodeUrl: "https://rpc.mainnet.near.org",
+    walletUrl: "https://wallet.mainnet.near.org",
+    helperUrl: "https://helper.mainnet.near.org",
+    explorerUrl: "https://explorer.mainnet.near.org",
+    headers: {},
+  };
+  const near = await connect(config);
+
+  // const response = await near.connection.provider.block({blockId: 81663610});
+
+  const response = await near.connection.provider.block({
+    finality: "final",
+  });
+  const pendingBlocks = [response];
+  const finalBlockHash = response.header.hash;
+  const finalBlockHeight = response.header.height;
+
+
+  pendingBlocks.unshift(await near.connection.provider.block({
+    blockId: response.header.height-1,
+  }));
+
+  const prevBlockHash = pendingBlocks[0].header.hash;
+  const prevBlockHeight = pendingBlocks[0].header.height;
+
+  // console.log({pendingBlocks});
+
+  pendingBlocks.sort((a, b) => a.header.height - b.header.height);
+  let txReceipt = [] as TxHashReceipt[]; //new Array<TxHashReceipt>;
+  const block = pendingBlocks[0];
+  const receipts = [] as Receipt[];
+  const txs = [] as Tx[];
+  for (const chunk of block.chunks) {
+
+    const chunkDetails = await near.connection.provider.chunk(
+      chunk.chunk_hash
+    );
+    // txs.splice(txs.length, 0, ...chunkDetails.transactions as any[]);
+    // receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
+
+    // for (const tx of chunkDetails.transactions) {
+    //   txReceipt.push({
+    //     txhash: tx.hash,
+    //     blockHash: block.header.hash,
+    //     blockHeight: block.header.height,
+    //     receipts: [[{
+    //       receiptId: await receiptIdFromTx(tx.hash, block.header.hash, 0),
+    //       blockHash: block.header.hash,
+    //       blockHeight: block.header.height,
+    //     }]],
+    //   });
+    // }
+
+    // console.log("txReceipt", txReceipt);
+
+
+
+    // for (const receipt of chunkDetails.receipts) {
+
+    //   const idx = await getIndexReceipt(txReceipt, receipt.receipt_id);
+
+    //   if (idx.txIndex !== -1) {
+
+    //     const firstReiceptLayer = txReceipt[idx.txIndex].receipts[idx.layerIndex].length < 3;
+    //     const rIndex = txReceipt[idx.txIndex].receipts.length - 1;
+
+    //     // const rId = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex].receiptId;
+    //     // const bHash = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex].blockHash;
+    //     // const bHeight = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex].blockHeight;
+
+    //     const rBase = txReceipt[idx.txIndex].receipts[0][0];
+
+    //     if (firstReiceptLayer) {
+    //       for (const b of pendingBlocks) {
+    //         txReceipt[idx.txIndex].receipts.push([{
+    //           receiptId: await receiptIdFromTx(rBase.receiptId, rBase.blockHash, idx.layerIndex),
+    //           blockHash: b.header.hash,
+    //           blockHeight: b.header.height
+    //         }]);
+
+    //         if (idx.layerIndex !== 0) {
+    //           txReceipt[idx.txIndex].receipts[idx.layerIndex].push({
+    //             receiptId: await receiptIdFromTx(rBase.receiptId, rBase.blockHash, idx.layerIndex-1),
+    //             blockHash: b.header.hash,
+    //             blockHeight: b.header.height
+    //           });
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+
+  }
+
+  const test = [3, [3, [3, [3, [3, 10, 5], 5], 5], 5], 5];
+
+  async function getIndexOfK(arr, k) {
+    for (let i = 0; i < arr.length; i++) {
+      const index = arr[i].indexOf(k);
+      if (index > -1) {
+        return [i, index];
+      }
+    }
+  }
+
+  let getIndex = (a, n) => {
+    let x = -1;
+    return [a.findIndex(e => (x = e[1]?.indexOf(n), x !== -1)), x];
+  };
+
+  const findIndex = (array, value) => {
+    if (!Array.isArray(array)) {return;}
+    let i = array.indexOf(value), temp;
+    if (i !== -1) {return [i];}
+    i = array.findIndex(v => temp = findIndex(v, value));
+    if (i !== -1) {return [i, ...temp];}
+  };
+
+  console.log( findIndex(test, 100));
+
+}
+
+// main();

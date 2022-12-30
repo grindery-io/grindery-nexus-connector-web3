@@ -94,8 +94,8 @@ async function arApi(path: string | string[]): Promise<unknown> {
   if (Array.isArray(path)) {
     path = path.join("/");
   }
-  // const response = await axios.get("https://node.algoexplorerapi.io/v2/" + path);
-  const response = await axios.get("https://node.testnet.algoexplorerapi.io/v2/" + path);
+  const response = await axios.get("https://node.algoexplorerapi.io/v2/" + path);
+  // const response = await axios.get("https://node.testnet.algoexplorerapi.io/v2/" + path);
   return response.data;
 }
 /* It subscribes to the Algorand blockchain and emits an event for each transaction */
@@ -112,7 +112,7 @@ class TransactionSubscriber extends EventEmitter {
     const status = await arApi("status");
     let currentHeight = status["last-round"];
     this.running = true;
-    const algodClient = await getAlgodClient("algorand:testnet");
+    const algodClient = await getAlgodClient("algorand:mainnet");
     while (this.listenerCount("process") > 0) {
       try {
         /* Processing the transactions in a block. */
