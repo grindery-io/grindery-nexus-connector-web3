@@ -12,12 +12,6 @@ import { parseUserAccessToken, TAccessToken } from "../jwt";
 import { v4 as uuidv4 } from "uuid";
 import { KeyPair } from "near-api-js";
 import BN from "bn.js";
-// import { connect, transactions, keyStores } from "near-api-js";
-// import * as nearAPI from "near-api-js";
-// import fs from "fs";
-// import path from "path";
-// import { homedir } from 'os';
-
 import { connect, transactions, keyStores, utils } from "near-api-js";
 import { normalizeAddress, receiptIdFromTx } from "./near/utils";
 
@@ -49,52 +43,14 @@ type Receipt = {
   block_height: number;
   block_hash: string;
 };
-
-
-// type Tx = {
-//   actions: Array<any>;
-//   hash: string;
-//   nonce: BN;
-//   public_key: string;
-//   receiver_id: string;
-//   signature: string;
-//   signer_id: string;
-// };
-// type Txstatus = {
-//   SuccessValue?: string;
-//   Failure?: {
-//     error_message: string;
-//     error_type: string;
-//   };
-// };
-// type ExecutionOutcomeWithId = {
-//   id: string;
-//   outcome: {
-//     logs: string[];
-//     receipt_ids: string[];
-//     gas_burnt: number;
-//     status: Txstatus;
-//   };
-// };
-// type TxReceipt = {
-//   status: Txstatus;
-//   transaction: any;
-//   transaction_outcome: ExecutionOutcomeWithId;
-//   receipts_outcome: ExecutionOutcomeWithId[];
-// };
-// type TxBlock = {
-//   currentHeight: number;
-//   currentHash: string;
-//   tx: Tx;
-//   txReceipt: TxReceipt;
-// };
 type SubReceipts = {
   receiptId: string;
   blockHash: string;
   blockHeight: number;
   found: boolean;
 };
-type NestedArray<T> = Array<T> | Array<NestedArray<T>>;
+// type NestedArray<T> = Array<T> | Array<NestedArray<T>>;
+type NestedArray<T> = Array<T | NestedArray<T>>;
 type TxHashReceipt = {
   txhash: string;
   blockHash: string;
@@ -102,13 +58,24 @@ type TxHashReceipt = {
   receipts: NestedArray<SubReceipts>;
 };
 
+/**
+ * It takes an array and an array of indexes, and returns the element at the specified indexes
+ * @param {any[]} array - The array to search through.
+ * @param {number[]} indexes - An array of indexes that will be used to get the element from the array.
+ * @returns The element at the given indexes in the array.
+ */
 const getElement = (array: any[], indexes: number[]) => {
   return indexes.reduce((prev, curr) => {
     return prev[curr];
   }, array);
 };
-
-const findIndex = (array: NestedArray<SubReceipts>, value: string) => {
+/**
+ * It takes an array of arrays and a value, and returns the index of the value in the array of arrays
+ * @param array - NestedArray<SubReceipts>
+ * @param {string} value - the value you're looking for
+ * @returns An array of indexes that lead to the value in the nested array.
+ */
+const findIndex = (array: any, value: string) => {
   if (!Array.isArray(array)) {return;}
   let i = array.findIndex(e => e.receiptId === value), temp;
   if (i !== -1) {return [i];}
@@ -116,8 +83,34 @@ const findIndex = (array: NestedArray<SubReceipts>, value: string) => {
   if (i !== -1) {return [i, ...temp];}
 };
 
-async function getIndexReceipt1(arr: any, receipt: string): Promise<number[]> {
+// const findIndex = (array: NestedArray<SubReceipts>, value: string) => {
+//   const isSubReceipts = (typeToTest: any) : typeToTest is SubReceipts => {
+//     return typeToTest.receiptId !== undefined;
+//   };
+//   if (!Array.isArray(array)) {return;}
+//   let temp;
+//   const i = array.findIndex(e => {
+//     if (isSubReceipts(e)) {
+//       return e.receiptId === value;
+//     }
+//     temp = findIndex(e, value);
+//     if (temp[temp.length - 1] !== -1) {
+//       return temp;
+//     }
+//   });
+//   return temp ? (temp[temp.length-1] !== -1 ? [i, ...temp] : []) : [i];
+// };
+
+/**
+ * It takes an array of arrays and a value, and returns the index of the value in the array of arrays
+ * @param {TxHashReceipt[]} arr - TxHashReceipt[] - an array of objects that contain the receiptIds and
+ * the receipts.
+ * @param {string} receipt - string - the receiptId you're looking for
+ * @returns An array of indexes.
+ */
+async function getIndexReceipt1(arr: TxHashReceipt[], receipt: string): Promise<number[]> {
   let result: number[] = [];
+  /* Finding the index of an object in an array of objects. */
   arr.every((t, i) => {
     const tmp = findIndex(t.receipts, receipt);
     if (tmp) {
@@ -264,7 +257,7 @@ class ReceiptSubscriber extends EventEmitter {
                      * @param receiptIdb1 - The first receipt ID to be compared.
                      * @param receiptIdb2 - The receiptId of the second block
                      */
-                    const pushReceipt = (array, receiptIdb1, receiptIdb2) => {
+                    const pushReceipt = (array: NestedArray<SubReceipts>, receiptIdb1: string, receiptIdb2: string) => {
                       array.push([{
                         receiptId: receiptIdb1,
                         blockHash: "",
