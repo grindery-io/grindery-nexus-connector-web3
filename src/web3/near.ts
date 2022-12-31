@@ -105,6 +105,7 @@ type SubReceipts = {
   receiptId: string;
   blockHash: string;
   blockHeight: number;
+  found: boolean;
 };
 // type ReceiptInfos = {
 //   receiptIdparent: string;
@@ -112,6 +113,7 @@ type SubReceipts = {
 //   blockHeightparent: number;
 //   subreceipts: SubReceipts[];
 // };
+type NestedArray<T> = Array<T> | Array<NestedArray<T>>;
 type BlockInfos = {
   blockHash: string;
   blockHeight: number;
@@ -120,10 +122,8 @@ type TxHashReceipt = {
   txhash: string;
   blockHash: string;
   blockHeight: number;
-  topReceiptBlock: BlockInfos;
-  topReceiptBlockPost: BlockInfos;
   // receipts: SubReceipts[][];
-  receipts: string[][];
+  receipts: NestedArray<SubReceipts>;
 };
 type ReceiptsIndex = {
   txIndex: number;
@@ -131,16 +131,53 @@ type ReceiptsIndex = {
   nestedIndex: number;
 };
 
+// const findIndex = (array, value) => {
+//   if (!Array.isArray(array)) {return;}
+//   let i = array.indexOf(value), temp;
+//   if (i !== -1) {return [i];}
+//   i = array.findIndex(v => temp = findIndex(v, value));
+//   if (i !== -1) {return [i, ...temp];}
+// };
+
+async function pushReceipt (array, rId) {
+  array.push({
+  receiptId: rId,
+  blockHash: "",
+  blockHeight: 0,
+  found: false
+  });
+}
+
+const getElement = (array, indexes) => {
+  return indexes.reduce(function(prev, curr) {
+    return prev[curr];
+  }, array);
+};
+
 const findIndex = (array, value) => {
   if (!Array.isArray(array)) {return;}
-  let i = array.indexOf(value), temp;
+  let i = array.findIndex(e => e.receiptId === value), temp;
   if (i !== -1) {return [i];}
   i = array.findIndex(v => temp = findIndex(v, value));
   if (i !== -1) {return [i, ...temp];}
 };
 
+async function getIndexReceipt1(arr: any[], receipt: any): Promise<number[]> {
+  let result: number[] = [];
+  arr.every((t, i) => {
+    const tmp = findIndex(t.receipts, receipt);
+    if (tmp) {
+      result = tmp;
+      result.unshift(i);
+      return false;
+    }
+    return true;
+  });
+  return result;
+}
+
+
 async function getIndexReceipt(arr: any[], receipt: any): Promise<ReceiptsIndex> {
-  // const result = [] as ReceiptsIndex[];
   const result: ReceiptsIndex = {
     txIndex: -1,
     layerIndex: -1,
@@ -148,25 +185,13 @@ async function getIndexReceipt(arr: any[], receipt: any): Promise<ReceiptsIndex>
   };
   arr.every((t, i) => {
     t.receipts.every((r, j) => {
-        // r.forEach((n, k) => {
-        //   if (n.receiptId === receipt) {
-        //     result.push({
-        //       txIndex: i,
-        //       layerIndex: j,
-        //       nestedIndex: k
-        //     });
-        //   }
-        // });
-
-        result.nestedIndex = r.findIndex(e => e === receipt);
-
-        if (result.nestedIndex !== -1) {
-          result.txIndex = i;
-          result.layerIndex = j;
-          return false;
-        }
-        return true;
-      // return (result.length === 0) ? true : false;
+      result.nestedIndex = r.findIndex(e => e.receiptId === receipt);
+      if (result.nestedIndex !== -1) {
+        result.txIndex = i;
+        result.layerIndex = j;
+        return false;
+      }
+      return true;
     });
     return (result.nestedIndex === -1) ? true : false;
   });
@@ -272,25 +297,12 @@ class ReceiptSubscriber extends EventEmitter {
           );
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
-
-        // for (const [ib, block] of pendingBlocks.slice(0, -1).entries()) {
-        // for (const block of pendingBlocks) {
         for (const [ib, block] of pendingBlocks.entries()) {
           const isLastBlock = ib === pendingBlocks.length-1;
-          // const blockinfos = [] as BlockInfos[];
-          // blockinfos.push({
-          //   blockHash: block.header.hash,
-          //   blockHeight: block.header.height
-          // });
-          // blockinfos.push({
-          //   blockHash: isLastBlock ? responsePost.header.hash : pendingBlocks[ib+1].header.hash,
-          //   blockHeight: isLastBlock ? responsePost.header.height : pendingBlocks[ib+1].header.height
-          // });
-
           const nextblockinfos = isLastBlock ? responsePost : pendingBlocks[ib+1];
           const receipts = [] as Receipt[];
           const txs = [] as Tx[];
-          // txReceipt = txReceipt.filter(({blockHeight}) => (block.header.height - blockHeight) < 1000);
+          txReceipt = txReceipt.filter(({blockHeight}) => (block.header.height - blockHeight) < 20);
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
@@ -305,58 +317,78 @@ class ReceiptSubscriber extends EventEmitter {
                     txhash: tx.hash,
                     blockHash: block.header.hash,
                     blockHeight: block.header.height,
-                    topReceiptBlock: {blockHash: "", blockHeight: 0},
-                    topReceiptBlockPost: {blockHash: "", blockHeight: 0},
-                    receipts: [[
-                      await receiptIdFromTx(tx.hash, block.header.hash, 0),
-                    ]],
+                    receipts: [{
+                      receiptId: await receiptIdFromTx(tx.hash, block.header.hash, 0),
+                      blockHash: "",
+                      blockHeight: 0,
+                      found: false
+                    }],
                   });
                 }
 
                 for (const receipt of chunkDetails.receipts) {
-                  const idx = await getIndexReceipt(txReceipt, receipt.receipt_id);
+                  const index = await getIndexReceipt1(txReceipt, receipt.receipt_id);
 
-                  if (idx.txIndex !== -1) {
+                  if (index.length) {
 
-                    const r = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex];
-                    const topReceipt = txReceipt[idx.txIndex].receipts[0][0];
-                    const isFirstLayer = txReceipt[idx.txIndex].receipts[idx.layerIndex].length <= 2;
+                    const it = index[0];
+                    const idReceipt = index[index.length-1];
 
-                    if (txReceipt[idx.txIndex].receipts.length === 1) {
-                      txReceipt[idx.txIndex].topReceiptBlock = {
-                        blockHash: block.header.hash,
-                        blockHeight: block.header.height
-                      };
-                      txReceipt[idx.txIndex].topReceiptBlockPost = {
-                        blockHash: nextblockinfos.header.hash,
-                        blockHeight: nextblockinfos.header.height
-                      };
-                    } else {
-                      const receiptIndex = (txReceipt[idx.txIndex].receipts[idx.layerIndex].length - 2)/2;
-                      txReceipt[idx.txIndex].receipts[idx.layerIndex].push(
-                        await receiptIdFromTx(r, block.header.hash, receiptIndex),
-                        await receiptIdFromTx(r, nextblockinfos.header.hash, receiptIndex)
-                      );
-                    }
+                    const receiptArr = getElement(txReceipt[it].receipts, index.slice(1, index.length-1));
+                    const topreceiptArr = getElement(txReceipt[it].receipts, index.slice(1, index.length-2));
+                    receiptArr[idReceipt].blockHash = block.header.hash;
+                    receiptArr[idReceipt].blockHeight = block.header.height;
+                    receiptArr[idReceipt].found = true;
 
-                    if (isFirstLayer) {
-                      txReceipt[idx.txIndex].receipts.push([
-                        await receiptIdFromTx(topReceipt, txReceipt[idx.txIndex].topReceiptBlock.blockHash, idx.layerIndex),
-                        await receiptIdFromTx(topReceipt, txReceipt[idx.txIndex].topReceiptBlockPost.blockHash, idx.layerIndex)
-                      ]);
-                    }
-                    receipt.txhash = txReceipt[idx.txIndex].txhash;
+                    receiptArr.push({
+                      receiptId: receiptArr[idReceipt].receiptId,
+                      blockHash: nextblockinfos.header.hash,
+                      blockHeight: nextblockinfos.header.height,
+                      found: true
+                    });
+
+                    _.remove(receiptArr, function(e: SubReceipts) {return !e.found;});
+
+                    receiptArr.push([{
+                        receiptId: await receiptIdFromTx(receiptArr[idReceipt].receiptId, block.header.hash, 0),
+                        blockHash: "",
+                        blockHeight: 0,
+                        found: false
+                      }, {
+                        receiptId: await receiptIdFromTx(receiptArr[idReceipt].receiptId, nextblockinfos.header.hash, 0),
+                        blockHash: "",
+                        blockHeight: 0,
+                        found: false
+                    }]);
+
+                    topreceiptArr.push([{
+                        receiptId: await receiptIdFromTx(
+                          topreceiptArr[0].receiptId,
+                          topreceiptArr[0].blockHash,
+                          topreceiptArr.length-2
+                        ),
+                        blockHash: "",
+                        blockHeight: 0,
+                        found: false
+                      }, {
+                        receiptId: await receiptIdFromTx(
+                          topreceiptArr[1].receiptId,
+                          topreceiptArr[1].blockHash,
+                          topreceiptArr.length-2
+                        ),
+                        blockHash: "",
+                        blockHeight: 0,
+                        found: false
+                    }]);
+
+                    receipt.txhash = txReceipt[it].txhash;
                   }
 
 
                   receipts.push(receipt);
                   testreceipts.push(receipt);
 
-                  // if (!receipt.txHash) {
-                  //   console.log(receipt);
-                  // }
-
-                  // if (idx.txIndex === -1) {
+                  // if (!index.length) {
                   //   console.log(receipt);
                   //   console.log(block.header.height);
 
@@ -377,17 +409,7 @@ class ReceiptSubscriber extends EventEmitter {
                   //   });
                   // }
 
-                  // const jsonresult = JSON.stringify(receipt, null, 4);
-
-                  // var fs = require('fs');
-                  //   fs.writeFile("jsonresult.txt", jsonresult, function(err) {
-                  //     if (err) {
-                  //       console.log(err);
-                  //     }
-                  //   });
-
                   // console.log(receipt);
-
 
                 }
               },
@@ -865,28 +887,28 @@ async function main() {
 
     //   const idx = await getIndexReceipt(txReceipt, receipt.receipt_id);
 
-    //   if (idx.txIndex !== -1) {
+    //   if (it !== -1) {
 
-    //     const firstReiceptLayer = txReceipt[idx.txIndex].receipts[idx.layerIndex].length < 3;
-    //     const rIndex = txReceipt[idx.txIndex].receipts.length - 1;
+    //     const firstReiceptLayer = txReceipt[it].receipts[index[1]].length < 3;
+    //     const rIndex = txReceipt[it].receipts.length - 1;
 
-    //     // const rId = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex].receiptId;
-    //     // const bHash = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex].blockHash;
-    //     // const bHeight = txReceipt[idx.txIndex].receipts[idx.layerIndex][idx.nestedIndex].blockHeight;
+    //     // const rId = txReceipt[it].receipts[index[1]][idx.nestedIndex].receiptId;
+    //     // const bHash = txReceipt[it].receipts[index[1]][idx.nestedIndex].blockHash;
+    //     // const bHeight = txReceipt[it].receipts[index[1]][idx.nestedIndex].blockHeight;
 
-    //     const rBase = txReceipt[idx.txIndex].receipts[0][0];
+    //     const rBase = txReceipt[it].receipts[0][0];
 
     //     if (firstReiceptLayer) {
     //       for (const b of pendingBlocks) {
-    //         txReceipt[idx.txIndex].receipts.push([{
-    //           receiptId: await receiptIdFromTx(rBase.receiptId, rBase.blockHash, idx.layerIndex),
+    //         txReceipt[it].receipts.push([{
+    //           receiptId: await receiptIdFromTx(rBase.receiptId, rBase.blockHash, index[1]),
     //           blockHash: b.header.hash,
     //           blockHeight: b.header.height
     //         }]);
 
-    //         if (idx.layerIndex !== 0) {
-    //           txReceipt[idx.txIndex].receipts[idx.layerIndex].push({
-    //             receiptId: await receiptIdFromTx(rBase.receiptId, rBase.blockHash, idx.layerIndex-1),
+    //         if (index[1] !== 0) {
+    //           txReceipt[it].receipts[index[1]].push({
+    //             receiptId: await receiptIdFromTx(rBase.receiptId, rBase.blockHash, index[1]-1),
     //             blockHash: b.header.hash,
     //             blockHeight: b.header.height
     //           });
@@ -898,31 +920,32 @@ async function main() {
 
   }
 
-  const test = [3, [3, [3, [3, [3, 10, 5], 5], 5], 5], 5];
+  const test = [[{
+    receiptId: 10
+  }], [{
+    receiptId: 10
+  }], [{
+    receiptId: 10
+  }], [{
+    receiptId: 11
+  }, {
+    receiptId: 10
+  }]];
 
-  async function getIndexOfK(arr, k) {
-    for (let i = 0; i < arr.length; i++) {
-      const index = arr[i].indexOf(k);
-      if (index > -1) {
-        return [i, index];
-      }
-    }
-  }
 
-  let getIndex = (a, n) => {
-    let x = -1;
-    return [a.findIndex(e => (x = e[1]?.indexOf(n), x !== -1)), x];
-  };
+  // const test1 = [[10, [10, [10, [10, [10, 11]]]]]];
 
-  const findIndex = (array, value) => {
-    if (!Array.isArray(array)) {return;}
-    let i = array.indexOf(value), temp;
-    if (i !== -1) {return [i];}
-    i = array.findIndex(v => temp = findIndex(v, value));
-    if (i !== -1) {return [i, ...temp];}
-  };
+  const test2 = findIndex(test, 11);
 
-  console.log( findIndex(test, 100));
+  const arr = [12, 2, 3];
+
+  const toto= arr.slice(1, arr.length);
+
+  console.log(toto);
+  console.log(arr);
+
+
+
 
 }
 
