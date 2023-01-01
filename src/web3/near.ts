@@ -47,81 +47,15 @@ type SubReceipts = {
   receiptId: string;
   blockHash: string;
   blockHeight: number;
-  found: boolean;
+  idParent: number;
+  nbreNested: number;
 };
-// type NestedArray<T> = Array<T> | Array<NestedArray<T>>;
-type NestedArray<T> = Array<T | NestedArray<T>>;
 type TxHashReceipt = {
   txhash: string;
   blockHash: string;
   blockHeight: number;
-  receipts: NestedArray<SubReceipts>;
+  receipts: SubReceipts[];
 };
-
-/**
- * It takes an array and an array of indexes, and returns the element at the specified indexes
- * @param {any[]} array - The array to search through.
- * @param {number[]} indexes - An array of indexes that will be used to get the element from the array.
- * @returns The element at the given indexes in the array.
- */
-const getElement = (array: any[], indexes: number[]) => {
-  return indexes.reduce((prev, curr) => {
-    return prev[curr];
-  }, array);
-};
-/**
- * It takes an array of arrays and a value, and returns the index of the value in the array of arrays
- * @param array - NestedArray<SubReceipts>
- * @param {string} value - the value you're looking for
- * @returns An array of indexes that lead to the value in the nested array.
- */
-const findIndex = (array: any, value: string) => {
-  if (!Array.isArray(array)) {return;}
-  let i = array.findIndex(e => e.receiptId === value), temp;
-  if (i !== -1) {return [i];}
-  i = array.findIndex(v => temp = findIndex(v, value));
-  if (i !== -1) {return [i, ...temp];}
-};
-
-// const findIndex = (array: NestedArray<SubReceipts>, value: string) => {
-//   const isSubReceipts = (typeToTest: any) : typeToTest is SubReceipts => {
-//     return typeToTest.receiptId !== undefined;
-//   };
-//   if (!Array.isArray(array)) {return;}
-//   let temp;
-//   const i = array.findIndex(e => {
-//     if (isSubReceipts(e)) {
-//       return e.receiptId === value;
-//     }
-//     temp = findIndex(e, value);
-//     if (temp[temp.length - 1] !== -1) {
-//       return temp;
-//     }
-//   });
-//   return temp ? (temp[temp.length-1] !== -1 ? [i, ...temp] : []) : [i];
-// };
-
-/**
- * It takes an array of arrays and a value, and returns the index of the value in the array of arrays
- * @param {TxHashReceipt[]} arr - TxHashReceipt[] - an array of objects that contain the receiptIds and
- * the receipts.
- * @param {string} receipt - string - the receiptId you're looking for
- * @returns An array of indexes.
- */
-async function getIndexReceipt1(arr: TxHashReceipt[], receipt: string): Promise<number[]> {
-  let result: number[] = [];
-  /* Finding the index of an object in an array of objects. */
-  arr.every((t, i) => {
-    const tmp = findIndex(t.receipts, receipt);
-    if (tmp) {
-      result = tmp;
-      result.unshift(i);
-      return false;
-    }
-    return true;
-  });
-  return result;
-}
 
 class ReceiptSubscriber extends EventEmitter {
   private running = false;
@@ -223,74 +157,74 @@ class ReceiptSubscriber extends EventEmitter {
                       receiptId: await receiptIdFromTx(tx.hash, block.header.hash, 0),
                       blockHash: "",
                       blockHeight: 0,
-                      found: false
+                      idParent: 0,
+                      nbreNested: 0
                     }],
                   });
                 }
                 for (const receipt of chunkDetails.receipts) {
-                  /* Getting the index of the receipt in the receipt array. */
-                  const index = await getIndexReceipt1(txReceipt, receipt.receipt_id);
-                  /* A function that is used to get the receipt of a transaction. */
-                  if (index.length) {
-                    const it = index[0];
-                    const idReceipt = index[index.length-1];
+                  /* Finding the index of the receipt in the txReceipt array. */
+                  const it = txReceipt.findIndex(e => {
+                    if (e.receipts.findIndex(r => r.receiptId === receipt.receipt_id) !== -1) {
+                      return true;
+                    }
+                  });
 
-                    const receiptArr = getElement(txReceipt[it].receipts, index.slice(1, index.length-1));
-                    const topreceiptArr = getElement(txReceipt[it].receipts, index.slice(1, index.length-2));
-                    receiptArr[idReceipt].blockHash = block.header.hash;
-                    receiptArr[idReceipt].blockHeight = block.header.height;
-                    receiptArr[idReceipt].found = true;
-                    /* Pushing the receipt information into the receiptArr array. */
-                    receiptArr.push({
-                      receiptId: receiptArr[idReceipt].receiptId,
+                  if (it !== -1) {
+                    /* Index receipt and parent */
+                    const idReceipt = txReceipt[it].receipts.findIndex(r => r.receiptId === receipt.receipt_id);
+                    const idParent = txReceipt[it].receipts[idReceipt].idParent;
+                    /* Update block hash and height for the receipt */
+                    txReceipt[it].receipts[idReceipt].blockHash = block.header.hash;
+                    txReceipt[it].receipts[idReceipt].blockHeight = block.header.height;
+                    /* Push same receipt with next block (in case the receipt is executed in the next block) */
+                    txReceipt[it].receipts.push({
+                      receiptId: txReceipt[it].receipts[idReceipt].receiptId,
                       blockHash: nextblockinfos.header.hash,
                       blockHeight: nextblockinfos.header.height,
-                      found: true
+                      idParent: txReceipt[it].receipts[idReceipt].idParent,
+                      nbreNested: txReceipt[it].receipts[idReceipt].nbreNested
                     });
-                    /* Removing all the elements from the array that do not have the property found set
-                    to true. */
-                    _.remove(receiptArr, function(e: SubReceipts) {return !e.found;});
-                    /**
-                     * It takes an array, two receipt IDs, and pushes an array of two objects into the
-                     * array
-                     * @param array - the array that will be returned
-                     * @param receiptIdb1 - The first receipt ID to be compared.
-                     * @param receiptIdb2 - The receiptId of the second block
-                     */
-                    const pushReceipt = (array: NestedArray<SubReceipts>, receiptIdb1: string, receiptIdb2: string) => {
-                      array.push([{
-                        receiptId: receiptIdb1,
-                        blockHash: "",
-                        blockHeight: 0,
-                        found: false
-                      }, {
-                        receiptId: receiptIdb2,
-                        blockHash: "",
-                        blockHeight: 0,
-                        found: false
-                      }]);
-                    };
-                    /* Pushing the receiptId from the current block and the next block into the
-                    receiptArr array. */
-                    pushReceipt(
-                      receiptArr,
-                      await receiptIdFromTx(receiptArr[idReceipt].receiptId, block.header.hash, 0),
-                      await receiptIdFromTx(receiptArr[idReceipt].receiptId, nextblockinfos.header.hash, 0)
-                    );
-                    /* Pushing the receiptIds of the top two receipts in the topreceiptArr array into
-                    the topreceiptArr array. */
-                    pushReceipt(topreceiptArr,
-                      await receiptIdFromTx(
-                        topreceiptArr[0].receiptId,
-                        topreceiptArr[0].blockHash,
-                        topreceiptArr.length-2
+                    /* Creating a new receiptId from the previous receiptId = childs. */
+                    txReceipt[it].receipts.push({
+                      receiptId: await receiptIdFromTx(
+                        txReceipt[it].receipts[idReceipt].receiptId,
+                        block.header.hash,
+                        0
                       ),
-                      await receiptIdFromTx(
-                        topreceiptArr[1].receiptId,
-                        topreceiptArr[1].blockHash,
-                        topreceiptArr.length-2
-                      )
-                    );
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: idReceipt,
+                      nbreNested: 0
+                    });
+                    txReceipt[it].receipts.push({
+                      receiptId: await receiptIdFromTx(
+                        txReceipt[it].receipts[idReceipt].receiptId,
+                        nextblockinfos.header.hash,
+                        0
+                      ),
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: idReceipt+1,
+                      nbreNested: 0
+                    });
+                    /* Increase the number of childs for the receipt */
+                    txReceipt[it].receipts[idReceipt].nbreNested++;
+                    txReceipt[it].receipts[idReceipt+1].nbreNested++;
+                    /* Creating a new receipt and pushing it to the receipts array = brother. */
+                    txReceipt[it].receipts.push({
+                      receiptId: await receiptIdFromTx(
+                        txReceipt[it].receipts[idParent].receiptId,
+                        txReceipt[it].receipts[idParent].blockHash,
+                        txReceipt[it].receipts[idParent].nbreNested
+                      ),
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: idReceipt,
+                      nbreNested: 0,
+                    });
+                    /* Incrementing the number of nested receipts for the parent. */
+                    txReceipt[it].receipts[idParent].nbreNested++;
                     /* Fill the tx fields in the receipt object  */
                     receipt.txhash = txReceipt[it].txhash;
                     receipt.block_hash = txReceipt[it].blockHash;
