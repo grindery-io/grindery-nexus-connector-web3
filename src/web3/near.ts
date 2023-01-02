@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import _ from "lodash";
+import _, { method } from "lodash";
 import {
   ConnectorInput,
   ConnectorOutput,
@@ -55,6 +55,12 @@ type TxHashReceipt = {
   blockHash: string;
   blockHeight: number;
   receipts: SubReceipts[];
+};
+type resultQuery = {
+  block_height: number;
+  block_hash: string;
+  result: number[];
+  logs: string[];
 };
 
 class ReceiptSubscriber extends EventEmitter {
@@ -271,7 +277,6 @@ class ReceiptSubscriber extends EventEmitter {
     this.running = false;
     console.log("[Near] event main loop stopped");
   }
-
 
   /**
    * It subscribes to the "process" event, and when it receives a receipt, it calls the callback
@@ -536,6 +541,35 @@ export async function callSmartContract(
   }
   const near = await connect({ ...config, keyStore, headers: {} });
   const account = await near.account(input.fields.contractAddress);
+
+  /* Calling the ft_metadata function of the NEP-141 contract. */
+  if (input.fields.functionDeclaration === "getInformationNEP141Token") {
+    const queryToken = await near.connection.provider.query({
+      request_type: "call_function",
+      finality: "final",
+      account_id: input.fields.contractAddress,
+      method_name: "ft_metadata",
+      args_base64: ""
+    }) as resultQuery;
+
+    const result = JSON.parse(String.fromCharCode(...queryToken.result));
+
+    console.log("name: " + result.name);
+    console.log("symbol: " + result.symbol);
+    console.log("icon: " + result.icon);
+    console.log("decimals: " + result.decimals.toString());
+
+    return {
+      key: input.key,
+      sessionId: input.sessionId,
+      payload: {
+        name: result.name,
+        symbol: result.symbol,
+        icon: result.icon,
+        decimals: result.decimals.toString()
+      },
+    };
+  }
 
   const args = {
     token_id: uuidv4(),
