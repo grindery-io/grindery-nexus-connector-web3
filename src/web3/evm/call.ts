@@ -429,7 +429,7 @@ export async function callSmartContract(
                 callResultDecoded = callResultDecoded[0];
               }
               result = { ...receipt, returnValue: callResultDecoded, contractAddress: input.fields.contractAddress };
-              console.log(result);
+              console.log("result", result);
             }
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
@@ -437,7 +437,7 @@ export async function callSmartContract(
         }
       }
 
-      if (functionInfo.name === "mintNFT") {
+      if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
         return {
           key: input.key,
           sessionId: input.sessionId,
