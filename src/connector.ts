@@ -5,33 +5,10 @@ import {
   ConnectorDefinition,
 } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
-import { convert } from "./web3/evm/unitConverter";
 import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
 import { callSmartContractWebHook } from "./web3";
 import { genericAbiAction, genericAbiActionInputProvider } from "./web3/evm/actions/genericAbiAction";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function sanitizeParameters(input: ConnectorInput<any>) {
-  if ("_grinderyChain" in input.fields) {
-    input.fields.chain = input.fields._grinderyChain;
-    delete input.fields._grinderyChain;
-  }
-  for (const paramKey of ["parameterFilters", "parameters"]) {
-    if (paramKey in input.fields) {
-      const parameters = input.fields[paramKey];
-      for (const key of Object.keys(parameters)) {
-        if (parameters[key] === "!!GRINDERY!!UNDEFINED!!") {
-          parameters[key] = undefined;
-        }
-        const unitConversionMode = parameters["_grinderyUnitConversion_" + key];
-        if (unitConversionMode) {
-          parameters[key] = await convert(parameters[key], unitConversionMode, input.fields, parameters);
-        }
-      }
-    }
-  }
-  return input;
-}
+import { sanitizeParameters } from "./utils";
 
 export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
   await sanitizeParameters(params);
@@ -58,7 +35,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   triggers: {
     newTransaction: { factory: setupSignal },
     newTransactionAsset: { factory: setupSignal },
-    newEvent: { factory: setupSignal }
+    newEvent: { factory: setupSignal },
   },
   inputProviders: { genericAbiAction: genericAbiActionInputProvider },
   webhooks: { callSmartContract: callSmartContractWebHook },

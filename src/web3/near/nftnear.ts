@@ -1,7 +1,4 @@
-import {
-  ConnectorInput,
-  ConnectorOutput,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { DepayActions, NearDepayActions } from "../utils";
 import { v4 as uuidv4 } from "uuid";
 import { transactions, utils } from "near-api-js";
@@ -17,7 +14,6 @@ export async function SendTransactionAction(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
     dryRun?: boolean;
-    userToken: string;
   }>,
   depay: DepayActions<NearDepayActions>
 ): Promise<ConnectorOutput> {

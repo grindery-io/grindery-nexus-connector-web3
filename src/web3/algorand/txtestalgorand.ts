@@ -13,7 +13,6 @@ export async function SendTransactionAction(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number;
     dryRun?: boolean;
-    userToken: string;
   }>,
   depay: DepayActions<AlgorandDepayActions>
 ): Promise<ConnectorOutput> {

@@ -30,6 +30,7 @@ type Status = {
 type Txn = {
   hgi?: boolean;
   sig?: Buffer;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   txn: Record<string, any>;
   blockHash?: string;
   blockRnd?: string;
@@ -78,7 +79,7 @@ type AssetParams = {
     url?: string;
     urlB64?: Uint8Array;
   };
-}
+};
 
 /**
  * It takes a string or an array of strings, joins them with slashes, and then makes a GET request to
@@ -98,7 +99,7 @@ async function arApi(path: string | string[]): Promise<unknown> {
   // const response = await axios.get("https://node.testnet.algoexplorerapi.io/v2/" + path);
   return response.data;
 }
-/* It subscribes to the Algorand blockchain and emits an event for each transaction */
+
 class TransactionSubscriber extends EventEmitter {
   private running = false;
   constructor() {
@@ -126,7 +127,7 @@ class TransactionSubscriber extends EventEmitter {
                 blockHash: blockHash.blockHash,
                 blockRnd: block.block.rnd,
                 blockgh: block.block.gh,
-                blockgen: block.block.gen
+                blockgen: block.block.gen,
               });
             }
           }
@@ -168,9 +169,9 @@ class TransactionSubscriber extends EventEmitter {
     };
   }
 }
+
 const SUBSCRIBER = new TransactionSubscriber();
-/* It subscribes to the Algorand network and sends a notification to the user when a new transaction is
-received */
+
 class NewTransactionTrigger extends TriggerBase<{
   chain: string | string[];
   from?: string;
@@ -184,7 +185,10 @@ class NewTransactionTrigger extends TriggerBase<{
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
         /* Checking if the transaction is a payment or an asset transfer. */
-        if (tx.txn.txn.type !== "pay") {
+        if (
+          (this.key === "newTransaction" && tx.txn.txn.type !== "pay") ||
+          (this.key === "newTransactionAsset" && tx.txn.txn.type !== "axfer")
+        ) {
           return;
         }
         /* Checking if the transaction is from the correct sender. */
@@ -197,107 +201,32 @@ class NewTransactionTrigger extends TriggerBase<{
           return;
         }
         /* Checking if the transaction is a new transaction and if the transaction has an amount. */
-        if (!("amt" in tx.txn.txn)) {
+        if (
+          (this.key === "newTransaction" && !("amt" in tx.txn.txn)) ||
+          (this.key === "newTransactionAsset" && !("aamt" in tx.txn.txn))
+        ) {
           return;
         }
         /* Creating a new instance of the SignedTransactionWithAD class. */
-        const stwad = new SignedTransactionWithAD(
-          tx.blockgh,
-          tx.blockgen,
-          tx.txn
-        );
-        /* Converting the transaction data into a format that can be used. */
+        const stwad = new SignedTransactionWithAD(tx.blockgh, tx.blockgen, tx.txn);
         const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
         const tx_id = stwad.txn.txn.txID();
-        const tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
-        const tx_amount = (new BigNumber(tx.txn.txn.amt).div(
-          new BigNumber(10).pow(new BigNumber(6))
-        )).toString();
-        /* Printing the transaction details to the console. */
-        console.log("from", tx_from);
-        console.log("to", tx_to);
-        console.log("amount", tx_amount);
-        console.log("txID", tx_id);
-        console.log("blockHash", tx.blockHash);
-        console.log("blockRnd", tx.blockRnd?.toString());
-        /* Sending a notification to the user. */
-        this.sendNotification({
-          from: tx_from,
-          to: tx_to,
-          amount: tx_amount,
-          txHash: tx_id,
-          blockHash: tx.blockHash,
-          blockHeight: tx.blockRnd?.toString()
-        });
-      },
-      /* A callback function that is called when an error occurs. */
-      onError: (error: unknown) => {
-        this.interrupt(error);
-      },
-    });
-    try {
-      await this.waitForStop();
-    } finally {
-      unsubscribe();
-    }
-  }
-}
-/* It subscribes to the Algorand node and waits for a new transaction to be sent from the sender
-address to the recipient address. If the transaction is a new transaction and the transaction has an
-amount, it sends a notification to the user */
-class NewTransactionAssetTrigger extends TriggerBase<{
-  chain: string | string[];
-  from?: string;
-  to?: string;
-  assetID?: string;
-}> {
-  /**
-   * The function subscribes to the Algorand blockchain and waits for a new transaction to be sent from
-   * the sender address to the recipient address. If the transaction is a new transaction and the
-   * transaction has an amount, the function sends a notification to the user
-   */
-  async main() {
-    if (!this.fields.from && !this.fields.to) {
-      throw new InvalidParamsError("from or to is required");
-    }
-    console.log(`[${this.sessionId}] NewTransactionAssetTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
-    /* The above code is subscribing to the Algorand blockchain and listening for asset transfers. */
-    const unsubscribe = SUBSCRIBER.subscribe({
-      callback: async (tx: Txn) => {
-        /* Checking if the transaction is a payment or an asset transfer. */
-        if (tx.txn.txn.type !== "axfer") {
-          return;
+        let tx_to = "";
+        let tx_amount = "";
+        /* Converting the transaction amount from microalgos to algos. */
+        if (this.key === "newTransaction") {
+          tx_to = algosdk.encodeAddress(tx.txn.txn.rcv);
+          tx_amount = new BigNumber(tx.txn.txn.amt).div(new BigNumber(10).pow(new BigNumber(6))).toString();
         }
-        /* Checking if the transaction is from the correct sender. */
-        if (this.fields.from && this.fields.from !== algosdk.encodeAddress(tx.txn.txn.snd)) {
-          return;
-        }
-        /* Checking if the recipient address matches
-        the address we are looking for. */
-        if (this.fields.to && tx.txn.txn.rcv && this.fields.to !== algosdk.encodeAddress(tx.txn.txn.rcv)) {
-          return;
-        }
-        /* Checking if the transaction is a new transaction and if the transaction has an amount. */
-        if (!("aamt" in tx.txn.txn)) {
-          return;
-        }
-        /* Creating a new instance of the SignedTransactionWithAD class. */
-        const stwad = new SignedTransactionWithAD(
-          tx.blockgh,
-          tx.blockgen,
-          tx.txn
-        );
-        /* Getting the transaction details from the transaction object. */
-        const tx_from = algosdk.encodeAddress(tx.txn.txn.snd);
-        const tx_id = stwad.txn.txn.txID();
-        const tx_to = algosdk.encodeAddress(tx.txn.txn.arcv);
-        const assetInfo = await arApi(["assets", tx.txn.txn.xaid.toString()]);
-        const tx_amount = (new BigNumber(tx.txn.txn.aamt).div(
-          new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString()))
-        )).toString();
-        /* Checking if the assetID is the same as the assetInfo.index.toString() */
-        if (this.fields.assetID && this.fields.assetID !== assetInfo.index.toString()) {
-          return;
+        /* The above code is checking if the transaction is an asset transfer. If it is, it will get
+        the asset information from the Algorand blockchain. */
+        let assetInfo = {} as AssetParams;
+        if (this.key === "newTransactionAsset") {
+          tx_to = algosdk.encodeAddress(tx.txn.txn.arcv);
+          assetInfo = await arApi(["assets", tx.txn.txn.xaid.toString()]);
+          tx_amount = new BigNumber(tx.txn.txn.aamt)
+            .div(new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString())))
+            .toString();
         }
         /* Printing the transaction details to the console. */
         console.log("from", tx_from);
@@ -306,7 +235,6 @@ class NewTransactionAssetTrigger extends TriggerBase<{
         console.log("txID", tx_id);
         console.log("blockHash", tx.blockHash);
         console.log("blockRnd", tx.blockRnd?.toString());
-        console.log("assetInfo", assetInfo);
         /* Sending a notification to the user. */
         this.sendNotification({
           from: tx_from,
@@ -315,16 +243,7 @@ class NewTransactionAssetTrigger extends TriggerBase<{
           txHash: tx_id,
           blockHash: tx.blockHash,
           blockHeight: tx.blockRnd?.toString(),
-          index: assetInfo.index.toString(),
-          clawback: assetInfo.params.clawback,
-          creator: assetInfo.params.creator,
-          decimals: assetInfo.params.decimals.toString(),
-          freeze: assetInfo.params.freeze,
-          manager: assetInfo.params.manager,
-          name: assetInfo.params.name,
-          reserve: assetInfo.params.reserve,
-          total: assetInfo.params.total.toString(),
-          unitname: assetInfo.params["unit-name"]
+          assetInfo,
         });
       },
       /* A callback function that is called when an error occurs. */
@@ -332,7 +251,6 @@ class NewTransactionAssetTrigger extends TriggerBase<{
         this.interrupt(error);
       },
     });
-   /* Waiting for the stop event to occur and then unsubscribing from the event. */
     try {
       await this.waitForStop();
     } finally {
@@ -340,18 +258,12 @@ class NewTransactionAssetTrigger extends TriggerBase<{
     }
   }
 }
-/* It subscribes to the `SUBSCRIBER` and sends a notification whenever a transaction of the specified
-type is received */
 class NewEventTrigger extends TriggerBase<{
   chain: string | string[];
   contractAddress?: string;
   eventDeclaration: string | string[];
   parameterFilters: { [key: string]: unknown };
 }> {
-  /**
-   * It subscribes to the event stream, and when it sees an event that matches the parameters, it sends
-   * a notification
-   */
   async main() {
     console.log(
       `[${this.sessionId}] NewEventTrigger:`,
@@ -363,8 +275,6 @@ class NewEventTrigger extends TriggerBase<{
     if (this.fields.contractAddress === "0x0") {
       delete this.fields.contractAddress;
     }
-    /* Subscribing to the Algorand blockchain and sending a notification when a transaction is
-    received. */
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (tx: Txn) => {
         if (tx.txn.type !== this.fields.eventDeclaration) {
@@ -417,17 +327,28 @@ class NewEventTrigger extends TriggerBase<{
     }
   }
 }
-/* Creating a map of triggers that can be used by the connector. */
+
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
-Triggers.set("newTransactionAsset", NewTransactionAssetTrigger);
+Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
-/**
- * It takes in a function declaration and parameters, and then calls the corresponding function in the
- * smart contract
- * @param input - The input object that the frontend sends to the backend.
- * @returns the asset information in a format that the frontend can understand.
- */
+
+/*
+const createAccount = function () {
+  try {
+    const userAccount = algosdk.generateAccount();
+    console.log("Account Address = " + userAccount.addr);
+    const account_mnemonic = algosdk.secretKeyToMnemonic(userAccount.sk);
+    console.log("Account Mnemonic = " + account_mnemonic);
+    console.log("Account created. Save off Mnemonic and address");
+    console.log("Add funds to account using the TestNet Dispenser: ");
+    console.log("https://dispenser.testnet.aws.algodev.network/ ");
+    return userAccount;
+  } catch (err) {
+    console.log("err", err);
+  }
+};
+*/
 export async function callSmartContract(
   input: ConnectorInput<{
     chain: string;
@@ -439,10 +360,11 @@ export async function callSmartContract(
     gasLimit?: string | number; // Note: This is in ETH instead of gas unit
     dryRun?: boolean;
     userToken: string;
+    _grinderyUserToken: string;
   }>
 ): Promise<ConnectorOutput> {
   // Verify the userToken is valid
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  const user = await parseUserAccessToken(input.fields._grinderyUserToken || input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
@@ -475,7 +397,7 @@ export async function callSmartContract(
         name: scrutinizedAsset.params.name,
         reserve: scrutinizedAsset.params.reserve,
         total: scrutinizedAsset.params.total.toString(),
-        unitname: scrutinizedAsset.params["unit-name"]
+        unitname: scrutinizedAsset.params["unit-name"],
       },
     };
   }
@@ -504,7 +426,6 @@ export async function callSmartContract(
     },
   };
 
-  /* Sending a transaction to the blockchain. */
   return await SendTransactionAction(input, depayparameter);
 }
 

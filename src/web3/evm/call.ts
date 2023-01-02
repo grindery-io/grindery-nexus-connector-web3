@@ -95,10 +95,16 @@ export async function callSmartContract(
     maxPriorityFeePerGas?: string | number;
     gasLimit?: string | number; // Note: This is in ETH instead of gas unit
     dryRun?: boolean;
-    userToken: string;
+    userToken?: string;
+    _grinderyUserToken?: string;
   }>
 ): Promise<ConnectorOutput> {
-  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
+  if (!input.fields._grinderyUserToken) {
+    console.warn("_grinderyUserToken is not available");
+  }
+  const user = await parseUserAccessToken(input.fields._grinderyUserToken || input.fields.userToken || "").catch(
+    () => null
+  );
   if (!user) {
     throw new Error("User token is invalid");
   }
@@ -229,7 +235,7 @@ export async function callSmartContract(
       const inputs = functionInfo.inputs || [];
 
       // NFT minting ipfs metadata
-      if (functionInfo.name === "mintNFT") {
+      if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify(
           (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
@@ -422,7 +428,8 @@ export async function callSmartContract(
               if (functionInfo.outputs.length === 1) {
                 callResultDecoded = callResultDecoded[0];
               }
-              result = { ...receipt, returnValue: callResultDecoded };
+              result = { ...receipt, returnValue: callResultDecoded, contractAddress: input.fields.contractAddress };
+              console.log("result", result);
             }
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
@@ -430,7 +437,8 @@ export async function callSmartContract(
         }
       }
 
-      if (functionInfo.name === "mintNFT") {
+      if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
+        console.log("jjjjjjjj");
         return {
           key: input.key,
           sessionId: input.sessionId,

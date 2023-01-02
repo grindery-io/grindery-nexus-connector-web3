@@ -14,7 +14,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
-    const { web3, close, ethersProvider } = getWeb3(this.fields.chain as string);
+    const { web3, close } = getWeb3(this.fields.chain as string);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
@@ -29,11 +29,13 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
           }
           console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
           const transactionReceipt = await web3.eth.getTransactionReceipt(transaction.hash);
-          const txfees = new BigNumber(transactionReceipt.gasUsed).multipliedBy(new BigNumber(transactionReceipt.effectiveGasPrice));
+          const txfees = new BigNumber(transactionReceipt.gasUsed).multipliedBy(
+            new BigNumber(transactionReceipt.effectiveGasPrice)
+          );
           this.sendNotification({
             ...transaction,
             _grinderyChain: chain,
-            txfees: txfees.toString()
+            txfees: txfees.toString(),
           });
         }
       },
@@ -45,6 +47,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
       console.error("Error while monitoring transactions:", e);
     } finally {
       unsubscribe();
+      close();
     }
   }
 }
