@@ -2,9 +2,10 @@ import { getNetworkId } from "../utils";
 import { hmac } from "../../jwt";
 import { base_encode } from "./serialize";
 import nacl from "tweetnacl";
-import { base58_to_binary } from "base58-js";
+import { base58_to_binary, binary_to_base58 } from "base58-js";
 
 import { connect, keyStores, utils } from "near-api-js";
+import crypto from "crypto";
 
 
 
@@ -71,4 +72,26 @@ export async function nearGetAccount(
   };
   const near = await connect({ ...config, keyStore, headers: {} });
   return await near.account(accountId);
+}
+/**
+ * It takes a transaction hash and a block hash, and returns a receipt ID
+ * @param {string} txHash - The transaction hash of the transaction you want to get the receipt for.
+ * @param {string} blockHash - The hash of the block that contains the transaction.
+ * @returns A receipt ID.
+ */
+export async function receiptIdFromTx(txHash: string, blockHash: string, salt: number): Promise<string> {
+  const saltSize = 8;
+  const txHashBinary = base58_to_binary(txHash);
+  const blockHashBinary = base58_to_binary(blockHash);
+  const saltBinary = new Uint8Array(saltSize);
+  // saltBinary.fill(salt);
+  saltBinary[0] = salt;
+  const mergeArray = new Uint8Array(txHashBinary.length + blockHashBinary.length + saltBinary.length);
+  let offset = 0;
+  [txHashBinary, blockHashBinary, saltBinary].forEach(item => {
+    mergeArray.set(item, offset);
+    offset += item.length;
+  });
+  const hashBuffer = await crypto.subtle.digest("SHA-256", mergeArray);
+  return binary_to_base58(new Uint8Array(hashBuffer));
 }

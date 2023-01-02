@@ -1,6 +1,10 @@
 import { EventEmitter } from "node:events";
-import _ from "lodash";
-import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
+import _, { method } from "lodash";
+import {
+  ConnectorInput,
+  ConnectorOutput,
+  TriggerBase,
+} from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../blockingTracer";
@@ -8,14 +12,8 @@ import { parseUserAccessToken, TAccessToken } from "../jwt";
 import { v4 as uuidv4 } from "uuid";
 import { KeyPair } from "near-api-js";
 import BN from "bn.js";
-// import { connect, transactions, keyStores } from "near-api-js";
-// import * as nearAPI from "near-api-js";
-// import fs from "fs";
-// import path from "path";
-// import { homedir } from 'os';
-
 import { connect, transactions, keyStores, utils } from "near-api-js";
-import { normalizeAddress } from "./near/utils";
+import { normalizeAddress, receiptIdFromTx } from "./near/utils";
 
 type Receipt = {
   predecessor_id: string;
@@ -41,47 +39,30 @@ type Receipt = {
   };
   receipt_id: string;
   receiver_id: string;
+  txhash: string;
+  block_height: number;
+  block_hash: string;
+};
+type SubReceipts = {
+  receiptId: string;
+  blockHash: string;
+  blockHeight: number;
+  idParent: number;
+  nbreNested: number;
+};
+type TxHashReceipt = {
+  txhash: string;
+  blockHash: string;
+  blockHeight: number;
+  receipts: SubReceipts[];
+};
+type resultQuery = {
+  block_height: number;
+  block_hash: string;
+  result: number[];
+  logs: string[];
 };
 
-type Tx = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actions: Array<any>;
-  hash: string;
-  nonce: BN;
-  public_key: string;
-  receiver_id: string;
-  signature: string;
-  signer_id: string;
-};
-type Txstatus = {
-  SuccessValue?: string;
-  Failure?: {
-    error_message: string;
-    error_type: string;
-  };
-};
-type ExecutionOutcomeWithId = {
-  id: string;
-  outcome: {
-    logs: string[];
-    receipt_ids: string[];
-    gas_burnt: number;
-    status: Txstatus;
-  };
-};
-type TxReceipt = {
-  status?: Txstatus;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  transaction: any;
-  transaction_outcome: ExecutionOutcomeWithId;
-  receipts_outcome: ExecutionOutcomeWithId[];
-};
-type TxBlock = {
-  currentHeight: number;
-  currentHash: string;
-  tx: Tx;
-  txReceipt: TxReceipt;
-};
 class ReceiptSubscriber extends EventEmitter {
   private running = false;
   constructor() {
@@ -112,10 +93,14 @@ class ReceiptSubscriber extends EventEmitter {
     let lastErrorHeight = 0;
     this.running = true;
     console.log("[Near] event main loop started");
+    let txReceipt = [] as TxHashReceipt[];
     while (this.listenerCount("process") > 0) {
       try {
-        const response = await near.connection.provider.block({
+        const responsePost = await near.connection.provider.block({
           finality: "final",
+        });
+        const response = await near.connection.provider.block({
+          blockId: responsePost.header.prev_hash,
         });
         if (currentHash === response.header.hash) {
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -126,14 +111,24 @@ class ReceiptSubscriber extends EventEmitter {
           continue;
         }
         const pendingBlocks = [response];
-        while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
+        while (
+          currentHash &&
+          pendingBlocks[0].header.prev_hash !== currentHash
+        ) {
           pendingBlocks.unshift(
             await near.connection.provider.block({
               blockId: pendingBlocks[0].header.prev_hash,
             })
           );
-          if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
-            console.log("[Near] Last block was removed:", currentHeight, currentHash);
+          if (
+            currentHeight &&
+            pendingBlocks[0].header.height <= currentHeight
+          ) {
+            console.log(
+              "[Near] Last block was removed:",
+              currentHeight,
+              currentHash
+            );
             if (pendingBlocks[0].header.height < currentHeight) {
               pendingBlocks.shift();
             }
@@ -141,20 +136,108 @@ class ReceiptSubscriber extends EventEmitter {
           }
         }
         if (pendingBlocks.length > 10) {
-          console.warn(`[Near] Too many blocks in a row: ${pendingBlocks.length}`);
+          console.warn(
+            `[Near] Too many blocks in a row: ${pendingBlocks.length}`
+          );
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
-        for (const block of pendingBlocks) {
-          // const receipts = [] as Receipt[];
+        for (const [ib, block] of pendingBlocks.entries()) {
+          const isLastBlock = ib === pendingBlocks.length-1;
+          const nextblockinfos = isLastBlock ? responsePost : pendingBlocks[ib+1];
           const receipts = [] as Receipt[];
-          const txs = [] as Tx[];
+          txReceipt = txReceipt.filter(({blockHeight}) => (block.header.height - blockHeight) < 20);
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
-                const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                txs.splice(txs.length, 0, ...(chunkDetails.transactions as any[]));
-                receipts.splice(receipts.length, 0, ...chunkDetails.receipts);
+                /* Getting the chunk details from the NEAR blockchain. */
+                const chunkDetails = await near.connection.provider.chunk(
+                  chunk.chunk_hash
+                );
+                /* Push the transactions and calculate the top receiptsId */
+                for (const tx of chunkDetails.transactions) {
+                  txReceipt.push({
+                    txhash: tx.hash,
+                    blockHash: block.header.hash,
+                    blockHeight: block.header.height,
+                    receipts: [{
+                      receiptId: await receiptIdFromTx(tx.hash, block.header.hash, 0),
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: 0,
+                      nbreNested: 0
+                    }],
+                  });
+                }
+                for (const receipt of chunkDetails.receipts) {
+                  /* Finding the index of the receipt in the txReceipt array. */
+                  const it = txReceipt.findIndex(e => {
+                    if (e.receipts.findIndex(r => r.receiptId === receipt.receipt_id) !== -1) {
+                      return true;
+                    }
+                  });
+
+                  if (it !== -1) {
+                    /* Index receipt and parent */
+                    const idReceipt = txReceipt[it].receipts.findIndex(r => r.receiptId === receipt.receipt_id);
+                    const idParent = txReceipt[it].receipts[idReceipt].idParent;
+                    /* Update block hash and height for the receipt */
+                    txReceipt[it].receipts[idReceipt].blockHash = block.header.hash;
+                    txReceipt[it].receipts[idReceipt].blockHeight = block.header.height;
+                    /* Push same receipt with next block (in case the receipt is executed in the next block) */
+                    txReceipt[it].receipts.push({
+                      receiptId: txReceipt[it].receipts[idReceipt].receiptId,
+                      blockHash: nextblockinfos.header.hash,
+                      blockHeight: nextblockinfos.header.height,
+                      idParent: txReceipt[it].receipts[idReceipt].idParent,
+                      nbreNested: txReceipt[it].receipts[idReceipt].nbreNested
+                    });
+                    /* Creating a new receiptId from the previous receiptId = childs. */
+                    txReceipt[it].receipts.push({
+                      receiptId: await receiptIdFromTx(
+                        txReceipt[it].receipts[idReceipt].receiptId,
+                        block.header.hash,
+                        0
+                      ),
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: idReceipt,
+                      nbreNested: 0
+                    });
+                    txReceipt[it].receipts.push({
+                      receiptId: await receiptIdFromTx(
+                        txReceipt[it].receipts[idReceipt].receiptId,
+                        nextblockinfos.header.hash,
+                        0
+                      ),
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: idReceipt+1,
+                      nbreNested: 0
+                    });
+                    /* Increase the number of childs for the receipt */
+                    txReceipt[it].receipts[idReceipt].nbreNested++;
+                    txReceipt[it].receipts[idReceipt+1].nbreNested++;
+                    /* Creating a new receipt and pushing it to the receipts array = brother. */
+                    txReceipt[it].receipts.push({
+                      receiptId: await receiptIdFromTx(
+                        txReceipt[it].receipts[idParent].receiptId,
+                        txReceipt[it].receipts[idParent].blockHash,
+                        txReceipt[it].receipts[idParent].nbreNested
+                      ),
+                      blockHash: "",
+                      blockHeight: 0,
+                      idParent: idReceipt,
+                      nbreNested: 0,
+                    });
+                    /* Incrementing the number of nested receipts for the parent. */
+                    txReceipt[it].receipts[idParent].nbreNested++;
+                    /* Fill the tx fields in the receipt object  */
+                    receipt.txhash = txReceipt[it].txhash;
+                    receipt.block_hash = txReceipt[it].blockHash;
+                    receipt.block_height = txReceipt[it].blockHeight;
+                  }
+                  receipts.push(receipt);
+                }
               },
               {
                 maxDelay: 10000,
@@ -169,24 +252,13 @@ class ReceiptSubscriber extends EventEmitter {
               }
             );
           }
-          // for (const receipt of receipts as any[]) {
-          //   for (const listener of this.listeners("process")) {
-          //     await listener(receipt);
-          //   }
-          // }
-
-          currentHash = block.header.hash;
-          currentHeight = block.header.height;
-          for (const tx of txs as Tx[]) {
+          for (const receipt of receipts as Receipt[]) {
             for (const listener of this.listeners("process")) {
-              await listener({
-                currentHeight: block.header.hash,
-                currentHash: block.header.height,
-                txReceipt: {},
-                tx,
-              });
+              await listener(receipt);
             }
           }
+          currentHash = block.header.hash;
+          currentHeight = block.header.height;
         }
       } catch (e) {
         console.error("[Near] Error in Near event loop:", e);
@@ -212,9 +284,15 @@ class ReceiptSubscriber extends EventEmitter {
    * @param  - `callback` is the function that will be called when a new receipt is received.
    * @returns A function that removes the event listener.
    */
-  subscribe({ callback, onError }: { callback: (tx: TxBlock) => void; onError: (error: unknown) => void }) {
-    const handler = async (tx: TxBlock) => {
-      await callback(tx);
+  subscribe({
+    callback,
+    onError,
+  }: {
+    callback: (receipt: Receipt) => void;
+    onError: (error: unknown) => void;
+  }) {
+    const handler = async (receipt: Receipt) => {
+      await callback(receipt);
     };
     const errorHandler = (error: unknown) => {
       onError(error);
@@ -248,71 +326,53 @@ class NewTransactionTrigger extends TriggerBase<{
     }
     this.fields.from = normalizeAddress(this.fields.from);
     this.fields.to = normalizeAddress(this.fields.to);
-    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    console.log(
+      `[${this.sessionId}] NewTransactionTrigger:`,
+      this.fields.chain,
+      this.fields.from,
+      this.fields.to
+    );
     const unsubscribe = SUBSCRIBER.subscribe({
-      callback: async (tx: TxBlock) => {
+      callback: async (receipt: Receipt) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        const notSameFrom =
+        if (
           this.fields.from &&
-          this.fields.from !== normalizeAddress(tx.tx.signer_id) &&
-          this.fields.from !== normalizeAddress(tx.tx.public_key);
-        const notSameTo = this.fields.to && this.fields.to !== normalizeAddress(tx.tx.receiver_id);
-        const failure = tx.txReceipt.status?.Failure;
-        if (notSameFrom || notSameTo || failure) {
+          this.fields.from !== normalizeAddress(receipt.predecessor_id)
+        ) {
           return;
         }
-        for (const action of tx.tx.actions ?? []) {
+        if (
+          this.fields.to &&
+          this.fields.to !== normalizeAddress(receipt.receiver_id)
+        ) {
+          return;
+        }
+        /* Listening for new transactions on the chain and sending a notification to the receiver of
+        the transfer. */
+        for (const action of receipt.receipt.Action?.actions ?? []) {
           if (!("Transfer" in action)) {
             continue;
           }
-          const transfer = action.Transfer;
-
-          console.log("transfer", transfer);
-          console.log("tx hash", tx.tx.hash);
-          console.log("block heigh", tx.currentHeight);
-          console.log("block hash", tx.currentHash);
-          console.log("deposit", utils.format.formatNearAmount(transfer.deposit));
-
+          /* Printing out the details of the transaction. */
+          console.log("from", receipt.predecessor_id);
+          console.log("to", receipt.receiver_id);
+          console.log("value", action.Transfer.deposit);
+          console.log("receiptId", receipt.receipt_id);
+          console.log("txHash", receipt.txhash);
+          console.log("blockHash", receipt.block_hash);
+          console.log("blockHeight", receipt.block_height);
+          /* Sending a notification to the receiver of the transfer. */
           this.sendNotification({
-            from: tx.tx.signer_id,
-            to: tx.tx.receiver_id,
-            amount: utils.format.formatNearAmount(transfer.deposit),
-            txHash: tx.tx.hash,
-            blockHash: tx.currentHash,
-            blockHeight: tx.currentHeight,
+            _grinderyChain: this.fields.chain,
+            from: receipt.predecessor_id,
+            to: receipt.receiver_id,
+            value: action.Transfer.deposit,
+            receiptId: receipt.receipt_id,
+            txHash: receipt.txhash,
+            blockHash: receipt.block_hash,
+            blockHeight: receipt.block_height,
           });
         }
-        // if (
-        //   this.fields.from &&
-        //   this.fields.from !==
-        //     normalizeAddress(receipt.receipt.Action?.signer_id) &&
-        //   this.fields.from !==
-        //     normalizeAddress(receipt.receipt.Action?.signer_public_key)
-        // ) {
-        //   return;
-        // }
-        // if (
-        //   this.fields.to &&
-        //   this.fields.to !== normalizeAddress(receipt.receiver_id)
-        // ) {
-        //   return;
-        // }
-        // for (const action of receipt.receipt.Action?.actions ?? []) {
-        //   if (!("Transfer" in action)) {
-        //     continue;
-        //   }
-        //   const transfer = action.Transfer;
-
-        //   console.log("transfert", transfer);
-        //   console.log("receipt", receipt);
-        //   this.sendNotification({
-        //     _grinderyChain: this.fields.chain,
-        //     from: receipt.receipt.Action?.signer_id,
-        //     to: receipt.receiver_id,
-        //     value: transfer.deposit,
-        //     ...receipt,
-        //   });
-        // }
       },
       onError: (error: unknown) => {
         this.interrupt(error);
@@ -325,6 +385,8 @@ class NewTransactionTrigger extends TriggerBase<{
     }
   }
 }
+
+
 
 /* It subscribes to the blockchain and sends a notification whenever a contract emits an event */
 class NewEventTrigger extends TriggerBase<{
@@ -345,12 +407,16 @@ class NewEventTrigger extends TriggerBase<{
       this.fields.contractAddress = undefined;
     }
     const functions =
-      typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
+      typeof this.fields.eventDeclaration === "string"
+        ? [this.fields.eventDeclaration]
+        : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       callback: async (receipt: any) => {
         blockingTracer.tag("near.NewEventTrigger");
-        if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
+        if (
+          this.fields.contractAddress &&
+          this.fields.contractAddress !== receipt.receiver_id
+        ) {
           return;
         }
         for (const action of receipt.receipt.Action?.actions ?? []) {
@@ -364,14 +430,19 @@ class NewEventTrigger extends TriggerBase<{
           let args;
           if (functionCall.args.length < 4096) {
             try {
-              args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
+              args = JSON.parse(
+                Buffer.from(functionCall.args, "base64").toString("utf-8")
+              );
             } catch (e) {
               // Fall through
             }
             if (!args) {
               try {
                 args = {
-                  _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
+                  _argsDecoded: Buffer.from(
+                    functionCall.args,
+                    "base64"
+                  ).toString("utf-8"),
                 };
               } catch (e) {
                 // Fall through
@@ -383,12 +454,18 @@ class NewEventTrigger extends TriggerBase<{
               _rawArgs: functionCall.args,
             };
           }
-          args._from = receipt.receipt.Action?.signer_id || normalizeAddress(receipt.receipt.Action?.signer_public_key);
-          for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
+          args._from =
+            receipt.receipt.Action?.signer_id ||
+            normalizeAddress(receipt.receipt.Action?.signer_public_key);
+          for (const [key, value] of Object.entries(
+            this.fields.parameterFilters
+          )) {
             if (key.startsWith("_grindery")) {
               continue;
             }
-            if (normalizeAddress(_.get(args, key)) !== normalizeAddress(value)) {
+            if (
+              normalizeAddress(_.get(args, key)) !== normalizeAddress(value)
+            ) {
               return;
             }
           }
@@ -414,7 +491,10 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
+export const Triggers = new Map<
+  string,
+  new (params: ConnectorInput) => TriggerBase
+>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
@@ -445,7 +525,6 @@ export async function callSmartContract(
     gasLimit?: string | number;
     dryRun?: boolean;
     userToken: string;
-    _grinderyUserToken: string;
   }>
 ): Promise<ConnectorOutput> {
   const config = {
@@ -454,12 +533,43 @@ export async function callSmartContract(
     nodeUrl: "https://rpc.mainnet.near.org",
   };
 
-  const user = await parseUserAccessToken(input.fields._grinderyUserToken || input.fields.userToken).catch(() => null);
+  const user = await parseUserAccessToken(input.fields.userToken).catch(
+    () => null
+  );
   if (!user) {
     throw new Error("User token is invalid");
   }
   const near = await connect({ ...config, keyStore, headers: {} });
   const account = await near.account(input.fields.contractAddress);
+
+  /* Calling the ft_metadata function of the NEP-141 contract. */
+  if (input.fields.functionDeclaration === "getInformationNEP141Token") {
+    const queryToken = await near.connection.provider.query({
+      request_type: "call_function",
+      finality: "final",
+      account_id: input.fields.contractAddress,
+      method_name: "ft_metadata",
+      args_base64: ""
+    }) as resultQuery;
+
+    const result = JSON.parse(String.fromCharCode(...queryToken.result));
+
+    console.log("name: " + result.name);
+    console.log("symbol: " + result.symbol);
+    console.log("icon: " + result.icon);
+    console.log("decimals: " + result.decimals.toString());
+
+    return {
+      key: input.key,
+      sessionId: input.sessionId,
+      payload: {
+        name: result.name,
+        symbol: result.symbol,
+        icon: result.icon,
+        decimals: result.decimals.toString()
+      },
+    };
+  }
 
   const args = {
     token_id: uuidv4(),
@@ -505,6 +615,8 @@ export async function callSmartContract(
   // throw new Error("Not implemented");
 }
 
-export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
+export async function getUserDroneAddress(
+  _user: TAccessToken
+): Promise<string> {
   throw new Error("Not implemented");
 }
