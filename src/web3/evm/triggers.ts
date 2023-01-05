@@ -18,7 +18,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
-      async ({ block, chain }) => {
+      async ({ block, chain, memoCall }) => {
         blockingTracer.tag("evm.NewTransactionTrigger");
         for (const transaction of block.transactions) {
           if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
@@ -27,11 +27,25 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
           if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
             continue;
           }
-          console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
-          const transactionReceipt = await web3.eth.getTransactionReceipt(transaction.hash);
-          const txfees = new BigNumber(transactionReceipt.gasUsed).multipliedBy(
-            new BigNumber(transactionReceipt.effectiveGasPrice)
+
+          let txfees = new BigNumber(transaction.gas).multipliedBy(
+            new BigNumber(transaction.gasPrice || block.baseFeePerGas || "0")
           );
+          try {
+            const transactionReceipt = await memoCall("getTransactionFee", () =>
+              web3.eth.getTransactionReceipt(transaction.hash)
+            );
+            txfees = new BigNumber(transactionReceipt.gasUsed).multipliedBy(
+              new BigNumber(transactionReceipt.effectiveGasPrice)
+            );
+          } catch (e) {
+            console.warn(
+              `[${this.sessionId}] NewTransactionTrigger: Failed to get transaction fee for ${
+                transaction.hash
+              }, using estimated fee ${txfees.toString()}`
+            );
+          }
+          console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
           this.sendNotification({
             ...transaction,
             _grinderyChain: chain,
