@@ -10,7 +10,10 @@ export const CHAIN_MAPPING: { [key: string]: string | [string, string] } = {
   "eip155:1666600000": "harmony",
 
   "eip155:80001": "polygon_mumbai",
-  "eip155:5": "eth_goerli",
+  "eip155:5": [
+    `wss://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+  ],
   "eip155:97": "bsc_testnet_chapel",
 
   "eip155:25": [
