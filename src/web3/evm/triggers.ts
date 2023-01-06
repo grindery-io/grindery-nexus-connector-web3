@@ -40,9 +40,10 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
             );
           } catch (e) {
             console.warn(
-              `[${this.sessionId}] NewTransactionTrigger: Failed to get transaction fee for ${
+              `[${this.sessionId}] NewTransactionTrigger: Failed to get transaction fee for [${chain}] ${
                 transaction.hash
-              }, using estimated fee ${txfees.toString()}`
+              }, using estimated fee ${txfees.toString()}`,
+              e
             );
           }
           console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
@@ -59,6 +60,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
       await this.waitForStop();
     } catch (e) {
       console.error("Error while monitoring transactions:", e);
+      throw e;
     } finally {
       unsubscribe();
       close();
