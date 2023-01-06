@@ -199,6 +199,28 @@ export async function callSmartContract(
         },
       };
     }
+    /* Calling the getSyndicateInvestmentClubInformation function on the SyndicateERC721 contract. */
+    if (input.fields.functionDeclaration === "getSyndicateInvestmentClubInformation") {
+      const contract = new web3.eth.Contract(SyndicateERC721 as any, input.fields.contractAddress);
+
+      const owner = await contract.methods.owner().call();
+      const name = await contract.methods.name().call();
+      const symbol = await contract.methods.symbol().call();
+      const totalSupply = await contract.methods.totalSupply().call().then((result) => web3.utils.fromWei(result));
+
+      console.log(owner, name, symbol, totalSupply);
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {
+          owner,
+          name,
+          symbol,
+          totalSupply: totalSupply.toString(),
+        },
+      };
+    }
 
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
@@ -461,79 +483,3 @@ export async function callSmartContract(
     close();
   }
 }
-
-
-// #################################################################
-// #################################################################
-// #################################################################
-
-
-async function main() {
-
-  // investor club
-  const addr = "0x6ec6a7814cc9E32Fb3593988D6e0e4f973aCe75e";
-  // const addr = "0x9edb4c35eb2c20fb7340ae59f85c05a624a7c6ce";
-
-  // collective
-  // const addr = "0xd1dC4028673BD1fE50274040427d831e72947F40";
-  // const addr = "0x71847a69033cab33cdf266e0ee15452e4ff0e7f3";
-
-  // const addr = "0xD966439E91f41337D784BFFA0d38958fFECa54D2";
-  // const addr = "0xed582132c33de5b5a661de3d2dce5fb8f2d8f33d";
-  // const addr = "0xa6fD8da40eCC3fd22cA8c13eF90B95cDf1346bEC";
-  const chain = "eip155:1";
-
-
-  const { web3, close, ethersProvider } = getWeb3(chain);
-
-  const contract = new web3.eth.Contract(SyndicateERC721 as any, addr);
-
-  // const encodedMethod = web3.eth.abi.encodeFunctionSignature({
-  //   "inputs": [],
-  //   "name": "symbol",
-  //   "outputs":
-  //   [
-  //     {
-  //       "internalType": "string",
-  //       "name": "",
-  //       "type": "string"
-  //     }
-  //   ],
-  //   "stateMutability": "view",
-  //   "type": "function"
-  // });
-
-  // const encodedMethod1 = web3.eth.abi.encodeFunctionSignature("symbol()");
-
-  // console.log(contract.methods);
-
-  /* Calling the owner() function of the contract. */
-  console.log("test", await contract.methods.owner().call());
-
-
-  // console.log(contract.methods.hashOwnProperty(encodedMethod));
-
-
-  const contractCode = await web3.eth.getBalance(addr)
-  .then(console.log);
-
-  // console.log(contractCode);
-
-  // console.log(contract);
-  console.log("test");
-
-
-
-
-
-
-
-}
-
-// main();
-
-
-
-// #################################################################
-// #################################################################
-// #################################################################

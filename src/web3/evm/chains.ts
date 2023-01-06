@@ -1,3 +1,4 @@
+import "dotenv/config";
 export const CHAIN_MAPPING: { [key: string]: string | [string, string] } = {
   "eip155:1": "eth",
   "eip155:42161": "arbitrum",
