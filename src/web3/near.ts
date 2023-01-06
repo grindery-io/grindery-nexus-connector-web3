@@ -142,6 +142,7 @@ class ReceiptSubscriber extends EventEmitter {
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const [ib, block] of pendingBlocks.entries()) {
+          console.log(block.header.height, txReceipt.length);
           const isLastBlock = ib === pendingBlocks.length-1;
           const nextblockinfos = isLastBlock ? responsePost : pendingBlocks[ib+1];
           const receipts = [] as Receipt[];

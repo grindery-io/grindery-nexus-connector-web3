@@ -35,6 +35,8 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   triggers: {
     newTransaction: { factory: setupSignal },
     newTransactionAsset: { factory: setupSignal },
+    newTransactionToken: { factory: setupSignal },
+    newTransactionNFT: { factory: setupSignal },
     newEvent: { factory: setupSignal },
   },
   inputProviders: { genericAbiAction: genericAbiActionInputProvider },
