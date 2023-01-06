@@ -58,6 +58,10 @@ async function flowApi(path: string, params: { [key: string]: string }): Promise
   const response = await axios.get("https://rest-mainnet.onflow.org/v1/" + path, {
     params,
   });
+
+  // const response = await axios.get("https://rest-testnet.onflow.org/v1/" + path, {
+  //   params,
+  // });
   return response.data;
 }
 /* It fetches events from the Flow blockchain and stores them in a map */
@@ -66,8 +70,17 @@ class EventAggregator {
   private addedEvents = new Set<string>();
   private endHeight = "sealed" as "sealed" | number;
   private fetchPromises = new Map<string, Promise<void>>();
+  /**
+   * A constructor function that takes in two parameters, startHeight and contractAddress.
+   * @param {number} startHeight - The block height at which the contract was deployed.
+   * @param {string} contractAddress - The address of the contract you want to interact with.
+   */
   constructor(private startHeight: number, private contractAddress: string) {}
-
+  /**
+   * It fetches an event, but only if it hasn't already been fetched
+   * @param {string} type - string
+   * @returns A promise that resolves when the event is added to the addedEvents set.
+   */
   async fetchEvent(type: string) {
     blockingTracer.tag("flow.EventAggregator.fetchEvent");
     if (this.fetchPromises.has(type)) {
@@ -85,6 +98,11 @@ class EventAggregator {
       this.fetchPromises.delete(type);
     }
   }
+  /**
+   * It fetches events from the Flow blockchain and stores them in a map
+   * @param {string} type - The event type to fetch.
+   * @returns the event type, the event body, the block id, and the block height.
+   */
   async fetchEventImpl(type: string) {
     blockingTracer.tag("flow.EventAggregator.fetchEventImpl");
     if (this.addedEvents.has(type)) {
@@ -134,6 +152,12 @@ class EventAggregator {
       }
     }
   }
+  /**
+   * It fetches events of a given type, and then calls a callback function for each transaction that
+   * has events of that type
+   * @param {string} type - The type of event you want to fetch.
+   * @param callback - (events: { [key: string]: ParsedEvent[] }) => Promise<unknown>
+   */
   async forEach(type: string, callback: (events: { [key: string]: ParsedEvent[] }) => Promise<unknown>) {
     blockingTracer.tag("flow.EventAggregator.forEach");
     await this.fetchEvent(type);
@@ -143,6 +167,10 @@ class EventAggregator {
       }
     }
   }
+  /**
+   * This function returns the endHeight property of the object
+   * @returns The endHeight property of the object.
+   */
   getEndHeight(): number | "sealed" {
     return this.endHeight;
   }
@@ -329,26 +357,28 @@ function getSubscriber(contractAddress: string): ContractSubscriber {
 sends a notification for each event that matches the `from` and `to` parameters */
 class NewTransactionTrigger extends TriggerBase<{
   chain: string;
+  contract: string;
+  eventDeclaration: string;
   from?: string;
-  to?: string
+  to?: string;
 }> {
   async main() {
-    if (!this.fields.from && !this.fields.to) {
+    if (!this.fields.from && !this.fields.to && this.key === "newTransaction") {
       throw new InvalidParamsError("from or to is required");
     }
-    const contract = "A.1654653399040a61.FlowToken";
+    const contract = this.fields.contract; //"A.1654653399040a61.FlowToken";
+    // const contract = "A.7e60df042a9c0868.FlowToken";
     const subscriber = getSubscriber(contract);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.from, this.fields.to);
     /* Subscribing to the event TokensDeposited/TokensWithdrawn[amount] on the contract at the address
     contract. */
     const unsubscribe = subscriber.subscribe({
-      eventDeclaration: "TokensDeposited/TokensWithdrawn[amount]",
+      eventDeclaration: this.fields.eventDeclaration, //"TokensDeposited/TokensWithdrawn[amount]",
       parameterFilters: {
         ...(this.fields.from ? { from: this.fields.from } : {}),
         ...(this.fields.to ? { to: this.fields.to } : {}),
       },
       callback: (output) => {
-        console.log("toto");
         console.log(`[${this.sessionId}] Sending notification:`, output._metadata.transactionId);
         this.sendNotification({
           _grinderyChain: this.fields.chain,
@@ -421,4 +451,6 @@ class NewEventTrigger extends TriggerBase<{
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
+Triggers.set("newTransactionToken", NewTransactionTrigger);
+Triggers.set("newTransactionNFT", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);

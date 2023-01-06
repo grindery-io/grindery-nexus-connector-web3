@@ -14,6 +14,7 @@ import BigNumber from "bignumber.js";
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import ERC20 from "./abi/ERC20.json";
+import SyndicateERC721 from "./abi/ERC721Collective.json";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -195,6 +196,28 @@ export async function callSmartContract(
         sessionId: input.sessionId,
         payload: {
           totalSupply: totalSupplyTokenUnit.toString(),
+        },
+      };
+    }
+    /* Calling the getSyndicateInvestmentClubInformation function on the SyndicateERC721 contract. */
+    if (input.fields.functionDeclaration === "getSyndicateInvestmentClubInformation") {
+      const contract = new web3.eth.Contract(SyndicateERC721 as any, input.fields.contractAddress);
+
+      const owner = await contract.methods.owner().call();
+      const name = await contract.methods.name().call();
+      const symbol = await contract.methods.symbol().call();
+      const totalSupply = await contract.methods.totalSupply().call().then((result) => web3.utils.fromWei(result));
+
+      console.log(owner, name, symbol, totalSupply);
+
+      return {
+        key: input.key,
+        sessionId: input.sessionId,
+        payload: {
+          owner,
+          name,
+          symbol,
+          totalSupply: totalSupply.toString(),
         },
       };
     }
