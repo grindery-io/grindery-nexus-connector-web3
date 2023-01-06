@@ -80,6 +80,11 @@ export async function nearGetAccount(
  * @returns A receipt ID.
  */
 export async function receiptIdFromTx(txHash: string, blockHash: string, salt: number): Promise<string> {
+
+  if (!blockHash || !txHash) {
+    return "";
+  }
+
   const saltSize = 8;
   const txHashBinary = base58_to_binary(txHash);
   const blockHashBinary = base58_to_binary(blockHash);
