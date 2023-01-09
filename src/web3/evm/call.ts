@@ -462,7 +462,6 @@ export async function callSmartContract(
       }
 
       if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
-        console.log("jjjjjjjj");
         return {
           key: input.key,
           sessionId: input.sessionId,
