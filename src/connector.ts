@@ -7,7 +7,12 @@ import {
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { callSmartContract as _callSmartContract, getTriggerClass } from "./web3";
 import { callSmartContractWebHook } from "./web3";
-import { genericAbiAction, genericAbiActionInputProvider } from "./web3/evm/actions/genericAbiAction";
+import {
+  genericAbiAction,
+  genericAbiActionInputProvider,
+  genericAbiTrigger,
+  genericAbiTriggerInputProvider,
+} from "./web3/evm/connector/genericAbi";
 import { sanitizeParameters } from "./utils";
 
 export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
@@ -38,7 +43,11 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     newTransactionToken: { factory: setupSignal },
     newTransactionNFT: { factory: setupSignal },
     newEvent: { factory: setupSignal },
+    genericAbiTrigger: { factory: genericAbiTrigger },
   },
-  inputProviders: { genericAbiAction: genericAbiActionInputProvider },
+  inputProviders: {
+    genericAbiAction: genericAbiActionInputProvider,
+    genericAbiTrigger: genericAbiTriggerInputProvider,
+  },
   webhooks: { callSmartContract: callSmartContractWebHook },
 };
