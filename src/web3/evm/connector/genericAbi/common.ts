@@ -1,15 +1,12 @@
-import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput } from "grindery-nexus-common-utils";
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { AbiItem, AbiInput, AbiOutput } from "web3-utils";
 import axios from "axios";
-import { callSmartContract } from "../call";
-import { sanitizeParameters } from "../../../utils";
+import { InputProviderOutput } from "grindery-nexus-common-utils";
 
-type Fields = {
+export type CommonFields = {
   _grinderyChain: string;
   _grinderyContractAddress: string;
   _grinderyAbi?: string;
-  _grinderyFunction?: string;
   _grinderyUseCustomAbi?: boolean;
 };
 
@@ -58,8 +55,7 @@ function getFunctionSuffix(abiItem: AbiItem) {
   }
   return " " + items.join(" ");
 }
-
-const getCDS = (ABI: string) => {
+export const getCDS = (ABI: string) => {
   let parsedInput = [] as AbiItem[];
   if (ABI) {
     parsedInput = JSON.parse(ABI);
@@ -86,7 +82,7 @@ const getCDS = (ABI: string) => {
             .map((inp) => `${inp.type} ${inp.indexed ? "indexed " : ""}${inp.name}`)
             .join(", ")})`,
           inputFields: x.inputs.map(abiInputToField),
-          outputFields: x.inputs.map(abiInputToField),
+          outputFields: x.inputs.map(abiInputToField) as FieldSchema[],
           sample: {},
         },
       })),
@@ -124,11 +120,35 @@ const getCDS = (ABI: string) => {
 
   return cds;
 };
-
 const fetchAbiCache = new Map<string, string | { missing: true; timestamp: number }>();
+export async function fetchAbi(chain: string, contractAddress: string) {
+  let fetchedAbi: string | undefined;
+  const cacheKey = `${chain}/${contractAddress}`;
+  let cached = fetchAbiCache.get(cacheKey);
+  if (typeof cached === "string") {
+    fetchedAbi = cached;
+  } else if (cached?.missing && Date.now() - cached.timestamp > 60000) {
+    cached = undefined;
+  }
+  if (!cached) {
+    try {
+      const resp = await axios.get(
+        `https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${chain}&address=${contractAddress}`
+      );
+      const rawAbi = resp.data?.result;
+      getCDS(rawAbi);
+      // At this point we can confirm that the fetched ABI is valid
+      fetchAbiCache.set(cacheKey, rawAbi);
+      fetchedAbi = rawAbi;
+    } catch (error) {
+      // handle abi retrieving  error
+      fetchAbiCache.set(cacheKey, { missing: true, timestamp: Date.now() });
+    }
+  }
+  return fetchedAbi;
+}
 
-export async function genericAbiActionInputProvider(params: InputProviderInput<unknown>): Promise<InputProviderOutput> {
-  const fieldData = params.fieldData as Fields;
+export async function prepareOutput(fieldData: CommonFields) {
   const ret: InputProviderOutput = {
     inputFields: [
       {
@@ -149,28 +169,9 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
   // Get ABI if chain and contract specified
   let fetchedAbi = undefined as string | undefined;
   if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress && !fieldData?._grinderyUseCustomAbi) {
-    const cacheKey = `${fieldData._grinderyChain}/${fieldData._grinderyContractAddress}`;
-    let cached = fetchAbiCache.get(cacheKey);
-    if (typeof cached === "string") {
-      fetchedAbi = cached;
-    } else if (cached?.missing && Date.now() - cached.timestamp > 60000) {
-      cached = undefined;
-    }
-    if (!cached) {
-      try {
-        const resp = await axios.get(
-          `https://nexus-cds-editor-api.herokuapp.com/api/abi?blockchain=${fieldData?._grinderyChain}&address=${fieldData?._grinderyContractAddress}`
-        );
-        const rawAbi = resp.data?.result;
-        getCDS(rawAbi);
-        // At this point we can confirm that the fetched ABI is valid
-        fetchAbiCache.set(cacheKey, rawAbi);
-        fetchedAbi = rawAbi;
-      } catch (error) {
-        // handle abi retrieving  error
-        fetchAbiCache.set(cacheKey, { missing: true, timestamp: Date.now() });
-      }
-    }
+    const chain = fieldData._grinderyChain;
+    const contractAddress = fieldData._grinderyContractAddress;
+    fetchedAbi = await fetchAbi(chain, contractAddress);
   }
 
   if (fieldData?._grinderyChain && fieldData?._grinderyContractAddress) {
@@ -195,45 +196,5 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
   }
 
   const abiJson = !fetchedAbi || fieldData?._grinderyUseCustomAbi ? fieldData?._grinderyAbi : fetchedAbi;
-  // Convert abi to cds if specified by user or fetched automatically
-  if (abiJson) {
-    const cds = getCDS(abiJson);
-    ret.inputFields.push({
-      key: "_grinderyFunction",
-      required: true,
-      type: "string",
-      label: "Function",
-      choices: cds.actions.map((x) => ({
-        value: x.operation.signature,
-        sample: x.operation.signature,
-        label: x.operation.signature,
-      })),
-    });
-    if (fieldData?._grinderyFunction) {
-      const action = cds.actions.find((x) => x.operation.signature === fieldData._grinderyFunction);
-      if (action) {
-        ret.inputFields = ret.inputFields.concat(
-          action.operation.inputFields.map((x) => ({ ...x, updateFieldDefinition: false } as FieldSchema))
-        );
-        ret.outputFields = action.operation.outputFields;
-      }
-    }
-  }
-  return ret;
-}
-
-export async function genericAbiAction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
-  const fields = input.fields as Fields;
-  return await callSmartContract(
-    await sanitizeParameters({
-      ...input,
-      fields: {
-        ...fields,
-        chain: fields._grinderyChain,
-        contractAddress: fields._grinderyContractAddress,
-        functionDeclaration: fields._grinderyFunction || "INVALID",
-        parameters: fields,
-      },
-    })
-  );
+  return { cds: abiJson ? getCDS(abiJson) : undefined, ret };
 }
