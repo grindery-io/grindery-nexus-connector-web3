@@ -82,7 +82,10 @@ export const getCDS = (ABI: string) => {
             .map((inp) => `${inp.type} ${inp.indexed ? "indexed " : ""}${inp.name}`)
             .join(", ")})`,
           inputFields: x.inputs.map(abiInputToField),
-          outputFields: x.inputs.map(abiInputToField) as FieldSchema[],
+          outputFields: (x.inputs.map(abiInputToField) as FieldSchema[]).concat([
+            { key: "__transactionHash", label: "Transaction hash", type: "string" },
+            { key: "__chainId", label: "Chain ID", type: "string" },
+          ]),
           sample: {},
         },
       })),
@@ -105,13 +108,15 @@ export const getCDS = (ABI: string) => {
           inputFields: x.inputs.map(abiInputToField).map((x) => ({ ...x, required: true })),
           outputFields:
             (x.constant || x.stateMutability === "pure") && x.outputs?.length === 1
-              ? [
+              ? ([
                   {
                     key: "returnValue",
                     label: "Return value of " + x.name,
                     type: mapType(x.outputs?.[0].type),
-                  } as FieldSchema,
-                ]
+                  },
+                  { key: "transactionHash", label: "Transaction hash", type: "string" },
+                  { key: "contractAddress", label: "Contract address", type: "string" },
+                ] as FieldSchema[])
               : [],
           sample: {},
         },

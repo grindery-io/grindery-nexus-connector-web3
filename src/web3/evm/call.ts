@@ -201,12 +201,16 @@ export async function callSmartContract(
     }
     /* Calling the getSyndicateInvestmentClubInformation function on the SyndicateERC721 contract. */
     if (input.fields.functionDeclaration === "getSyndicateInvestmentClubInformation") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const contract = new web3.eth.Contract(SyndicateERC721 as any, input.fields.contractAddress);
 
       const owner = await contract.methods.owner().call();
       const name = await contract.methods.name().call();
       const symbol = await contract.methods.symbol().call();
-      const totalSupply = await contract.methods.totalSupply().call().then((result) => web3.utils.fromWei(result));
+      const totalSupply = await contract.methods
+        .totalSupply()
+        .call()
+        .then((result) => web3.utils.fromWei(result));
 
       console.log(owner, name, symbol, totalSupply);
 
