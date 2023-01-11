@@ -186,7 +186,7 @@ export async function prepareOutput(fieldData: CommonFields) {
         key: "_grinderyUseCustomAbi",
         type: "boolean",
         label: "Use custom ABI",
-        default: "false",
+        default: false,
       });
     }
     // Add abi field only if chain and address specified, and we can't fetch ABI from explorer site
