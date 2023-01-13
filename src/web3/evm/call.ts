@@ -7,7 +7,7 @@ import { parseUserAccessToken } from "../../jwt";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
-import BigNumber from "bignumber.js";
+import { BigNumber } from "@ethersproject/bignumber";
 
 // var axios = require('axios');
 
@@ -138,7 +138,7 @@ export async function callSmartContract(
       // Execute balanceOf() to retrieve the token balance
       const balanceWei = await contract.methods.balanceOf(tokenHolder).call();
       const decimals = await contract.methods.decimals().call();
-      const balanceTokenUnit = new BigNumber(balanceWei).div(new BigNumber(10).pow(new BigNumber(decimals)));
+      const balanceTokenUnit = BigNumber.from(balanceWei).div(BigNumber.from(10).pow(BigNumber.from(decimals)));
 
       return {
         key: input.key,
@@ -172,7 +172,7 @@ export async function callSmartContract(
         .allowance(input.fields.parameters.owner, input.fields.parameters.spender)
         .call();
       const decimals = await tokenContract.methods.decimals().call();
-      const allowanceTokenUnit = new BigNumber(allowance).div(new BigNumber(10).pow(new BigNumber(decimals)));
+      const allowanceTokenUnit = BigNumber.from(allowance).div(BigNumber.from(10).pow(BigNumber.from(decimals)));
 
       return {
         key: input.key,
@@ -189,7 +189,7 @@ export async function callSmartContract(
       const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
       const totalSupply = await tokenContract.methods.totalSupply().call();
       const decimals = await tokenContract.methods.decimals().call();
-      const totalSupplyTokenUnit = new BigNumber(totalSupply).div(new BigNumber(10).pow(new BigNumber(decimals)));
+      const totalSupplyTokenUnit = BigNumber.from(totalSupply).div(BigNumber.from(10).pow(BigNumber.from(decimals)));
 
       return {
         key: input.key,
@@ -369,24 +369,24 @@ export async function callSmartContract(
 
       const gas = await web3.eth.estimateGas(txConfig);
       txConfig.gas = Math.ceil(gas * 1.1 + 1000000);
-      let minFee: number;
+      let minFee: BigNumber;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
         txConfig.maxPriorityFeePerGas = 0;
         txConfig.maxFeePerGas = Number(web3.utils.toWei("110", "kwei"));
-        minFee = txConfig.maxFeePerGas;
+        minFee = BigNumber.from(txConfig.maxFeePerGas);
       } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10).toNumber();
-        const maxTip = input.fields.maxPriorityFeePerGas || Math.floor(minFee / 2);
+        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10);
+        const maxTip = BigNumber.from(input.fields.maxPriorityFeePerGas || minFee.div(2));
         const maxFee = input.fields.gasLimit
           ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
           : feeData.maxFeePerGas.add(maxTip).toNumber();
-        if (maxFee < minFee) {
+        if (minFee.gt(maxFee)) {
           throw new Error(
             `Gas limit of ${web3.utils.fromWei(
               String(input.fields.gasLimit),
               "ether"
-            )} is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
+            )} is too low, need at least ${web3.utils.fromWei(minFee.mul(txConfig.gas || 1).toString(), "ether")}`
           );
         }
         txConfig.maxFeePerGas = maxFee;
@@ -394,14 +394,14 @@ export async function callSmartContract(
       } else {
         const gasPrice = (feeData.gasPrice || (await ethersProvider.getGasPrice())).mul(12).div(10);
         txConfig.gasPrice = gasPrice.toString();
-        minFee = gasPrice.mul(txConfig.gas).toNumber();
+        minFee = gasPrice.mul(txConfig.gas);
       }
 
       if (isSimulation) {
         result = {
           returnValue: callResultDecoded,
           estimatedGas: gas,
-          minFee,
+          minFee: minFee.toString(),
         };
       } else {
         const receipt = await web3.eth.sendTransaction(txConfig);
