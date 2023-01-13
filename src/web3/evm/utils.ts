@@ -84,7 +84,7 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
   };
 }
 export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
-  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*(.*)$/.exec(functionDeclaration);
+  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)?\)\s*(.*)$/.exec(functionDeclaration);
   if (!m) {
     throw new Error("Invalid function declaration");
   }
