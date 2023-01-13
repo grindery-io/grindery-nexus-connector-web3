@@ -46,8 +46,9 @@ function getFunctionSuffix(abiItem: AbiItem) {
   }
   if (abiItem.outputs?.length) {
     items.push(
-      "returns " +
-        (abiItem.outputs.length === 1 ? abiItem.outputs[0].type : abiItem.outputs.map((x) => x.type).join(", "))
+      `returns (${
+        abiItem.outputs.length === 1 ? abiItem.outputs[0].type : abiItem.outputs.map((x) => x.type).join(", ")
+      })`
     );
   }
   if (!items.length) {

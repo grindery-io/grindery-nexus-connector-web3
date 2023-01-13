@@ -101,7 +101,7 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
         };
       })
     : [];
-  const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(m[4]);
+  const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(m[4]) || /\breturns\s+([^\s]+)/.exec(m[4]);
   const outputs = returnMatch
     ? returnMatch[1].split(",").map((p, index) => {
         const parts = p.trim().split(/\s+/);
