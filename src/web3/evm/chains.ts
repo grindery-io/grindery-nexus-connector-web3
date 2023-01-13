@@ -12,8 +12,8 @@ export const CHAIN_MAPPING: { [key: string]: string | [string, string] } = {
 
   "eip155:80001": "polygon_mumbai",
   "eip155:5": [
-    `wss://goerli.infura.io/ws/v3/${process.env.INFURA_API_KEY}`,
-    `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+    `wss://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+    `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
   ],
   "eip155:97": "bsc_testnet_chapel",
 
