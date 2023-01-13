@@ -29,14 +29,20 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
           }
 
           let txfees = new BigNumber(transaction.gas).multipliedBy(
-            new BigNumber(transaction.gasPrice || block.baseFeePerGas || "0")
+            new BigNumber(transaction.gasPrice || transaction.maxFeePerGas?.toString() || block.baseFeePerGas || "0")
           );
           try {
             const transactionReceipt = await memoCall("getTransactionFee", () =>
               web3.eth.getTransactionReceipt(transaction.hash)
             );
-            txfees = new BigNumber(transactionReceipt.gasUsed).multipliedBy(
-              new BigNumber(transactionReceipt.effectiveGasPrice)
+            txfees = new BigNumber(transactionReceipt.gasUsed || transaction.gas).multipliedBy(
+              new BigNumber(
+                transactionReceipt.effectiveGasPrice ||
+                  transaction.gasPrice ||
+                  transaction.maxFeePerGas?.toString() ||
+                  block.baseFeePerGas ||
+                  "0"
+              )
             );
           } catch (e) {
             console.warn(
@@ -164,7 +170,7 @@ export class NewEventTrigger extends TriggerBase<{
               .flat();
             const transactionLogFailures: { [key: string]: number } = {};
             let numProcessed = 0;
-            for (const logEntry of entries as (typeof entries[0] & {
+            for (const logEntry of entries as ((typeof entries)[0] & {
               __decodeFailure?: boolean;
               __decoded?: { [key: string]: string };
             })[]) {
