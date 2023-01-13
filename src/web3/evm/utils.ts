@@ -84,21 +84,23 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
   };
 }
 export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
-  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)*\)\s*(.*)$/.exec(functionDeclaration);
+  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)?\)\s*(.*)$/.exec(functionDeclaration);
   if (!m) {
     throw new Error("Invalid function declaration");
   }
   const name = m[2];
-  const inputs = m[3] ? m[3].split(",").map((p) => {
-    const parts = p.trim().split(/\s+/);
-    if (parts.length < 2) {
-      throw new Error("Invalid function declaration: Invalid parameter " + p);
-    }
-    return {
-      type: parts[0],
-      name: parts[parts.length - 1],
-    };
-  }) : [];
+  const inputs = m[3]
+    ? m[3].split(",").map((p) => {
+        const parts = p.trim().split(/\s+/);
+        if (parts.length < 2) {
+          throw new Error("Invalid function declaration: Invalid parameter " + p);
+        }
+        return {
+          type: parts[0],
+          name: parts[parts.length - 1],
+        };
+      })
+    : [];
   const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(m[4]);
   const outputs = returnMatch
     ? returnMatch[1].split(",").map((p, index) => {
