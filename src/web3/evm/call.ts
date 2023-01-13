@@ -391,7 +391,7 @@ export async function callSmartContract(
           );
         }
         txConfig.maxFeePerGas = maxFee;
-        txConfig.maxPriorityFeePerGas = Number(maxTip);
+        txConfig.maxPriorityFeePerGas = maxTip.toNumber();
       } else {
         const gasPrice = (feeData.gasPrice || (await ethersProvider.getGasPrice())).mul(12).div(10);
         txConfig.gasPrice = gasPrice.toString();
