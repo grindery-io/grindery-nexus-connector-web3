@@ -407,7 +407,9 @@ export async function callSmartContract(
         const receipt = await web3.eth.sendTransaction(txConfig);
         releaseLock(); // Block less time
         result = receipt;
-        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        const cost = BigNumber.from(receipt.gasUsed || txConfig.gas)
+          .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
+          .toString();
 
         // console.log("result: " + JSON.stringify(result))
 
