@@ -294,7 +294,9 @@ export class NewEventTrigger extends TriggerBase<{
             }
           })
           .catch((e) => {
-            console.error(`[${this.sessionId}] Error while getting logs for block ${block.number}:`, e);
+            memoCall("getLogError" + e.toString(), () =>
+              console.error(`[${this.sessionId}] Error while getting logs for block ${block.number}:`, e)
+            );
           });
       },
       (e) => this.interrupt(e)
