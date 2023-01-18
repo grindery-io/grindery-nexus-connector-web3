@@ -7,7 +7,7 @@ import { parseUserAccessToken } from "../../jwt";
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
-import BigNumber from "bignumber.js";
+import { BigNumber } from "@ethersproject/bignumber";
 
 // var axios = require('axios');
 
@@ -138,7 +138,7 @@ export async function callSmartContract(
       // Execute balanceOf() to retrieve the token balance
       const balanceWei = await contract.methods.balanceOf(tokenHolder).call();
       const decimals = await contract.methods.decimals().call();
-      const balanceTokenUnit = new BigNumber(balanceWei).div(new BigNumber(10).pow(new BigNumber(decimals)));
+      const balanceTokenUnit = BigNumber.from(balanceWei).div(BigNumber.from(10).pow(BigNumber.from(decimals)));
 
       return {
         key: input.key,
@@ -172,7 +172,7 @@ export async function callSmartContract(
         .allowance(input.fields.parameters.owner, input.fields.parameters.spender)
         .call();
       const decimals = await tokenContract.methods.decimals().call();
-      const allowanceTokenUnit = new BigNumber(allowance).div(new BigNumber(10).pow(new BigNumber(decimals)));
+      const allowanceTokenUnit = BigNumber.from(allowance).div(BigNumber.from(10).pow(BigNumber.from(decimals)));
 
       return {
         key: input.key,
@@ -189,7 +189,7 @@ export async function callSmartContract(
       const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
       const totalSupply = await tokenContract.methods.totalSupply().call();
       const decimals = await tokenContract.methods.decimals().call();
-      const totalSupplyTokenUnit = new BigNumber(totalSupply).div(new BigNumber(10).pow(new BigNumber(decimals)));
+      const totalSupplyTokenUnit = BigNumber.from(totalSupply).div(BigNumber.from(10).pow(BigNumber.from(decimals)));
 
       return {
         key: input.key,
@@ -201,12 +201,16 @@ export async function callSmartContract(
     }
     /* Calling the getSyndicateInvestmentClubInformation function on the SyndicateERC721 contract. */
     if (input.fields.functionDeclaration === "getSyndicateInvestmentClubInformation") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const contract = new web3.eth.Contract(SyndicateERC721 as any, input.fields.contractAddress);
 
       const owner = await contract.methods.owner().call();
       const name = await contract.methods.name().call();
       const symbol = await contract.methods.symbol().call();
-      const totalSupply = await contract.methods.totalSupply().call().then((result) => web3.utils.fromWei(result));
+      const totalSupply = await contract.methods
+        .totalSupply()
+        .call()
+        .then((result) => web3.utils.fromWei(result));
 
       console.log(owner, name, symbol, totalSupply);
 
@@ -259,6 +263,7 @@ export async function callSmartContract(
 
       // NFT minting ipfs metadata
       if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
+        console.log("hjsj");
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify(
           (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
@@ -365,45 +370,47 @@ export async function callSmartContract(
 
       const gas = await web3.eth.estimateGas(txConfig);
       txConfig.gas = Math.ceil(gas * 1.1 + 1000000);
-      let minFee: number;
+      let minFee: BigNumber;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
         txConfig.maxPriorityFeePerGas = 0;
         txConfig.maxFeePerGas = Number(web3.utils.toWei("110", "kwei"));
-        minFee = txConfig.maxFeePerGas;
+        minFee = BigNumber.from(txConfig.maxFeePerGas);
       } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10).toNumber();
-        const maxTip = input.fields.maxPriorityFeePerGas || Math.floor(minFee / 2);
+        minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10);
+        const maxTip = BigNumber.from(input.fields.maxPriorityFeePerGas || minFee.div(2));
         const maxFee = input.fields.gasLimit
           ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
           : feeData.maxFeePerGas.add(maxTip).toNumber();
-        if (maxFee < minFee) {
+        if (minFee.gt(maxFee)) {
           throw new Error(
             `Gas limit of ${web3.utils.fromWei(
               String(input.fields.gasLimit),
               "ether"
-            )} is too low, need at least ${web3.utils.fromWei(String(minFee * txConfig.gas), "ether")}`
+            )} is too low, need at least ${web3.utils.fromWei(minFee.mul(txConfig.gas || 1).toString(), "ether")}`
           );
         }
         txConfig.maxFeePerGas = maxFee;
-        txConfig.maxPriorityFeePerGas = Number(maxTip);
+        txConfig.maxPriorityFeePerGas = maxTip.toNumber();
       } else {
         const gasPrice = (feeData.gasPrice || (await ethersProvider.getGasPrice())).mul(12).div(10);
         txConfig.gasPrice = gasPrice.toString();
-        minFee = gasPrice.mul(txConfig.gas).toNumber();
+        minFee = gasPrice.mul(txConfig.gas);
       }
 
       if (isSimulation) {
         result = {
           returnValue: callResultDecoded,
           estimatedGas: gas,
-          minFee,
+          minFee: minFee.toString(),
         };
       } else {
         const receipt = await web3.eth.sendTransaction(txConfig);
         releaseLock(); // Block less time
         result = receipt;
-        const cost = web3.utils.toBN(receipt.gasUsed).mul(web3.utils.toBN(receipt.effectiveGasPrice)).toString(10);
+        const cost = BigNumber.from(receipt.gasUsed || txConfig.gas)
+          .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
+          .toString();
 
         // console.log("result: " + JSON.stringify(result))
 
@@ -461,7 +468,6 @@ export async function callSmartContract(
       }
 
       if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
-        console.log("jjjjjjjj");
         return {
           key: input.key,
           sessionId: input.sessionId,
