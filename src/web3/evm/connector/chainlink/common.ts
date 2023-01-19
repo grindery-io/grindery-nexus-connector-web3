@@ -2,7 +2,6 @@ import { InputProviderOutput } from "grindery-nexus-common-utils";
 import { FieldSchema, FieldChoiceSchema } from "grindery-nexus-common-utils/dist/types";
 import axios from "axios";
 
-
 export type clkFields = {
     _grinderyChain?: string;
     _getChainlinkPriceFeed?: string;
@@ -110,7 +109,3 @@ export async function prepareOutputChainlink(fieldData: clkFields): Promise<Inpu
     }
     return ret;
 }
-
-// prepareOutputChainlink({
-//     _grinderyChain: "eip155:5"
-// });
