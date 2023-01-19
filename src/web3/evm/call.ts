@@ -263,6 +263,7 @@ export async function callSmartContract(
 
       // NFT minting ipfs metadata
       if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
+        console.log("hjsj");
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify(
           (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
@@ -467,7 +468,6 @@ export async function callSmartContract(
       }
 
       if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
-        console.log("jjjjjjjj");
         return {
           key: input.key,
           sessionId: input.sessionId,
