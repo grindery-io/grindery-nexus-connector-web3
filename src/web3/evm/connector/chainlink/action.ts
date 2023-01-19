@@ -32,18 +32,30 @@ export async function clkPriceFeedActionInputProvider(params: InputProviderInput
  */
 export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
   const fields = input.fields as clkFields;
+  const contractAddr = await extractAddressFromPair(fields._getChainlinkPriceFeed);
   /* Calling the smart contract to get the decimals of the token. */
   const getDecimals = await callSmartContract(await sanitizeParameters({
     ...input,
     fields: {
       ...fields,
       chain: fields._grinderyChain,
-      contractAddress: await extractAddressFromPair(fields._getChainlinkPriceFeed),
+      contractAddress: contractAddr,
       functionDeclaration: "function decimals() view returns (uint8)",
       parameters: {},
     },
   }));
   const decimals = new BigNumber((getDecimals.payload as any).returnValue);
+  /* Getting the pair from the smart contract. */
+  const getPair = await callSmartContract(await sanitizeParameters({
+    ...input,
+    fields: {
+      ...fields,
+      chain: fields._grinderyChain,
+      contractAddress: contractAddr,
+      functionDeclaration: "function description() view returns (string)",
+      parameters: {},
+    },
+  }));
   /* Calling the smart contract to get the latest round data. */
   const res = await callSmartContract(
     await sanitizeParameters({
@@ -51,7 +63,7 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
       fields: {
         ...fields,
         chain: fields._grinderyChain,
-        contractAddress: await extractAddressFromPair(fields._getChainlinkPriceFeed),
+        contractAddress: contractAddr,
         functionDeclaration: "function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)",
         parameters: {},
       },
@@ -63,7 +75,9 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
       (res.payload as any).returnValue.return1
     ).div(
       new BigNumber(10).pow(decimals)
-    ).toString()
+    ).toString(),
+    _pair: (getPair.payload as any).returnValue,
+    _contractAddress: contractAddr
   };
   return res;
 }

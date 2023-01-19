@@ -8,6 +8,23 @@ export type clkFields = {
     _getChainlinkPriceFeed?: string;
 };
 
+/* A mapping of the chain ID to the feed name. */
+const CHAINS_MAPPING_CHAINLINK_PRICE_FEEDS : {[key: string]: string} = {
+    "eip155:1": "mainnet",
+    "eip155:42161": "ethereum-mainnet-arbitrum-1",
+    "eip155:100": "xdai-mainnet",
+    "eip155:137": "matic-mainnet",
+    "eip155:42220": "",
+    "eip155:43114": "avalanche-mainnet",
+    "eip155:56": "bsc-mainnet",
+    "eip155:250": "fantom-mainnet",
+    "eip155:1666600000": "harmony-mainnet-0",
+    "eip155:80001": "matic-testnet",
+    "eip155:5": "goerli",
+    "eip155:97": "bsc-testnet",
+    "eip155:25": "",
+};
+
 /**
  * It takes a feed name as a parameter, makes a request to the reference-data-directory API, and
  * returns an array of objects with the name, proxy address, and sample of each pair
@@ -59,23 +76,6 @@ export async function extractAddressFromPair(input?: string): Promise<string> {
     }
     return input.substring(hexStart, hexEnd);
 }
-
-/* A mapping of the chain ID to the feed name. */
-const CHAINS_MAPPING_CHAINLINK_PRICE_FEEDS : {[key: string]: string} = {
-    "eip155:1": "mainnet",
-    "eip155:42161": "ethereum-mainnet-arbitrum-1",
-    "eip155:100": "xdai-mainnet",
-    "eip155:137": "matic-mainnet",
-    "eip155:42220": "",
-    "eip155:43114": "avalanche-mainnet",
-    "eip155:56": "bsc-mainnet",
-    "eip155:250": "fantom-mainnet",
-    "eip155:1666600000": "harmony-mainnet-0",
-    "eip155:80001": "matic-testnet",
-    "eip155:5": "goerli",
-    "eip155:97": "bsc-testnet",
-    "eip155:25": "",
-};
 
 /**
  * It takes in a fieldData object and returns an object with an inputFields array
