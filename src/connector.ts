@@ -11,8 +11,13 @@ import {
   genericAbiAction,
   genericAbiActionInputProvider,
   genericAbiTrigger,
-  genericAbiTriggerInputProvider,
+  genericAbiTriggerInputProvider
 } from "./web3/evm/connector/genericAbi";
+import {
+  clkPriceFeedAction,
+  clkPriceFeedActionInputProvider
+} from "./web3/evm/connector/chainlink";
+
 import { sanitizeParameters } from "./utils";
 
 export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
@@ -36,7 +41,11 @@ export async function callSmartContract(params: ConnectorInput): Promise<Connect
 }
 
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
-  actions: { callSmartContract, genericAbiAction },
+  actions: {
+    callSmartContract,
+    genericAbiAction,
+    clkPriceFeedAction
+  },
   triggers: {
     newTransaction: { factory: setupSignal },
     newTransactionAsset: { factory: setupSignal },
@@ -48,6 +57,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   inputProviders: {
     genericAbiAction: genericAbiActionInputProvider,
     genericAbiTrigger: genericAbiTriggerInputProvider,
+    clkPriceFeedAction: clkPriceFeedActionInputProvider,
   },
   webhooks: { callSmartContract: callSmartContractWebHook },
 };
