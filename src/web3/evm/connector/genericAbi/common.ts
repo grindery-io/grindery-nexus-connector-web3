@@ -29,7 +29,7 @@ function abiInputToField(inp: AbiInput | AbiOutput) {
     key: inp.name,
     label: `${inp.name} (${inp.type})`,
     type: mapType(inp.type),
-    placeholder: inp.type === "address" ? "Enter a blockchain address" : "",
+    helpText: inp.type === "address" ? "Enter a blockchain address" : "",
     list: inp.type.includes("[]"),
   };
 }
@@ -167,7 +167,9 @@ export async function prepareOutput(fieldData: CommonFields) {
         key: "_grinderyContractAddress",
         required: true,
         type: "address",
-        label: "Contract address",
+        label: "Smart Contract Address",
+        helpText:
+          "Indicate the address of the smart contract you want to interact with. Make sure the address matches the block chain you selected.",
       },
     ],
   };
@@ -186,8 +188,10 @@ export async function prepareOutput(fieldData: CommonFields) {
       ret.inputFields.push({
         key: "_grinderyUseCustomAbi",
         type: "boolean",
-        label: "Use custom ABI",
+        label: "Set ABI manually",
         default: "false",
+        helpText:
+          "If set to FALSE Grindery will try to get the ABI automatically ABI. If set to TRUE if can set the ABI yourself manually.",
       });
     }
     // Add abi field only if chain and address specified, and we can't fetch ABI from explorer site
@@ -196,7 +200,9 @@ export async function prepareOutput(fieldData: CommonFields) {
         key: "_grinderyAbi",
         required: true,
         type: "text",
-        label: "ABI",
+        label: "Custom ABI",
+        helpText:
+          "Paste the contract ABI. This can be obtained either in [Remix](https://docs.moonbeam.network/builders/build/eth-api/dev-env/remix/) or in the .json file generally created after the compilation process (for example, in Truffle or HardHat).",
       });
     }
   }

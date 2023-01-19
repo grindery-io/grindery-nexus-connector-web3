@@ -17,12 +17,14 @@ export async function genericAbiTriggerInputProvider(
       key: "_grinderyEvent",
       required: true,
       type: "string",
-      label: "Event",
+      label: "Smart Contract Event",
       choices: cds.triggers.map((x) => ({
         value: x.operation.signature,
         sample: x.operation.signature,
         label: x.operation.signature,
       })),
+      helpText:
+        "Select the smart contract event you want to use as a trigger. Next you will be able to set the parameters.",
     });
     if (fieldData?._grinderyEvent) {
       const trigger = cds.triggers.find((x) => x.operation.signature === fieldData._grinderyEvent);

@@ -15,12 +15,14 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
       key: "_grinderyFunction",
       required: true,
       type: "string",
-      label: "Function",
+      label: "Smart Contract Function",
       choices: cds.actions.map((x) => ({
         value: x.operation.signature,
         sample: x.operation.signature,
         label: x.operation.signature,
       })),
+      helpText:
+        "Select the smart contract function you want to use as an action. Next you will be able to set the parameters.",
     });
     if (fieldData?._grinderyFunction) {
       const action = cds.actions.find((x) => x.operation.signature === fieldData._grinderyFunction);
