@@ -81,27 +81,3 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
   };
   return res;
 }
-
-
-// clkPriceFeedActionInputProvider({
-//   key: "clkPriceFeedAction",
-//   fieldData: {
-//   }
-// });
-
-// clkPriceFeedActionInputProvider({
-//   key: "clkPriceFeedAction",
-//   fieldData: {
-//     _grinderyChain: "eip155:5"
-//   }
-// });
-
-// clkPriceFeedAction({
-//   key: "clkPriceFeedAction",
-//   fields: {
-//     _grinderyChain: "eip155:5",
-//     _getChainlinkPriceFeed: "BTC / ETH - 0x779877A7B0D9E8603169DdbD7836e478b4624789",
-//     userToken: "eyJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJ1cm46Z3JpbmRlcnk6YWNjZXNzLXRva2VuOnYxIiwic3ViIjoiZWlwMTU1OjE6MHhCMjAxZkRkOTBiMTRjYzkzMGJFYzJjNEU5ZjQzMmJDMUNBNUFkN0M1IiwiaWF0IjoxNjc0MTYxMDIxLCJpc3MiOiJ1cm46Z3JpbmRlcnk6b3JjaGVzdHJhdG9yIiwiZXhwIjoxNjc0MTY0NjIxfQ.vOed-8w4tMp96zmhUzzzdpPKW9_HEMhcWZ-EQkMcWKL9cx_xHYRiKckZqE01F3C4cs_SdJRT9JSTJa50UYy9Ag"
-//   },
-//   sessionId: "1"
-// });
