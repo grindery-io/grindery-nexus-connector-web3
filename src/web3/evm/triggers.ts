@@ -144,6 +144,7 @@ export class NewEventTrigger extends TriggerBase<{
             return;
           }
         }
+        const timestamp = Date.now();
         memoCall("getPastLogsMap", () =>
           web3.eth
             .getPastLogs({
@@ -151,6 +152,12 @@ export class NewEventTrigger extends TriggerBase<{
               toBlock: block.number,
             })
             .then((logs) => {
+              const elapsed = Date.now() - timestamp;
+              if (elapsed > 60000) {
+                console.warn(
+                  `[${this.fields.chain}] getPastLogs for block ${block.number} took ${elapsed}ms to complete`
+                );
+              }
               blockingTracer.tag("evm.NewEventTrigger.processLogsOnce");
               const map = new Map<string, typeof logs>();
               for (const logEntry of logs) {
