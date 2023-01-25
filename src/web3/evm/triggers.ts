@@ -5,6 +5,7 @@ import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./ut
 import blockingTracer from "../../blockingTracer";
 import { getWeb3 } from "./web3";
 import { BigNumber } from "@ethersproject/bignumber";
+import { backOff } from "exponential-backoff";
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -161,29 +162,43 @@ export class NewEventTrigger extends TriggerBase<{
         }
         const timestamp = Date.now();
         memoCall("getPastLogsMap", () =>
-          web3.eth
-            .getPastLogs({
-              fromBlock: block.number,
-              toBlock: block.number,
-            })
-            .then((logs) => {
-              const elapsed = Date.now() - timestamp;
-              if (elapsed > 60000) {
-                console.warn(
-                  `[${this.fields.chain}] getPastLogs for block ${block.number} took ${elapsed}ms to complete`
+          backOff(
+            () =>
+              web3.eth.getPastLogs({
+                fromBlock: block.number,
+                toBlock: block.number,
+              }),
+            {
+              jitter: "full",
+              startingDelay: 1000,
+              maxDelay: 15000,
+              numOfAttempts: 10,
+              retry: (e, attemptNumber) => {
+                console.error(
+                  `[${this.fields.chain}] Failed to get logs for block ${block.number} (attempt ${attemptNumber}):`,
+                  e
                 );
+                return true;
+              },
+            }
+          ).then((logs) => {
+            const elapsed = Date.now() - timestamp;
+            if (elapsed > 60000) {
+              console.warn(
+                `[${this.fields.chain}] getPastLogs for block ${block.number} took ${elapsed}ms to complete`
+              );
+            }
+            blockingTracer.tag("evm.NewEventTrigger.processLogsOnce");
+            const map = new Map<string, typeof logs>();
+            for (const logEntry of logs) {
+              const eventSignature = logEntry.topics[0];
+              if (!map.has(eventSignature)) {
+                map.set(eventSignature, []);
               }
-              blockingTracer.tag("evm.NewEventTrigger.processLogsOnce");
-              const map = new Map<string, typeof logs>();
-              for (const logEntry of logs) {
-                const eventSignature = logEntry.topics[0];
-                if (!map.has(eventSignature)) {
-                  map.set(eventSignature, []);
-                }
-                map.get(eventSignature)?.push(logEntry);
-              }
-              return map;
-            })
+              map.get(eventSignature)?.push(logEntry);
+            }
+            return map;
+          })
         )
           .then(async (logsMap) => {
             blockingTracer.tag("evm.NewEventTrigger.processLogs");
