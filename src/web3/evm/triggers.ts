@@ -4,7 +4,7 @@ import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./utils";
 import blockingTracer from "../../blockingTracer";
 import { getWeb3 } from "./web3";
-import BigNumber from "bignumber.js";
+import { BigNumber } from "@ethersproject/bignumber";
 
 export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
   async main() {
@@ -14,7 +14,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
-    const { web3, close } = getWeb3(this.fields.chain as string);
+    const { close, ethersProvider } = getWeb3(this.fields.chain as string);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
@@ -27,16 +27,25 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
           if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
             continue;
           }
+          const timestamp = Date.now();
+          const diff = BigNumber.from(timestamp).sub(BigNumber.from(block.timestamp).mul(1000));
+          if (diff.gt(1000 * 60 * 10)) {
+            memoCall("delayedBlockWarning", () =>
+              console.warn(
+                `[${this.fields.chain}] Block ${block.number} is delayed by ${diff.div(1000 * 60).toString()} minutes`
+              )
+            );
+          }
 
-          let txfees = new BigNumber(transaction.gas).multipliedBy(
-            new BigNumber(transaction.gasPrice || transaction.maxFeePerGas?.toString() || block.baseFeePerGas || "0")
+          let txfees = BigNumber.from(transaction.gas).mul(
+            BigNumber.from(transaction.gasPrice || transaction.maxFeePerGas?.toString() || block.baseFeePerGas || "0")
           );
           try {
             const transactionReceipt = await memoCall("getTransactionFee", () =>
-              web3.eth.getTransactionReceipt(transaction.hash)
+              ethersProvider.getTransactionReceipt(transaction.hash)
             );
-            txfees = new BigNumber(transactionReceipt.gasUsed || transaction.gas).multipliedBy(
-              new BigNumber(
+            txfees = BigNumber.from(transactionReceipt.gasUsed || transaction.gas).mul(
+              BigNumber.from(
                 transactionReceipt.effectiveGasPrice ||
                   transaction.gasPrice ||
                   transaction.maxFeePerGas?.toString() ||
@@ -50,6 +59,12 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
                 transaction.hash
               }, using estimated fee ${txfees.toString()}`,
               e
+            );
+          }
+          const elapsed = Date.now() - timestamp;
+          if (elapsed > 60000) {
+            console.warn(
+              `[${this.sessionId}] getTransactionFee for transaction ${transaction.hash} took ${elapsed}ms to complete`
             );
           }
           console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
