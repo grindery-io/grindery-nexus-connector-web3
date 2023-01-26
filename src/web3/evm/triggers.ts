@@ -66,7 +66,9 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
               `[${this.sessionId}] getTransactionFee for transaction ${transaction.hash} took ${elapsed}ms to complete`
             );
           }
-          console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction ${transaction.hash}`);
+          console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction [${chain}] ${transaction.hash}`, {
+            timestamp: BigNumber.from(block.timestamp).toString(),
+          });
           this.sendNotification({
             ...transaction,
             _grinderyChain: chain,
@@ -302,7 +304,12 @@ export class NewEventTrigger extends TriggerBase<{
                   }
                 }
               }
-              console.log(`[${this.sessionId}] NewEventTrigger: Sending notification ${logEntry.transactionHash}`);
+              console.log(
+                `[${this.sessionId}] NewEventTrigger: Sending notification [${chain}] ${logEntry.transactionHash} #${logEntry.logIndex}`,
+                {
+                  timestamp: BigNumber.from(block.timestamp).toString(),
+                }
+              );
               let chainId = chain;
               const m = /^eip155:(\d+)$/.exec(chainId);
               if (m) {
