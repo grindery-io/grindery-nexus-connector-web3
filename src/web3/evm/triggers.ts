@@ -67,7 +67,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
             );
           }
           console.log(`[${this.sessionId}] NewTransactionTrigger: Sending transaction [${chain}] ${transaction.hash}`, {
-            timestamp: BigNumber.from(block.timestamp).toString(),
+            blockTimestamp: BigNumber.from(block.timestamp).toString(),
           });
           this.sendNotification({
             ...transaction,
@@ -307,7 +307,7 @@ export class NewEventTrigger extends TriggerBase<{
               console.log(
                 `[${this.sessionId}] NewEventTrigger: Sending notification [${chain}] ${logEntry.transactionHash} #${logEntry.logIndex}`,
                 {
-                  timestamp: BigNumber.from(block.timestamp).toString(),
+                  blockTimestamp: BigNumber.from(block.timestamp).toString(),
                 }
               );
               let chainId = chain;
