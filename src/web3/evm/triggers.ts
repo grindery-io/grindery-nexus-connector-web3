@@ -32,9 +32,7 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
           const diff = BigNumber.from(timestamp).sub(BigNumber.from(block.timestamp).mul(1000));
           if (diff.gt(1000 * 60 * 10)) {
             memoCall("delayedBlockWarning", () =>
-              console.warn(
-                `[${this.fields.chain}] Block ${block.number} is delayed by ${diff.div(1000 * 60).toString()} minutes`
-              )
+              console.warn(`[${chain}] Block ${block.number} is delayed by ${diff.div(1000 * 60).toString()} minutes`)
             );
           }
 
@@ -174,19 +172,14 @@ export class NewEventTrigger extends TriggerBase<{
               maxDelay: 15000,
               numOfAttempts: 10,
               retry: (e, attemptNumber) => {
-                console.error(
-                  `[${this.fields.chain}] Failed to get logs for block ${block.number} (attempt ${attemptNumber}):`,
-                  e
-                );
+                console.error(`[${chain}] Failed to get logs for block ${block.number} (attempt ${attemptNumber}):`, e);
                 return true;
               },
             }
           ).then((logs) => {
             const elapsed = Date.now() - timestamp;
             if (elapsed > 60000) {
-              console.warn(
-                `[${this.fields.chain}] getPastLogs for block ${block.number} took ${elapsed}ms to complete`
-              );
+              console.warn(`[${chain}] getPastLogs for block ${block.number} took ${elapsed}ms to complete`);
             }
             blockingTracer.tag("evm.NewEventTrigger.processLogsOnce");
             const map = new Map<string, typeof logs>();
