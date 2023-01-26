@@ -9,4 +9,4 @@ spec:
       - name: APP_NAME
         resources:
           requests:
-            cpu: 500m
+            cpu: 1000m
