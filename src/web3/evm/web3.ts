@@ -24,7 +24,7 @@ export function getWeb3(chain = "eth") {
   } else {
     wrapper.addRef();
   }
-  const ethersProvider = new ethers.providers.JsonRpcProvider(urlHttp || url);
+  const ethersProvider = new ethers.providers.StaticJsonRpcProvider(urlHttp || url);
   return {
     web3: wrapper.web3,
     ethersProvider,
