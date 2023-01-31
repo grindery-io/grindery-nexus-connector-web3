@@ -15,8 +15,12 @@ import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import ERC20 from "./abi/ERC20.json";
 import SyndicateERC721 from "./abi/ERC721Collective.json";
+import { VaultSigner } from "./signer";
+import { ethers } from "ethers";
 
 const hubAvailability = new Map<string, boolean>();
+
+const vaultSigner = new VaultSigner();
 
 function onlyOnce(fn: () => void): () => void {
   let called = false;
@@ -109,6 +113,7 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
+  const address = await vaultSigner.getAddress();
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
     /* A function that returns the balance of an address. */
@@ -229,11 +234,8 @@ export async function callSmartContract(
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const account = web3.eth.accounts.privateKeyToAccount(process.env.WEB3_PRIVATE_KEY!);
-      web3.eth.accounts.wallet.add(account);
-      web3.eth.defaultAccount = account.address;
-      web3.defaultAccount = account.address;
+      web3.eth.defaultAccount = address;
+      web3.defaultAccount = address;
     }
 
     let callData: string;
@@ -305,7 +307,7 @@ export async function callSmartContract(
     }
 
     const rawTxConfig: TransactionConfig = {
-      from: web3.defaultAccount,
+      from: address,
       to: input.fields.contractAddress,
       data: callData,
     };
@@ -405,7 +407,23 @@ export async function callSmartContract(
           minFee: minFee.toString(),
         };
       } else {
-        const receipt = await web3.eth.sendTransaction(txConfig);
+        const signedTransaction = await vaultSigner.signTransaction({
+          from: txConfig.from?.toString(),
+          to: txConfig.to,
+          data: txConfig.data,
+          value: txConfig.value?.toString(),
+          nonce: txConfig.nonce,
+          chainId: await web3.eth.getChainId(),
+          gasLimit: txConfig.gas,
+          ...(txConfig.maxFeePerGas
+            ? {
+                type: 2,
+                maxFeePerGas: txConfig.maxFeePerGas?.toString(),
+                maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas?.toString(),
+              }
+            : { gasPrice: txConfig.gasPrice?.toString() }),
+        });
+        const receipt = await web3.eth.sendSignedTransaction(signedTransaction);
         releaseLock(); // Block less time
         result = receipt;
         const cost = BigNumber.from(receipt.gasUsed || txConfig.gas)
