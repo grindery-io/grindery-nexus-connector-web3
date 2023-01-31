@@ -36,10 +36,12 @@
     "ethers": "^5.7.0",
     "ethers-eip712": "^0.2.0",
     "exponential-backoff": "^3.1.0",
+    "google-auth-library": "^8.7.0",
     "grindery-nexus-common-utils": "^2.0.3",
     "ipfs-core": "^0.17.0",
     "ipfs-http-client": "^59.0.0",
     "jose": "^4.10.0",
+    "json-rpc-2.0": "^1.4.2",
     "lodash": "^4.17.21",
     "mutexify": "^1.4.0",
     "near-api-js": "^1.1.0",
@@ -49,6 +51,7 @@
     "ws": "^8.11.0"
   },
   "devDependencies": {
+    "@metamask/eth-sig-util": "^5.0.2",
     "@onflow/types": "^1.0.2",
     "@tsconfig/node16": "^1.0.2",
     "@types/lodash": "^4.14.182",
