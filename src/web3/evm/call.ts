@@ -16,7 +16,6 @@ import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import ERC20 from "./abi/ERC20.json";
 import SyndicateERC721 from "./abi/ERC721Collective.json";
 import { VaultSigner } from "./signer";
-import { ethers } from "ethers";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -78,7 +77,7 @@ async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | T
     nonce = await droneContract.methods.getNextNonce().call();
   }
   const transactionHash = await hubContract.methods.getTransactionHash(droneAddress, tx.to, nonce, tx.data).call();
-  const signature = await web3.eth.sign(transactionHash, tx.from);
+  const signature = await vaultSigner.signMessage(transactionHash);
   tx = { ...tx };
   if (hasDrone) {
     tx.data = droneContract.methods.sendTransaction(tx.to, nonce, tx.data, signature).encodeABI();
