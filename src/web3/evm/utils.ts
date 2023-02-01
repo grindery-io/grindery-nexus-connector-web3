@@ -4,7 +4,7 @@ import { BlockTransactionObject } from "web3-eth";
 import { getWeb3 } from "./web3";
 import { hmac, TAccessToken } from "../../jwt";
 
-export const HUB_ADDRESS = "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
+export const HUB_ADDRESS = process.env.EVM_HUB_ADDRESS || "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
 export function onNewBlockMultiChain(
   chains: string | string[],
