@@ -1,10 +1,10 @@
 import Web3 from "web3";
 import { AbiItem } from "web3-utils";
 import { ethers } from "ethers";
-import { joinSignature } from "@ethersproject/bytes";
-import { TypedDataUtils } from "ethers-eip712";
 import mutexify from "mutexify/promise";
 import axios from "axios";
+import vaultSigner from "./signer";
+import { SignTypedDataVersion } from "@metamask/eth-sig-util";
 
 const ABI = [
   {
@@ -754,8 +754,6 @@ export async function encodeExecTransaction({
     }
     if (threshold > 1) {
       const [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver, nonce] = params;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const wallet = new ethers.Wallet(process.env.WEB3_PRIVATE_KEY!);
       const message = {
         to,
         value,
@@ -769,50 +767,57 @@ export async function encodeExecTransaction({
         nonce,
       };
       message.to = ethers.utils.getAddress(String(message.to));
-      const typedData = {
-        types: {
-          EIP712Domain: [
-            {
-              type: "uint256",
-              name: "chainId",
-            },
-            {
-              type: "address",
-              name: "verifyingContract",
-            },
-          ],
-          SafeTx: [
-            { type: "address", name: "to" },
-            { type: "uint256", name: "value" },
-            { type: "bytes", name: "data" },
-            { type: "uint8", name: "operation" },
-            { type: "uint256", name: "safeTxGas" },
-            { type: "uint256", name: "baseGas" },
-            { type: "uint256", name: "gasPrice" },
-            { type: "address", name: "gasToken" },
-            { type: "address", name: "refundReceiver" },
-            { type: "uint256", name: "nonce" },
-          ],
+      const signature = await vaultSigner.signTypedData({
+        data: {
+          types: {
+            EIP712Domain: [
+              {
+                type: "uint256",
+                name: "chainId",
+              },
+              {
+                type: "address",
+                name: "verifyingContract",
+              },
+            ],
+            SafeTx: [
+              { type: "address", name: "to" },
+              { type: "uint256", name: "value" },
+              { type: "bytes", name: "data" },
+              { type: "uint8", name: "operation" },
+              { type: "uint256", name: "safeTxGas" },
+              { type: "uint256", name: "baseGas" },
+              { type: "uint256", name: "gasPrice" },
+              { type: "address", name: "gasToken" },
+              { type: "address", name: "refundReceiver" },
+              { type: "uint256", name: "nonce" },
+            ],
+          },
+          primaryType: "SafeTx",
+          domain: {
+            chainId,
+            verifyingContract: contractAddress,
+          },
+          message,
         },
-        primaryType: "SafeTx",
-        domain: {
-          chainId,
-          verifyingContract: contractAddress,
-        },
-        message,
-      };
-      const digest = TypedDataUtils.encodeDigest(typedData);
-      const signature = joinSignature(wallet._signingKey().signDigest(digest));
+        version: SignTypedDataVersion.V4,
+      });
       if (dryRun) {
         return {
-          digest: ethers.utils.hexlify(digest),
+          safeTxHash: txHash,
           signature,
         };
       }
       try {
         const resp = await axios.post(
           `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
-          { origin: "Grindery Nexus", safeTxHash: txHash, signature, sender: await wallet.getAddress(), ...message }
+          {
+            origin: "Grindery Nexus",
+            safeTxHash: txHash,
+            signature,
+            sender: await vaultSigner.getAddress(),
+            ...message,
+          }
         );
         return resp.data;
       } catch (e) {
@@ -820,8 +825,7 @@ export async function encodeExecTransaction({
         throw e;
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    let signature = await web3.eth.sign(txHash, web3.defaultAccount!);
+    let signature = await vaultSigner.signMessage(txHash);
     // https://github.com/safe-global/safe-contracts/blob/c36bcab46578a442862d043e12a83fec41143dec/contracts/GnosisSafe.sol#L293
     signature =
       signature.slice(0, signature.length - 2) + (parseInt(signature.slice(signature.length - 2), 16) + 4).toString(16);

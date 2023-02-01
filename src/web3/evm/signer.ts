@@ -47,3 +47,6 @@ export class VaultSigner extends ethers.Signer {
     return new VaultSigner(provider);
   }
 }
+
+const vaultSigner = new VaultSigner();
+export default vaultSigner;
