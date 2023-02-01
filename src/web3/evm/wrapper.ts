@@ -16,6 +16,9 @@ function instrumentProvider<T extends { send: (payload, callback) => void }>(
         console.log("instrumentProvider: Unexpected payload", { payload });
         continue;
       }
+      if (request.method === "eth_sign") {
+        console.warn(`Unexpected call to ${request.method}`, { request });
+      }
       trackSingle("web3ApiCalls", { ...extraTags, method: request.method });
     }
     // eslint-disable-next-line prefer-rest-params, @typescript-eslint/no-explicit-any
