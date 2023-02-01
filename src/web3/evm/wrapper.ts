@@ -17,7 +17,7 @@ function instrumentProvider<T extends { send: (payload, callback) => void }>(
         continue;
       }
       if (request.method === "eth_sign") {
-        console.warn(`Unexpected call to ${request.method}`, { request });
+        console.warn(`Unexpected call to ${request.method}`, { request }, new Error("For stack trace"));
       }
       trackSingle("web3ApiCalls", { ...extraTags, method: request.method });
     }
