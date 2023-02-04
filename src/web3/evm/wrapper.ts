@@ -71,7 +71,7 @@ export class Web3Wrapper extends EventEmitter {
   }
 
   redactedUrl() {
-    return this.url.replace(/([0-9a-f-]{8,}|[0-9a-z_]{16,})/i, "***");
+    return this.url.replace(/([0-9a-f-]{8,}|[0-9a-z_-]{16,})/i, "***");
   }
   close() {
     if (this.ref <= 0) {
