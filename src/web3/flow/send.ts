@@ -1,6 +1,7 @@
 import { config, mutate, tx, send } from "@onflow/fcl";
 import { template as createAccountTemplate } from "@onflow/six-create-account";
-import { createSigner, publicKeyFromPrivateKey } from "./signer";
+import { callVaultWithCache } from "../../vaultAgent";
+import { createSigner } from "./signer";
 
 // Contrary to our wallet signing example, we don't need most of it in our config now
 // so we'll get back to simple version
@@ -39,17 +40,23 @@ export async function sendTransaction({
   return txDetails;
 }
 
-export async function createAccount({ senderArgs }: { senderArgs: Parameters<typeof createSigner>[0] }) {
+export async function createAccount({
+  senderArgs,
+  payerArgs,
+}: {
+  senderArgs: Parameters<typeof createSigner>[0];
+  payerArgs: Parameters<typeof createSigner>[0];
+}) {
   const signer = createSigner(senderArgs);
   const proposer = signer;
-  const payer = signer;
+  const payer = createSigner(payerArgs);
   const authorization = signer;
   const response = await send([
     createAccountTemplate({
       proposer,
       authorization,
       payer,
-      publicKey: publicKeyFromPrivateKey(senderArgs.pkey),
+      publicKey: await callVaultWithCache("flowGetPublicKey"),
       signatureAlgorithm: "2",
       hashAlgorithm: "1",
       weight: "1000.0",
