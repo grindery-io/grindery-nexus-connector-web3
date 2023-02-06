@@ -36,3 +36,10 @@ export async function callVault<T = unknown>(method: string, params = {}): Promi
     throw e;
   }
 }
+const cache = new Map<string, unknown>();
+export async function callVaultWithCache<T = unknown>(method: string): Promise<T> {
+  if (!cache.has(method)) {
+    cache.set(method, await callVault(method));
+  }
+  return cache.get(method) as T;
+}

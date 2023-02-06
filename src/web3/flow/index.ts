@@ -3,6 +3,7 @@ import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { sendTransaction, createAccount as _createAccount } from "./send";
 import { TAccessToken } from "../../jwt";
 import axios from "axios";
+import { callVaultWithCache } from "../../vaultAgent";
 
 export * from "./triggers";
 
@@ -63,38 +64,31 @@ export async function callSmartContract(
     }
     args.push([input.fields.parameters[name], type]);
   }
-  const privateKeyParts = process.env.FLOW_KEY?.split("/");
-  if (privateKeyParts?.length !== 3) {
-    throw new Error("Invalid flow key");
-  }
   const result = await sendTransaction({
     cadence,
     args,
     senderArgs: {
       accountAddress: address,
       keyId: 0,
-      pkey: privateKeyParts[2],
     },
     payerArgs: {
-      accountAddress: privateKeyParts[0],
-      keyId: parseInt(privateKeyParts[1], 10),
-      pkey: privateKeyParts[2],
+      accountAddress: await callVaultWithCache("flowGetPayerAddress"),
+      keyId: 0,
     },
   });
   return { key: input.key, sessionId: input.sessionId, payload: result };
 }
 
 export async function createAccount() {
-  const privateKeyParts = process.env.FLOW_KEY?.split("/");
-  if (privateKeyParts?.length !== 3) {
-    throw new Error("Invalid flow key");
-  }
-
   return await _createAccount({
     senderArgs: {
-      accountAddress: privateKeyParts[0],
-      keyId: parseInt(privateKeyParts[1], 10),
-      pkey: privateKeyParts[2],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      accountAddress: process.env.FLOW_PROPOSER_ADDRESS!,
+      keyId: 0,
+    },
+    payerArgs: {
+      accountAddress: await callVaultWithCache("flowGetPayerAddress"),
+      keyId: 0,
     },
   });
 }
