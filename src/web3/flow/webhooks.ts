@@ -9,10 +9,14 @@ export function createAccountBegin() {
   const token = uuidv4();
   const promise = createAccount();
   inFlight.set(token, null);
-  promise.finally(() => {
-    inFlight.set(token, promise);
-    setTimeout(() => inFlight.delete(token), 15000);
-  });
+  promise
+    .catch((e) => {
+      console.error("Error when creating Flow account:", e);
+    })
+    .finally(() => {
+      inFlight.set(token, promise);
+      setTimeout(() => inFlight.delete(token), 15000);
+    });
   return { token };
 }
 
