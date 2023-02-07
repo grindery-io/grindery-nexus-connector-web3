@@ -57,7 +57,7 @@ export async function createAccount({
       authorization,
       payer,
       publicKey: await callVaultWithCache("flowGetPublicKey"),
-      signatureAlgorithm: "2",
+      signatureAlgorithm: "1",
       hashAlgorithm: "1",
       weight: "1000.0",
     }),
