@@ -1,4 +1,4 @@
-import { sansPrefix, withPrefix } from "@onflow/fcl";
+import { sansPrefix } from "@onflow/fcl";
 import { callVault } from "../../vaultAgent";
 
 // This is freshly minted account done with faucet
@@ -16,14 +16,7 @@ export const createSigner = function ({ keyId, accountAddress }: { keyId: number
 
       // This is where magic happens! ✨
       signingFunction: async (signable) => {
-        // Singing functions are passed a signable and need to return a composite signature
-        // signable.message is a hex string of what needs to be signed.
-        const signature = await callVault("flowSignTransaction", { signable });
-        return {
-          addr: withPrefix(accountAddress), // needs to be the same as the account.addr but this time with a prefix, eventually they will both be with a prefix
-          keyId: Number(keyId), // needs to be the same as account.keyId, once again make sure its a number and not a string
-          signature, // this needs to be a hex string of the signature, where signable.message is the hex value that needs to be signed
-        };
+        return await callVault("flowSignTransaction", { signable });
       },
     };
   };
