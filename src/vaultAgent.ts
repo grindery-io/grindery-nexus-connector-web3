@@ -1,15 +1,20 @@
-import { GoogleAuth, IdTokenClient } from "google-auth-library";
+import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { JSONRPCRequest, JSONRPCResponse } from "json-rpc-2.0";
 
 const auth = new GoogleAuth();
-let client: IdTokenClient;
+let client: OAuth2Client;
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const VAULT_AGENT_URL = process.env.VAULT_AGENT_URL!;
 
 async function getClient() {
   if (!client) {
-    client = await auth.getIdTokenClient(VAULT_AGENT_URL);
+    try {
+      client = await auth.getIdTokenClient(VAULT_AGENT_URL);
+    } catch (e) {
+      console.warn("Can't get idTokenClient, falling back to regular client");
+      client = (await auth.getClient()) as OAuth2Client;
+    }
   }
   return client;
 }
