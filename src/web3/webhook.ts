@@ -40,6 +40,10 @@ const WEBHOOK_FUNCTIONS = {
   async safeGetDelegateAddress() {
     return { address: await callVaultWithCache("ethNtaGetAddress") };
   },
+  async clientModeOAuthComplete(params: ConnectorInput<WebhookParams>) {
+    const { code } = params.fields.payload as { code: string };
+    return JSON.parse(Buffer.from(code, "base64url").toString());
+  },
   async echo(params: ConnectorInput<WebhookParams>) {
     return params.fields.payload;
   },
