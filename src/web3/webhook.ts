@@ -3,6 +3,7 @@ import * as evm from "./evm";
 import { parseUserAccessToken } from "../jwt";
 import { CHAINS } from "./index";
 import flow from "./flow/webhooks";
+import { callVaultWithCache } from "../vaultAgent";
 
 const WEBHOOK_FUNCTIONS = {
   async getDroneAddress(params: ConnectorInput<WebhookParams>) {
@@ -35,6 +36,13 @@ const WEBHOOK_FUNCTIONS = {
   async flowCreateAccountComplete(params: ConnectorInput<WebhookParams>) {
     const { code } = params.fields.payload as { code: string };
     return await flow.createAccountComplete(code);
+  },
+  async safeGetDelegateAddress() {
+    return { address: await callVaultWithCache("ethNtaGetAddress") };
+  },
+  async clientModeOAuthComplete(params: ConnectorInput<WebhookParams>) {
+    const { code } = params.fields.payload as { code: string };
+    return JSON.parse(Buffer.from(code, "base64url").toString());
   },
   async echo(params: ConnectorInput<WebhookParams>) {
     return params.fields.payload;
