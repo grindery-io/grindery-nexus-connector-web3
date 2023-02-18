@@ -129,7 +129,7 @@ const UNIT_CONVERTERS: [
   [
     /^([^-]+)->wei$/,
     async (value: unknown, m: RegExpMatchArray) => {
-      console.log(String(value));
+      // console.log(String(value));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return Web3.utils.toWei(String(value), m[1] as any);
     },

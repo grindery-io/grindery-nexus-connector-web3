@@ -7,12 +7,14 @@ import { NtaSigner } from "../../signer";
 import { SignTypedDataVersion } from "@metamask/eth-sig-util";
 import ABI from "./abi.json";
 import { getWeb3 } from "../../web3";
+import { sanitizeParameters } from "../../../../utils";
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
 
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
 export async function gnosisSafeSimpleTransfer(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+  await sanitizeParameters(input, []);
   const parameters = input.fields as { [key: string]: string };
   const dryRun = parameters.dryRun ?? false;
   const authResp = await axios.post(
