@@ -19,7 +19,7 @@ import { sanitizeParameters } from "./utils";
 import { gnosisSafeSimpleTransfer } from "./web3/evm/connector/gnosisSafe";
 
 export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
-  await sanitizeParameters(params);
+  await sanitizeParameters(params, []);
   if (!("chain" in (params.fields as Record<string, unknown>))) {
     throw new InvalidParamsError("Missing chain parameter");
   }
