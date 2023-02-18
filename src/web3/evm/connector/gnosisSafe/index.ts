@@ -45,7 +45,7 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
   await sanitizeParameters(input, []);
   const dryRun = parameters.dryRun ?? false;
   const contractAddress: string = authResp.data.safe;
-  parameters.to = String(parameters.to).trim();
+  parameters.to = ethers.utils.getAddress(String(parameters.to).trim());
   let nonce = "0" as string | number;
   if (!nonceMutexes[contractAddress]) {
     nonceMutexes[contractAddress] = mutexify();
