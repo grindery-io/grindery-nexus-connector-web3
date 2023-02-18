@@ -27,9 +27,7 @@ export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTrans
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
 async function proposeTransaction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
-  await sanitizeParameters(input, []);
   const parameters = input.fields as { [key: string]: string };
-  const dryRun = parameters.dryRun ?? false;
   const authResp = await axios.post(
     (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "safe") +
       "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
@@ -42,10 +40,13 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
       },
     }
   );
+  const chainId = authResp.data.chainId;
+  parameters.chain = `eip155:${chainId}`;
+  await sanitizeParameters(input, []);
+  const dryRun = parameters.dryRun ?? false;
   const contractAddress: string = authResp.data.safe;
   parameters.to = String(parameters.to).trim();
   let nonce = "0" as string | number;
-  const chainId = authResp.data.chainId;
   if (!nonceMutexes[contractAddress]) {
     nonceMutexes[contractAddress] = mutexify();
   }
@@ -55,7 +56,7 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
     try {
       const nonceResp = await axios.post(
         `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
-        { value: "0", operation: 0, to: parameters.to, data: "0x" }
+        { value: "0", operation: 0, to: parameters.to, data: parameters.data }
       );
       nonce = nonceResp.data.recommendedNonce;
     } catch (e) {
