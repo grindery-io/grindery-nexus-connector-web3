@@ -8,12 +8,25 @@ import { SignTypedDataVersion } from "@metamask/eth-sig-util";
 import ABI from "./abi.json";
 import { getWeb3 } from "../../web3";
 import { sanitizeParameters } from "../../../../utils";
+import AbiCoder from "web3-eth-abi";
+import Web3 from "web3";
+
+const ERC20_TRANSFER = {
+  inputs: [
+    { internalType: "address", name: "recipient", type: "address" },
+    { internalType: "uint256", name: "amount", type: "uint256" },
+  ],
+  name: "transfer",
+  outputs: [{ internalType: "bool", name: "", type: "bool" }],
+  stateMutability: "nonpayable",
+  type: "function",
+};
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
 
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
-export async function gnosisSafeSimpleTransfer(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+async function proposeTransaction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
   await sanitizeParameters(input, []);
   const parameters = input.fields as { [key: string]: string };
   const dryRun = parameters.dryRun ?? false;
@@ -58,7 +71,7 @@ export async function gnosisSafeSimpleTransfer(input: ConnectorInput<unknown>): 
     const params = [
       parameters.to,
       String(parameters.value),
-      "0x",
+      parameters.data,
       0,
       "0",
       "0",
@@ -154,4 +167,21 @@ export async function gnosisSafeSimpleTransfer(input: ConnectorInput<unknown>): 
     releaseLock();
     close();
   }
+}
+
+export async function gnosisSafeSimpleTransfer(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+  const parameters = input.fields as { [key: string]: string };
+  parameters.data = "0x";
+  return await proposeTransaction(input);
+}
+
+export async function gnosisSafeSimpleTransferToken(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+  const parameters = input.fields as { [key: string]: unknown };
+  parameters.data = AbiCoder.encodeFunctionCall(ERC20_TRANSFER as AbiItem, [
+    parameters.to as string,
+    Web3.utils.numberToHex(parameters.value as number),
+  ]);
+  parameters.value = "0";
+  parameters.to = parameters.tokenContractAddress;
+  return await proposeTransaction(input);
 }

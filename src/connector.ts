@@ -16,7 +16,7 @@ import {
 import { clkPriceFeedAction, clkPriceFeedActionInputProvider } from "./web3/evm/connector/chainlink";
 
 import { sanitizeParameters } from "./utils";
-import { gnosisSafeSimpleTransfer } from "./web3/evm/connector/gnosisSafe";
+import { gnosisSafeSimpleTransfer, gnosisSafeSimpleTransferToken } from "./web3/evm/connector/gnosisSafe";
 
 export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
   await sanitizeParameters(params);
@@ -44,6 +44,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     genericAbiAction,
     clkPriceFeedAction,
     gnosisSafeSimpleTransfer,
+    gnosisSafeSimpleTransferToken,
   },
   triggers: {
     newTransaction: { factory: setupSignal },
