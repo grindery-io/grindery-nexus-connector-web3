@@ -11,14 +11,12 @@ import {
   genericAbiAction,
   genericAbiActionInputProvider,
   genericAbiTrigger,
-  genericAbiTriggerInputProvider
+  genericAbiTriggerInputProvider,
 } from "./web3/evm/connector/genericAbi";
-import {
-  clkPriceFeedAction,
-  clkPriceFeedActionInputProvider
-} from "./web3/evm/connector/chainlink";
+import { clkPriceFeedAction, clkPriceFeedActionInputProvider } from "./web3/evm/connector/chainlink";
 
 import { sanitizeParameters } from "./utils";
+import { gnosisSafeSimpleTransfer } from "./web3/evm/connector/gnosisSafe";
 
 export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> {
   await sanitizeParameters(params);
@@ -44,7 +42,8 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   actions: {
     callSmartContract,
     genericAbiAction,
-    clkPriceFeedAction
+    clkPriceFeedAction,
+    gnosisSafeSimpleTransfer,
   },
   triggers: {
     newTransaction: { factory: setupSignal },
