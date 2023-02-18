@@ -26,7 +26,7 @@ export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTrans
 
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
-async function proposeTransaction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+async function sanitizeInput(input: ConnectorInput<unknown>) {
   const parameters = input.fields as { [key: string]: string };
   const authResp = await axios.post(
     (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "safe") +
@@ -42,15 +42,22 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
   );
   const chainId = authResp.data.chainId;
   parameters.chain = `eip155:${chainId}`;
+  parameters.chainId = chainId;
+  parameters.contractAddress = authResp.data.safe;
   await sanitizeParameters(input, []);
+}
+
+async function proposeTransaction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+  const parameters = input.fields as { [key: string]: string };
   const dryRun = parameters.dryRun ?? false;
-  const contractAddress: string = authResp.data.safe;
+  const contractAddress: string = parameters.contractAddress;
   parameters.to = ethers.utils.getAddress(String(parameters.to).trim());
   let nonce = "0" as string | number;
   if (!nonceMutexes[contractAddress]) {
     nonceMutexes[contractAddress] = mutexify();
   }
-  const { web3, close } = getWeb3(`eip155:${chainId}`);
+  const chainId = Number(parameters.chainId);
+  const { web3, close } = getWeb3(parameters.chain);
   const releaseLock = await nonceMutexes[contractAddress]();
   try {
     try {
@@ -171,12 +178,14 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
 }
 
 export async function gnosisSafeSimpleTransfer(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+  await sanitizeInput(input);
   const parameters = input.fields as { [key: string]: string };
   parameters.data = "0x";
   return await proposeTransaction(input);
 }
 
 export async function gnosisSafeSimpleTransferToken(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+  await sanitizeInput(input);
   const parameters = input.fields as { [key: string]: unknown };
   parameters.data = AbiCoder.encodeFunctionCall(ERC20_TRANSFER as AbiItem, [
     parameters.to as string,
