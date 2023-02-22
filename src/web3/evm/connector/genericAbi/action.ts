@@ -31,6 +31,7 @@ export async function genericAbiActionInputProvider(params: InputProviderInput<u
           action.operation.inputFields.map((x) => ({ ...x, updateFieldDefinition: false } as FieldSchema))
         );
         ret.outputFields = action.operation.outputFields;
+        ret.sample = action.operation.sample;
       }
     }
   }

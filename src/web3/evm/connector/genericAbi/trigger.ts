@@ -33,6 +33,7 @@ export async function genericAbiTriggerInputProvider(
           trigger.operation.inputFields.map((x) => ({ ...x, updateFieldDefinition: false } as FieldSchema))
         );
         ret.outputFields = trigger.operation.outputFields;
+        ret.sample = trigger.operation.sample;
       }
     }
   }
