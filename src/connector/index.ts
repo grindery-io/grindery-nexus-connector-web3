@@ -10,6 +10,8 @@ import { clkPriceFeedAction, clkPriceFeedActionInputProvider } from "../web3/evm
 
 import { gnosisSafeSimpleTransfer, gnosisSafeSimpleTransferToken } from "../web3/evm/connector/gnosisSafe";
 import {
+  safeDepositReceivedERC20,
+  safeDepositReceivedNative,
   safeTransactionExecutedAddOwner,
   safeTransactionExecutedOther,
   safeTransactionExecutedRemoveOwner,
@@ -38,6 +40,8 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     safeTransactionExecutedAddOwner: { factory: safeTransactionExecutedAddOwner },
     safeTransactionExecutedRemoveOwner: { factory: safeTransactionExecutedRemoveOwner },
     safeTransactionExecutedOther: { factory: safeTransactionExecutedOther },
+    safeDepositReceivedNative: { factory: safeDepositReceivedNative },
+    safeDepositReceivedERC20: { factory: safeDepositReceivedERC20 },
   },
   inputProviders: {
     genericAbiAction: genericAbiActionInputProvider,

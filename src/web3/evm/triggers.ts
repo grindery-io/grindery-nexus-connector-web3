@@ -321,6 +321,7 @@ export class NewEventTrigger extends TriggerBase<{
                 __chainId: chainId,
                 _grinderyTransactionHash: logEntry.transactionHash,
                 _grinderyChainId: chainId,
+                _grinderyBlockTimestamp: block.timestamp,
                 ...event,
               });
             }
