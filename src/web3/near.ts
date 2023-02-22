@@ -1,10 +1,6 @@
 import { EventEmitter } from "node:events";
 import _, { method } from "lodash";
-import {
-  ConnectorInput,
-  ConnectorOutput,
-  TriggerBase,
-} from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../blockingTracer";
@@ -111,24 +107,14 @@ class ReceiptSubscriber extends EventEmitter {
           continue;
         }
         const pendingBlocks = [response];
-        while (
-          currentHash &&
-          pendingBlocks[0].header.prev_hash !== currentHash
-        ) {
+        while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
           pendingBlocks.unshift(
             await near.connection.provider.block({
               blockId: pendingBlocks[0].header.prev_hash,
             })
           );
-          if (
-            currentHeight &&
-            pendingBlocks[0].header.height <= currentHeight
-          ) {
-            console.log(
-              "[Near] Last block was removed:",
-              currentHeight,
-              currentHash
-            );
+          if (currentHeight && pendingBlocks[0].header.height <= currentHeight) {
+            console.log("[Near] Last block was removed:", currentHeight, currentHash);
             if (pendingBlocks[0].header.height < currentHeight) {
               pendingBlocks.shift();
             }
@@ -136,50 +122,48 @@ class ReceiptSubscriber extends EventEmitter {
           }
         }
         if (pendingBlocks.length > 10) {
-          console.warn(
-            `[Near] Too many blocks in a row: ${pendingBlocks.length}`
-          );
+          console.warn(`[Near] Too many blocks in a row: ${pendingBlocks.length}`);
         }
         pendingBlocks.sort((a, b) => a.header.height - b.header.height);
         for (const [ib, block] of pendingBlocks.entries()) {
           console.log(block.header.height, txReceipt.length);
-          const isLastBlock = ib === pendingBlocks.length-1;
-          const nextblockinfos = isLastBlock ? responsePost : pendingBlocks[ib+1];
+          const isLastBlock = ib === pendingBlocks.length - 1;
+          const nextblockinfos = isLastBlock ? responsePost : pendingBlocks[ib + 1];
           const receipts = [] as Receipt[];
-          txReceipt = txReceipt.filter(({blockHeight}) => (block.header.height - blockHeight) < 20);
+          txReceipt = txReceipt.filter(({ blockHeight }) => block.header.height - blockHeight < 20);
           for (const chunk of block.chunks) {
             await backOff(
               async () => {
                 /* Getting the chunk details from the NEAR blockchain. */
-                const chunkDetails = await near.connection.provider.chunk(
-                  chunk.chunk_hash
-                );
+                const chunkDetails = await near.connection.provider.chunk(chunk.chunk_hash);
                 /* Push the transactions and calculate the top receiptsId */
                 for (const tx of chunkDetails.transactions) {
                   txReceipt.push({
                     txhash: tx.hash,
                     blockHash: block.header.hash,
                     blockHeight: block.header.height,
-                    receipts: [{
-                      receiptId: await receiptIdFromTx(tx.hash, block.header.hash, 0),
-                      blockHash: "",
-                      blockHeight: 0,
-                      idParent: 0,
-                      nbreNested: 0
-                    }],
+                    receipts: [
+                      {
+                        receiptId: await receiptIdFromTx(tx.hash, block.header.hash, 0),
+                        blockHash: "",
+                        blockHeight: 0,
+                        idParent: 0,
+                        nbreNested: 0,
+                      },
+                    ],
                   });
                 }
                 for (const receipt of chunkDetails.receipts) {
                   /* Finding the index of the receipt in the txReceipt array. */
-                  const it = txReceipt.findIndex(e => {
-                    if (e.receipts.findIndex(r => r.receiptId === receipt.receipt_id) !== -1) {
+                  const it = txReceipt.findIndex((e) => {
+                    if (e.receipts.findIndex((r) => r.receiptId === receipt.receipt_id) !== -1) {
                       return true;
                     }
                   });
 
                   if (it !== -1) {
                     /* Index receipt and parent */
-                    const idReceipt = txReceipt[it].receipts.findIndex(r => r.receiptId === receipt.receipt_id);
+                    const idReceipt = txReceipt[it].receipts.findIndex((r) => r.receiptId === receipt.receipt_id);
                     const idParent = txReceipt[it].receipts[idReceipt].idParent;
                     /* Update block hash and height for the receipt */
                     txReceipt[it].receipts[idReceipt].blockHash = block.header.hash;
@@ -190,7 +174,7 @@ class ReceiptSubscriber extends EventEmitter {
                       blockHash: nextblockinfos.header.hash,
                       blockHeight: nextblockinfos.header.height,
                       idParent: txReceipt[it].receipts[idReceipt].idParent,
-                      nbreNested: txReceipt[it].receipts[idReceipt].nbreNested
+                      nbreNested: txReceipt[it].receipts[idReceipt].nbreNested,
                     });
                     /* Creating a new receiptId from the previous receiptId = childs. */
                     txReceipt[it].receipts.push({
@@ -202,7 +186,7 @@ class ReceiptSubscriber extends EventEmitter {
                       blockHash: "",
                       blockHeight: 0,
                       idParent: idReceipt,
-                      nbreNested: 0
+                      nbreNested: 0,
                     });
                     txReceipt[it].receipts.push({
                       receiptId: await receiptIdFromTx(
@@ -212,12 +196,12 @@ class ReceiptSubscriber extends EventEmitter {
                       ),
                       blockHash: "",
                       blockHeight: 0,
-                      idParent: idReceipt+1,
-                      nbreNested: 0
+                      idParent: idReceipt + 1,
+                      nbreNested: 0,
                     });
                     /* Increase the number of childs for the receipt */
                     txReceipt[it].receipts[idReceipt].nbreNested++;
-                    txReceipt[it].receipts[idReceipt+1].nbreNested++;
+                    txReceipt[it].receipts[idReceipt + 1].nbreNested++;
                     /* Creating a new receipt and pushing it to the receipts array = brother. */
                     txReceipt[it].receipts.push({
                       receiptId: await receiptIdFromTx(
@@ -285,13 +269,7 @@ class ReceiptSubscriber extends EventEmitter {
    * @param  - `callback` is the function that will be called when a new receipt is received.
    * @returns A function that removes the event listener.
    */
-  subscribe({
-    callback,
-    onError,
-  }: {
-    callback: (receipt: Receipt) => void;
-    onError: (error: unknown) => void;
-  }) {
+  subscribe({ callback, onError }: { callback: (receipt: Receipt) => void; onError: (error: unknown) => void }) {
     const handler = async (receipt: Receipt) => {
       await callback(receipt);
     };
@@ -327,25 +305,14 @@ class NewTransactionTrigger extends TriggerBase<{
     }
     this.fields.from = normalizeAddress(this.fields.from);
     this.fields.to = normalizeAddress(this.fields.to);
-    console.log(
-      `[${this.sessionId}] NewTransactionTrigger:`,
-      this.fields.chain,
-      this.fields.from,
-      this.fields.to
-    );
+    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        if (
-          this.fields.from &&
-          this.fields.from !== normalizeAddress(receipt.predecessor_id)
-        ) {
+        if (this.fields.from && this.fields.from !== normalizeAddress(receipt.predecessor_id)) {
           return;
         }
-        if (
-          this.fields.to &&
-          this.fields.to !== normalizeAddress(receipt.receiver_id)
-        ) {
+        if (this.fields.to && this.fields.to !== normalizeAddress(receipt.receiver_id)) {
           return;
         }
         /* Listening for new transactions on the chain and sending a notification to the receiver of
@@ -387,8 +354,6 @@ class NewTransactionTrigger extends TriggerBase<{
   }
 }
 
-
-
 /* It subscribes to the blockchain and sends a notification whenever a contract emits an event */
 class NewEventTrigger extends TriggerBase<{
   chain: string | string[];
@@ -408,16 +373,11 @@ class NewEventTrigger extends TriggerBase<{
       this.fields.contractAddress = undefined;
     }
     const functions =
-      typeof this.fields.eventDeclaration === "string"
-        ? [this.fields.eventDeclaration]
-        : this.fields.eventDeclaration;
+      typeof this.fields.eventDeclaration === "string" ? [this.fields.eventDeclaration] : this.fields.eventDeclaration;
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: any) => {
         blockingTracer.tag("near.NewEventTrigger");
-        if (
-          this.fields.contractAddress &&
-          this.fields.contractAddress !== receipt.receiver_id
-        ) {
+        if (this.fields.contractAddress && this.fields.contractAddress !== receipt.receiver_id) {
           return;
         }
         for (const action of receipt.receipt.Action?.actions ?? []) {
@@ -431,19 +391,14 @@ class NewEventTrigger extends TriggerBase<{
           let args;
           if (functionCall.args.length < 4096) {
             try {
-              args = JSON.parse(
-                Buffer.from(functionCall.args, "base64").toString("utf-8")
-              );
+              args = JSON.parse(Buffer.from(functionCall.args, "base64").toString("utf-8"));
             } catch (e) {
               // Fall through
             }
             if (!args) {
               try {
                 args = {
-                  _argsDecoded: Buffer.from(
-                    functionCall.args,
-                    "base64"
-                  ).toString("utf-8"),
+                  _argsDecoded: Buffer.from(functionCall.args, "base64").toString("utf-8"),
                 };
               } catch (e) {
                 // Fall through
@@ -455,18 +410,12 @@ class NewEventTrigger extends TriggerBase<{
               _rawArgs: functionCall.args,
             };
           }
-          args._from =
-            receipt.receipt.Action?.signer_id ||
-            normalizeAddress(receipt.receipt.Action?.signer_public_key);
-          for (const [key, value] of Object.entries(
-            this.fields.parameterFilters
-          )) {
+          args._from = receipt.receipt.Action?.signer_id || normalizeAddress(receipt.receipt.Action?.signer_public_key);
+          for (const [key, value] of Object.entries(this.fields.parameterFilters)) {
             if (key.startsWith("_grindery")) {
               continue;
             }
-            if (
-              normalizeAddress(_.get(args, key)) !== normalizeAddress(value)
-            ) {
+            if (normalizeAddress(_.get(args, key)) !== normalizeAddress(value)) {
               return;
             }
           }
@@ -492,10 +441,7 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-export const Triggers = new Map<
-  string,
-  new (params: ConnectorInput) => TriggerBase
->();
+export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
@@ -507,7 +453,9 @@ Triggers.set("newEvent", NewEventTrigger);
 const networkId = "mainnet";
 const CONTRACT_NAME = "nft.grindery.near";
 const keyStore = new keyStores.InMemoryKeyStore();
-const keyPair = KeyPair.fromString(process.env.PRIVATE_KEY as string);
+const keyPair = process.env.PRIVATE_KEY
+  ? KeyPair.fromString(process.env.PRIVATE_KEY as string)
+  : KeyPair.fromRandom("ed25519");
 
 keyStore.setKey(networkId, CONTRACT_NAME, keyPair);
 
@@ -534,9 +482,7 @@ export async function callSmartContract(
     nodeUrl: "https://rpc.mainnet.near.org",
   };
 
-  const user = await parseUserAccessToken(input.fields.userToken).catch(
-    () => null
-  );
+  const user = await parseUserAccessToken(input.fields.userToken).catch(() => null);
   if (!user) {
     throw new Error("User token is invalid");
   }
@@ -545,13 +491,13 @@ export async function callSmartContract(
 
   /* Calling the ft_metadata function of the NEP-141 contract. */
   if (input.fields.functionDeclaration === "getInformationNEP141Token") {
-    const queryToken = await near.connection.provider.query({
+    const queryToken = (await near.connection.provider.query({
       request_type: "call_function",
       finality: "final",
       account_id: input.fields.contractAddress,
       method_name: "ft_metadata",
-      args_base64: ""
-    }) as resultQuery;
+      args_base64: "",
+    })) as resultQuery;
 
     const result = JSON.parse(String.fromCharCode(...queryToken.result));
 
@@ -567,7 +513,7 @@ export async function callSmartContract(
         name: result.name,
         symbol: result.symbol,
         icon: result.icon,
-        decimals: result.decimals.toString()
+        decimals: result.decimals.toString(),
       },
     };
   }
@@ -616,8 +562,6 @@ export async function callSmartContract(
   // throw new Error("Not implemented");
 }
 
-export async function getUserDroneAddress(
-  _user: TAccessToken
-): Promise<string> {
+export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
   throw new Error("Not implemented");
 }
