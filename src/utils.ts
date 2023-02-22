@@ -16,6 +16,10 @@ async function sanitizeObject(parameters: Record<string, unknown>, input: Connec
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function sanitizeParameters(input: ConnectorInput<any>, paramKeys = ["parameterFilters", "parameters"]) {
+  if ("_grinderyContractAddress" in input.fields) {
+    input.fields.contractAddress = input.fields._grinderyContractAddress;
+    delete input.fields._grinderyContractAddress;
+  }
   if ("_grinderyChain" in input.fields) {
     input.fields.chain = input.fields._grinderyChain;
     delete input.fields._grinderyChain;
