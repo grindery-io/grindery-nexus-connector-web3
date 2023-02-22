@@ -24,6 +24,28 @@ function mapType(abiType: string) {
   }
   return "string";
 }
+function getSampleValue(abiType: string) {
+  if (abiType.includes("[]")) {
+    return "[]";
+  }
+  const NUMBER_TYPES = ["uint8", "uint16", "uint32", "int8", "int16", "int32", "bytes1"];
+  if (NUMBER_TYPES.includes(abiType)) {
+    return "123";
+  }
+  if (abiType === "bool") {
+    return "true";
+  }
+  if (abiType === "string") {
+    return "Sample value";
+  }
+  if (abiType === "address") {
+    return "0x9c3F02A7010b122Fd218DFdd46F83E2BeeA09ad2";
+  }
+  if (abiType === "bytes32") {
+    return "0x111122223333444455556666777788889999aaaa";
+  }
+  return "0";
+}
 function abiInputToField(inp: AbiInput | AbiOutput) {
   return {
     key: inp.name,
@@ -84,10 +106,14 @@ export const getCDS = (ABI: string) => {
             .join(", ")})`,
           inputFields: x.inputs.map(abiInputToField),
           outputFields: (x.inputs.map(abiInputToField) as FieldSchema[]).concat([
-            { key: "__transactionHash", label: "Transaction hash", type: "string" },
-            { key: "__chainId", label: "Chain ID", type: "string" },
+            { key: "_grinderyTransactionHash", label: "Transaction hash", type: "string" },
+            { key: "_grinderyChainId", label: "Chain ID", type: "string" },
           ]),
-          sample: {},
+          sample: {
+            _grinderyTransactionHash: "0x19bbca58d22d704e98da94f0fade1c9be9bffa9a222539ba6b7f6ae193e4ef5a",
+            _grinderyChainId: "5",
+            ...Object.fromEntries(x.inputs.map((inp) => [inp.name, getSampleValue(inp.type)])),
+          },
         },
       })),
     actions: parsedInput
@@ -119,7 +145,14 @@ export const getCDS = (ABI: string) => {
                   { key: "contractAddress", label: "Contract address", type: "string" },
                 ] as FieldSchema[])
               : [],
-          sample: {},
+          sample:
+            (x.constant || x.stateMutability === "pure") && x.outputs?.length === 1
+              ? {
+                  returnValue: getSampleValue(x.outputs?.[0].type || "string"),
+                  transactionHash: "0x19bbca58d22d704e98da94f0fade1c9be9bffa9a222539ba6b7f6ae193e4ef5a",
+                  contractAddress: "0x88ec574e2ef0ecf9043373139099f7e535f94dbc",
+                }
+              : {},
         },
       })),
   };
