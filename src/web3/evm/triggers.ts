@@ -319,6 +319,8 @@ export class NewEventTrigger extends TriggerBase<{
                 _rawEvent: logEntry,
                 __transactionHash: logEntry.transactionHash,
                 __chainId: chainId,
+                _grinderyTransactionHash: logEntry.transactionHash,
+                _grinderyChainId: chainId,
                 ...event,
               });
             }
