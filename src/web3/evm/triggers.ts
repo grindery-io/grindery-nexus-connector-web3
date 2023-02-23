@@ -200,7 +200,7 @@ export class NewEventTrigger extends TriggerBase<{
             const entries = Object.keys(eventInfoMap)
               .map((x) => logsMap.get(x) || [])
               .flat();
-            const transactionLogFailures: { [key: string]: number } = {};
+            const transactionLogFailures: { [key: string]: number } = memoCall("transactionLogFailures", () => ({}));
             let numProcessed = 0;
             for (const logEntry of entries as ((typeof entries)[0] & {
               __decodeFailure?: boolean;
@@ -325,13 +325,15 @@ export class NewEventTrigger extends TriggerBase<{
                 ...event,
               });
             }
-            for (const [transaction, num] of Object.entries(transactionLogFailures)) {
-              if (num > 1) {
-                console.warn(
-                  `[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`
-                );
+            memoCall("transactionLogFailuresReport", () => {
+              for (const [transaction, num] of Object.entries(transactionLogFailures)) {
+                if (num > 1) {
+                  console.warn(
+                    `[${this.sessionId}] Transaction ${transaction} has ${num} log entries that can't be decoded`
+                  );
+                }
               }
-            }
+            });
           })
           .catch((e) => {
             memoCall("getLogError" + e.toString(), () =>
