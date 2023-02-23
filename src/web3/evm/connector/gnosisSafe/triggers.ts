@@ -5,6 +5,43 @@ import { sanitizeParameters } from "../../../../utils";
 
 import * as evm from "../../triggers";
 
+function fillTransferInfo(payload: Record<string, unknown>, safeTxInfo) {
+  if (safeTxInfo.txInfo?.transferInfo?.value) {
+    payload.value = safeTxInfo.txInfo?.transferInfo?.value;
+    payload.valueFormatted = safeTxInfo.txInfo.transferInfo.valueFormatted = ethers.utils.formatUnits(
+      safeTxInfo.txInfo?.transferInfo?.value,
+      safeTxInfo.txInfo?.transferInfo?.decimals || "ether"
+    );
+    for (const key of ["tokenAddress", "tokenName", "tokenSymbol", "logoUri", "decimals"]) {
+      if (key in safeTxInfo.txInfo.transferInfo) {
+        payload[key] = safeTxInfo.txInfo.transferInfo[key];
+      }
+    }
+  }
+  safeTxInfo.txInfo.sender = safeTxInfo.txInfo.sender?.value || safeTxInfo.txInfo.sender;
+  safeTxInfo.txInfo.recipient = safeTxInfo.txInfo.recipient?.value || safeTxInfo.txInfo.recipient;
+}
+
+function processSafeTxInfo(safeTxInfo, payload: Record<string, unknown>) {
+  payload.safeTxInfo = safeTxInfo;
+  if (safeTxInfo.detailedExecutionInfo) {
+    Object.assign(payload, safeTxInfo.detailedExecutionInfo);
+  }
+  let type = "other";
+  if (safeTxInfo.txInfo?.transferInfo) {
+    fillTransferInfo(payload, safeTxInfo);
+    type = `transfer_${safeTxInfo.txInfo.transferInfo.type?.toLowerCase() || "unknown"}`;
+  }
+  if (safeTxInfo.txInfo?.type === "SettingsChange") {
+    type = safeTxInfo.txInfo.settingsInfo?.type?.toLowerCase() || "settings_change";
+    if (safeTxInfo.txInfo.settingsInfo.owner) {
+      safeTxInfo.txInfo.owner = safeTxInfo.txInfo.settingsInfo.owner.value || safeTxInfo.txInfo.settingsInfo.owner;
+    }
+  }
+  Object.assign(payload, safeTxInfo.txInfo || {});
+  return type;
+}
+
 export async function safeTransactionExecuted(
   input: ConnectorInput,
   predicate = (_payload: Record<string, unknown>) => true
@@ -32,36 +69,24 @@ export async function safeTransactionExecuted(
     }
     delete payload.payment;
     const safeTxInfo = resp.data;
-    payload.safeTxInfo = safeTxInfo;
-    if (safeTxInfo.detailedExecutionInfo) {
-      Object.assign(payload, safeTxInfo.detailedExecutionInfo);
-    }
-    let type = "other";
-    if (safeTxInfo.txInfo?.transferInfo) {
-      if (safeTxInfo.txInfo?.transferInfo?.value) {
-        payload.value = safeTxInfo.txInfo?.transferInfo?.value;
-        payload.valueFormatted = safeTxInfo.txInfo.transferInfo.valueFormatted = ethers.utils.formatUnits(
-          safeTxInfo.txInfo?.transferInfo?.value,
-          safeTxInfo.txInfo?.transferInfo?.decimals || "ether"
-        );
-        for (const key of ["tokenAddress", "tokenName", "tokenSymbol", "logoUri", "decimals"]) {
-          if (key in safeTxInfo.txInfo.transferInfo) {
-            payload[key] = safeTxInfo.txInfo.transferInfo[key];
-          }
-        }
-        type = `transfer_${safeTxInfo.txInfo.transferInfo.type?.toLowerCase() || "unknown"}`;
+    if (safeTxInfo.txInfo?.isCancellation) {
+      const resp = await axios
+        .get(
+          `https://safe-client.gnosis.io/v1/chains/${payload._grinderyChainId}/safes/${payload._grinderyContractAddress}/multisig-transactions?nonce=${safeTxInfo.detailedExecutionInfo?.nonce}`
+        )
+        .catch((e) => {
+          console.error("Failed to get rejected transaction data:", e.response?.data || e, { payload });
+        });
+      const rejectedTxInfo = resp?.data?.results?.map((x) => x.transaction)?.find((x) => x.txStatus === "CANCELLED");
+      if (rejectedTxInfo) {
+        payload.rejectedType = processSafeTxInfo(rejectedTxInfo, payload);
       }
-      safeTxInfo.txInfo.sender = safeTxInfo.txInfo.sender?.value || safeTxInfo.txInfo.sender;
-      safeTxInfo.txInfo.recipient = safeTxInfo.txInfo.recipient?.value || safeTxInfo.txInfo.recipient;
+      payload.nonce = safeTxInfo.detailedExecutionInfo?.nonce;
+      payload.type = "rejection";
+    } else {
+      const type = processSafeTxInfo(safeTxInfo, payload);
+      payload.type = type;
     }
-    if (safeTxInfo.txInfo.type === "SettingsChange") {
-      type = safeTxInfo.txInfo.settingsInfo?.type?.toLowerCase() || "settings_change";
-      if (safeTxInfo.txInfo.settingsInfo.owner) {
-        safeTxInfo.txInfo.owner = safeTxInfo.txInfo.settingsInfo.owner.value || safeTxInfo.txInfo.settingsInfo.owner;
-      }
-    }
-    Object.assign(payload, safeTxInfo.txInfo || {});
-    payload.type = type;
     if (!predicate(payload)) {
       return false;
     }
@@ -139,3 +164,6 @@ export const safeTransactionExecutedRemoveOwner = async (input: ConnectorInput) 
   safeTransactionExecuted(input, (payload) => payload.type === "remove_owner");
 export const safeTransactionExecutedOther = async (input: ConnectorInput) =>
   safeTransactionExecuted(input, (payload) => payload.type === "other");
+
+export const safeTransactionRejected = async (input: ConnectorInput) =>
+  safeTransactionExecuted(input, (payload) => payload.type === "rejection");
