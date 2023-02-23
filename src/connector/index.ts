@@ -14,6 +14,7 @@ import {
   safeDepositReceivedNative,
   safeTransactionExecutedAddOwner,
   safeTransactionExecutedOther,
+  safeTransactionRejected,
   safeTransactionExecutedRemoveOwner,
   safeTransactionExecutedTransferERC20,
   safeTransactionExecutedTransferNative,
@@ -42,6 +43,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     safeTransactionExecutedOther: { factory: safeTransactionExecutedOther },
     safeDepositReceivedNative: { factory: safeDepositReceivedNative },
     safeDepositReceivedERC20: { factory: safeDepositReceivedERC20 },
+    safeTransactionRejected: { factory: safeTransactionRejected },
   },
   inputProviders: {
     genericAbiAction: genericAbiActionInputProvider,
