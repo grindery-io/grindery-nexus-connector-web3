@@ -408,7 +408,7 @@ export async function callSmartContract(
           from: txConfig.from?.toString(),
           to: txConfig.to,
           data: txConfig.data,
-          value: txConfig.value?.toString(),
+          value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
           nonce: txConfig.nonce,
           chainId: await web3.eth.getChainId(),
           gasLimit: txConfig.gas,
