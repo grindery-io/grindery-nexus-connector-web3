@@ -411,14 +411,16 @@ export async function callSmartContract(
           value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
           nonce: txConfig.nonce,
           chainId: await web3.eth.getChainId(),
-          gasLimit: txConfig.gas,
+          gasLimit: txConfig.gas ? BigNumber.from(txConfig.gas).toHexString() : undefined,
           ...(txConfig.maxFeePerGas
             ? {
                 type: 2,
-                maxFeePerGas: txConfig.maxFeePerGas?.toString(),
-                maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas?.toString(),
+                maxFeePerGas: txConfig.maxFeePerGas ? BigNumber.from(txConfig.maxFeePerGas).toHexString() : undefined,
+                maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas
+                  ? BigNumber.from(txConfig.maxPriorityFeePerGas).toHexString()
+                  : undefined,
               }
-            : { gasPrice: txConfig.gasPrice?.toString() }),
+            : { gasPrice: txConfig.gasPrice ? BigNumber.from(txConfig.gasPrice).toHexString() : undefined }),
         });
         const receipt = await web3.eth.sendSignedTransaction(signedTransaction);
         releaseLock(); // Block less time
