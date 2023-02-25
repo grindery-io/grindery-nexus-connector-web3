@@ -10,16 +10,21 @@ import { clkPriceFeedAction, clkPriceFeedActionInputProvider } from "../web3/evm
 
 import { gnosisSafeSimpleTransfer, gnosisSafeSimpleTransferToken } from "../web3/evm/connector/gnosisSafe";
 import {
-  safeDepositReceivedERC20,
-  safeDepositReceivedNative,
   safeTransactionExecutedAddOwner,
   safeTransactionExecutedOther,
   safeTransactionRejected,
   safeTransactionExecutedRemoveOwner,
   safeTransactionExecutedTransferERC20,
   safeTransactionExecutedTransferNative,
-} from "../web3/evm/connector/gnosisSafe/triggers";
+} from "../web3/evm/connector/gnosisSafe/triggers/execution";
+import { safeDepositReceivedERC20, safeDepositReceivedNative } from "../web3/evm/connector/gnosisSafe/triggers/deposit";
 import { setupSignal, callSmartContract } from "./entrypoint";
+import {
+  TransactionNewConfirmationTrigger,
+  TransactionProposedTrigger,
+  TransactionRejectionNewConfirmationTrigger,
+  TransactionRejectionProposedTrigger,
+} from "../web3/evm/connector/gnosisSafe/triggers/proposal";
 
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   actions: {
@@ -44,6 +49,10 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     safeDepositReceivedNative: { factory: safeDepositReceivedNative },
     safeDepositReceivedERC20: { factory: safeDepositReceivedERC20 },
     safeTransactionRejected: { factory: safeTransactionRejected },
+    safeTransactionProposed: TransactionProposedTrigger,
+    safeTransactionRejectionProposed: TransactionRejectionProposedTrigger,
+    safeTransactionNewConfirmation: TransactionNewConfirmationTrigger,
+    safeTransactionRejectionNewConfirmation: TransactionRejectionNewConfirmationTrigger,
   },
   inputProviders: {
     genericAbiAction: genericAbiActionInputProvider,
