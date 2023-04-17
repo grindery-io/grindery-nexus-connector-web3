@@ -4,14 +4,7 @@ import { ethers } from "ethers";
 
 const web3Cache = new Map<string, Web3Wrapper>();
 export function getWeb3(chain = "eth") {
-  let [url, urlHttp] = Array.isArray(CHAIN_MAPPING[chain])
-    ? (CHAIN_MAPPING[chain] as [string, string])
-    : [(CHAIN_MAPPING[chain] as string) || "", ""];
-  const isRawUrl = url.includes("://");
-  if (!isRawUrl) {
-    urlHttp = `https://rpc.ankr.com/${url || chain}/${process.env.ANKR_KEY}`;
-    url = `wss://rpc.ankr.com/${url || chain}/ws/${process.env.ANKR_KEY}`;
-  }
+  const [url, urlHttp] = CHAIN_MAPPING[chain];
   let wrapper = web3Cache.get(url);
   if (!wrapper || wrapper.isClosed()) {
     wrapper = new Web3Wrapper(url, urlHttp);

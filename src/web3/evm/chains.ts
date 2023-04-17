@@ -1,24 +1,32 @@
 import "dotenv/config";
-export const CHAIN_MAPPING: { [key: string]: string | [string, string] } = {
-  "eip155:1": "eth",
-  "eip155:42161": "arbitrum",
-  "eip155:100": "gnosis",
-  "eip155:137": "polygon",
-  "eip155:42220": "celo",
-  "eip155:43114": "avalanche",
-  "eip155:56": "bsc",
-  "eip155:250": "fantom",
-  "eip155:1666600000": "harmony",
 
-  "eip155:80001": "polygon_mumbai",
-  "eip155:5": [
-    `wss://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
-    `https://eth-goerli.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
-  ],
-  "eip155:97": "bsc_testnet_chapel",
+const ANKR = (name: string): [string, string] => [
+  `wss://rpc.ankr.com/${name}/${process.env.ANKR_KEY}`,
+  `https://rpc.ankr.com/${name}/ws/${process.env.ANKR_KEY}`,
+];
+const ALCHEMY = (name: string): [string, string] => [
+  `wss://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+  `https://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+];
+const GETBLOCK = (name: string, netType: "mainnet" = "mainnet"): [string, string] => [
+  `wss://${name}.getblock.io/${netType}/?api_key=${process.env.GETBLOCK_API_KEY}`,
+  `https://${name}.getblock.io/${netType}/?api_key=${process.env.GETBLOCK_API_KEY}`,
+];
 
-  "eip155:25": [
-    `wss://cro.getblock.io/mainnet/?api_key=${process.env.GETBLOCK_API_KEY}`,
-    `https://cro.getblock.io/mainnet/?api_key=${process.env.GETBLOCK_API_KEY}`,
-  ],
+export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
+  "eip155:1": ANKR("eth"),
+  "eip155:42161": ANKR("arbitrum"),
+  "eip155:100": ANKR("gnosis"),
+  "eip155:137": ANKR("polygon"),
+  "eip155:42220": ANKR("celo"),
+  "eip155:43114": ANKR("avalanche"),
+  "eip155:56": ANKR("bsc"),
+  "eip155:250": ANKR("fantom"),
+  "eip155:1666600000": ANKR("harmony"),
+
+  "eip155:80001": ANKR("polygon_mumbai"),
+  "eip155:5": ALCHEMY("eth-goerli"),
+  "eip155:97": ANKR("bsc_testnet_chapel"),
+
+  "eip155:25": GETBLOCK("cro"),
 };
