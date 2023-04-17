@@ -25,6 +25,7 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:1666600000": ANKR("harmony"),
   "eip155:25": GETBLOCK("cro"),
   "eip155:1101": ANKR("polygon_zkevm"),
+  "eip155:1284": ANKR("moonbeam"),
 
   // Testnets
   "eip155:80001": ANKR("polygon_mumbai"),
