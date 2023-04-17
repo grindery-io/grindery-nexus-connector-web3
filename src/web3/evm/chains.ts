@@ -23,10 +23,14 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:56": ANKR("bsc"),
   "eip155:250": ANKR("fantom"),
   "eip155:1666600000": ANKR("harmony"),
+  "eip155:25": GETBLOCK("cro"),
+  "eip155:1101": ANKR("polygon_zkevm"),
 
+  // Testnets
   "eip155:80001": ANKR("polygon_mumbai"),
   "eip155:5": ALCHEMY("eth-goerli"),
+  "eip155:11155111": ANKR("eth_sepolia"),
   "eip155:97": ANKR("bsc_testnet_chapel"),
-
-  "eip155:25": GETBLOCK("cro"),
+  "eip155:4002": ANKR("fantom_testnet"),
+  "eip155:1442": ANKR("polygon_zkevm_testnet"),
 };
