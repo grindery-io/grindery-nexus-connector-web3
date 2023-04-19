@@ -3,7 +3,10 @@ import { Web3Wrapper } from "./wrapper";
 import { ethers } from "ethers";
 
 const web3Cache = new Map<string, Web3Wrapper>();
-export function getWeb3(chain = "eth") {
+export function getWeb3(chain = "eip155:1") {
+  if (!CHAIN_MAPPING[chain]) {
+    throw new Error("Invalid chain: " + chain);
+  }
   const [url, urlHttp] = CHAIN_MAPPING[chain];
   let wrapper = web3Cache.get(url);
   if (!wrapper || wrapper.isClosed()) {
