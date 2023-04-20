@@ -1,8 +1,8 @@
 import "dotenv/config";
 
 const ANKR = (name: string): [string, string] => [
-  `wss://rpc.ankr.com/${name}/${process.env.ANKR_KEY}`,
-  `https://rpc.ankr.com/${name}/ws/${process.env.ANKR_KEY}`,
+  `wss://rpc.ankr.com/${name}/ws/${process.env.ANKR_KEY}`,
+  `https://rpc.ankr.com/${name}/${process.env.ANKR_KEY}`,
 ];
 const ALCHEMY = (name: string): [string, string] => [
   `wss://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
