@@ -367,20 +367,20 @@ export async function callSmartContract(
         }
       }
 
-      const gas = await web3.eth.estimateGas(txConfig);
-      txConfig.gas = Math.ceil(gas * 1.1 + 1000000);
+      const gas = BigNumber.from(await web3.eth.estimateGas(txConfig));
+      txConfig.gas = gas.mul(11).div(10).add(50000).toHexString();
       let minFee: BigNumber;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
         txConfig.maxPriorityFeePerGas = 0;
-        txConfig.maxFeePerGas = Number(web3.utils.toWei("110", "kwei"));
+        txConfig.maxFeePerGas = BigNumber.from(web3.utils.toWei("110", "kwei")).toHexString();
         minFee = BigNumber.from(txConfig.maxFeePerGas);
       } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
         minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10);
         const maxTip = BigNumber.from(input.fields.maxPriorityFeePerGas || minFee.div(2));
         const maxFee = input.fields.gasLimit
-          ? Math.floor(Number(input.fields.gasLimit) / txConfig.gas)
-          : feeData.maxFeePerGas.add(maxTip).toNumber();
+          ? BigNumber.from(input.fields.gasLimit).div(txConfig.gas)
+          : feeData.maxFeePerGas.add(maxTip);
         if (minFee.gt(maxFee)) {
           throw new Error(
             `Gas limit of ${web3.utils.fromWei(
@@ -389,18 +389,18 @@ export async function callSmartContract(
             )} is too low, need at least ${web3.utils.fromWei(minFee.mul(txConfig.gas || 1).toString(), "ether")}`
           );
         }
-        txConfig.maxFeePerGas = maxFee;
-        txConfig.maxPriorityFeePerGas = maxTip.toNumber();
+        txConfig.maxFeePerGas = maxFee.toHexString();
+        txConfig.maxPriorityFeePerGas = maxTip.toHexString();
       } else {
         const gasPrice = (feeData.gasPrice || (await ethersProvider.getGasPrice())).mul(12).div(10);
-        txConfig.gasPrice = gasPrice.toString();
+        txConfig.gasPrice = gasPrice.toHexString();
         minFee = gasPrice.mul(txConfig.gas);
       }
 
       if (isSimulation) {
         result = {
           returnValue: callResultDecoded,
-          estimatedGas: gas,
+          estimatedGas: gas.toString(),
           minFee: minFee.toString(),
         };
       } else {
