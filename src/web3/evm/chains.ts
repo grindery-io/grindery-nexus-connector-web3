@@ -4,12 +4,12 @@ const ANKR = (name: string): [string, string] => [
   `wss://rpc.ankr.com/${name}/ws/${process.env.ANKR_KEY}`,
   `https://rpc.ankr.com/${name}/${process.env.ANKR_KEY}`,
 ];
-/*
+
 const ALCHEMY = (name: string): [string, string] => [
   `wss://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
   `https://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
 ];
-*/
+
 const GETBLOCK = (name: string, netType: "mainnet" | "testnet" | string = "mainnet"): [string, string] => [
   `wss://${name}.getblock.io/${process.env.GETBLOCK_API_KEY}/${netType}/`,
   `https://${name}.getblock.io/${process.env.GETBLOCK_API_KEY}/${netType}/`,
@@ -31,7 +31,7 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
 
   // Testnets
   "eip155:80001": ANKR("polygon_mumbai"),
-  "eip155:5": GETBLOCK("eth", "goerli"),
+  "eip155:5": ALCHEMY("eth-goerli"),
   "eip155:11155111": ANKR("eth_sepolia"),
   "eip155:97": ANKR("bsc_testnet_chapel"),
   "eip155:4002": ANKR("fantom_testnet"),
