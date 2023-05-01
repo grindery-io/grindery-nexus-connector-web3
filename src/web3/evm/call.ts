@@ -326,9 +326,9 @@ export async function callSmartContract(
         input.fields.chain,
         web3
       );
-      let callResult, callResultDecoded;
+      let callResultDecoded;
       try {
-        callResult = await web3.eth.call(txConfig);
+        const callResult = await web3.eth.call(txConfig);
         if (droneAddress) {
           const decoded = web3.eth.abi.decodeParameters(
             GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
@@ -346,9 +346,16 @@ export async function callSmartContract(
             });
           }
           if (functionInfo.outputs?.length) {
-            callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
-            if (functionInfo.outputs.length === 1) {
-              callResultDecoded = callResultDecoded[0];
+            if (isSimulation && !decoded.returnData) {
+              const result = await web3.eth.call({ ...rawTxConfig, from: droneAddress });
+              decoded.returnData = result;
+              console.log("Calling again to get correct return value", { decoded });
+            }
+            if (decoded.returnData) {
+              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
+              if (functionInfo.outputs.length === 1) {
+                callResultDecoded = callResultDecoded[0];
+              }
             }
           }
         }
