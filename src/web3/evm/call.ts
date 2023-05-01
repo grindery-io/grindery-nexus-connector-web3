@@ -338,6 +338,12 @@ export async function callSmartContract(
             await web3.eth.call({ ...rawTxConfig, from: droneAddress });
             throw new Error("Transaction failed with unknown error");
           }
+          if ((functionInfo.outputs?.length || 0) > 1) {
+            console.log(`Calling function with multiple return values: ${functionInfo.name}`, {
+              outputs: functionInfo.outputs,
+              decoded,
+            });
+          }
           if (functionInfo.outputs?.length) {
             callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
             if (functionInfo.outputs.length === 1) {
