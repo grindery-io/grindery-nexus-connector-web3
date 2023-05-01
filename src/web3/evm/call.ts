@@ -308,7 +308,8 @@ export async function callSmartContract(
       to: input.fields.contractAddress,
       data: callData,
     };
-    const isSimulation = functionInfo.constant || functionInfo.stateMutability === "pure" || input.fields.dryRun;
+    const isPureFunction = functionInfo.constant || functionInfo.stateMutability === "pure";
+    const isSimulation = isPureFunction || input.fields.dryRun;
     const feeData = await ethersProvider.getFeeData();
     if (!transactionMutexes[input.fields.chain]) {
       transactionMutexes[input.fields.chain] = safeMutexify();
@@ -319,7 +320,6 @@ export async function callSmartContract(
         }
       : await transactionMutexes[input.fields.chain]();
     try {
-      console.log("userAddress", userAddress);
       const { tx: txConfig, droneAddress } = await prepareRoutedTransaction(
         rawTxConfig,
         userAddress,
@@ -338,29 +338,21 @@ export async function callSmartContract(
             await web3.eth.call({ ...rawTxConfig, from: droneAddress });
             throw new Error("Transaction failed with unknown error");
           }
-          if ((functionInfo.outputs?.length || 0) > 1) {
-            console.log(`Calling function with multiple return values: ${functionInfo.name}`, {
-              outputs: functionInfo.outputs,
-              decoded,
-              callResult,
-            });
-          }
           if (functionInfo.outputs?.length) {
-            if (isSimulation && !decoded.returnData) {
-              const result = await web3.eth.call({ ...rawTxConfig, from: droneAddress });
-              decoded.returnData = result;
-              console.log("Calling again to get correct return value", { decoded, rawTxConfig });
-            }
-            if (decoded.returnData) {
+            if (decoded.returnData && (decoded.returnData.toLowerCase?.() || "0x") !== "0x") {
               callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
               if (functionInfo.outputs.length === 1) {
                 callResultDecoded = callResultDecoded[0];
               }
+            } else {
+              throw new Error(
+                "Empty result returned from function, please confirm that you have selected correct chain and entered correct contract address."
+              );
             }
           }
         }
       } catch (e) {
-        if (!input.fields.dryRun) {
+        if (!input.fields.dryRun || isPureFunction) {
           throw e;
         }
         return {
