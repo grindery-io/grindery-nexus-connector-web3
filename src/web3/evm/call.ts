@@ -349,7 +349,7 @@ export async function callSmartContract(
             if (isSimulation && !decoded.returnData) {
               const result = await web3.eth.call({ ...rawTxConfig, from: droneAddress });
               decoded.returnData = result;
-              console.log("Calling again to get correct return value", { decoded });
+              console.log("Calling again to get correct return value", { decoded, rawTxConfig });
             }
             if (decoded.returnData) {
               callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
