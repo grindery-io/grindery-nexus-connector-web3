@@ -69,7 +69,9 @@ function getFunctionSuffix(abiItem: AbiItem) {
   if (abiItem.outputs?.length) {
     items.push(
       `returns (${
-        abiItem.outputs.length === 1 ? abiItem.outputs[0].type : abiItem.outputs.map((x) => x.type).join(", ")
+        abiItem.outputs.length === 1
+          ? abiItem.outputs[0].type
+          : abiItem.outputs.map((x, index) => `${x.type} ${x.name || "return" + index}`).join(", ")
       })`
     );
   }
