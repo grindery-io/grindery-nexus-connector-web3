@@ -342,6 +342,7 @@ export async function callSmartContract(
             console.log(`Calling function with multiple return values: ${functionInfo.name}`, {
               outputs: functionInfo.outputs,
               decoded,
+              callResult,
             });
           }
           if (functionInfo.outputs?.length) {
