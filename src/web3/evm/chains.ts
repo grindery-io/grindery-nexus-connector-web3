@@ -35,7 +35,7 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:80001": ANKR("polygon_mumbai"),
   "eip155:5": ALCHEMY("eth-goerli"),
   "eip155:11155111": ANKR("eth_sepolia"),
-  "eip155:97": ANKR("bsc_testnet_chapel"),
+  "eip155:97": GETBLOCK("bsc", "testnet"),
   "eip155:4002": ANKR("fantom_testnet"),
   "eip155:1442": ANKR("polygon_zkevm_testnet"),
   "eip155:44787": LAVANET("alfajores/rpc", "alfajores/rpc-http"),
