@@ -25,6 +25,7 @@ import {
   TransactionRejectionNewConfirmationTrigger,
   TransactionRejectionProposedTrigger,
 } from "../web3/evm/connector/gnosisSafe/triggers/proposal";
+import { layerZeroUpdateHash } from "../web3/evm/connector/layerZero";
 
 export const CONNECTOR_DEFINITION: ConnectorDefinition = {
   actions: {
@@ -33,6 +34,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     clkPriceFeedAction,
     gnosisSafeSimpleTransfer,
     gnosisSafeSimpleTransferToken,
+    layerZeroUpdateHash,
   },
   triggers: {
     newTransaction: { factory: setupSignal },
