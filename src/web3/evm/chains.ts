@@ -16,6 +16,10 @@ const LAVANET = (wsPath: string, httpsPath: string): [string, string] => [
   `wss://g.w.lavanet.xyz:443/gateway/${wsPath}/${process.env.LAVANET_API_KEY}`,
   `https://g.w.lavanet.xyz:443/gateway/${httpsPath}/${process.env.LAVANET_API_KEY}`,
 ];
+const CHAINSTACK = (nodeId: string): [string, string] => [
+  `wss://ws-${nodeId}.p2pify.com/${process.env.CHAINSTACK_API_KEY}`,
+  `https://${nodeId}.p2pify.com/${process.env.CHAINSTACK_API_KEY}`,
+];
 
 export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:1": ANKR("eth"),
@@ -38,6 +42,7 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:97": GETBLOCK("bsc", "testnet"),
   "eip155:4002": ANKR("fantom_testnet"),
   "eip155:1442": ANKR("polygon_zkevm_testnet"),
+  "eip155:338": CHAINSTACK("nd-326-373-985"), // Cronos testnet
   "eip155:44787": LAVANET("alfajores/rpc", "alfajores/rpc-http"),
   "eip155:9000": LAVANET("evmost/json-rpc", "evmost/json-rpc-http"),
 };
