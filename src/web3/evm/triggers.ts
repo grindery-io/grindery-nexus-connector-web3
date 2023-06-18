@@ -3,7 +3,6 @@ import abi from "web3-eth-abi";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./utils";
 import blockingTracer from "../../blockingTracer";
-import { getWeb3 } from "./web3";
 import { BigNumber } from "@ethersproject/bignumber";
 import { backOff } from "exponential-backoff";
 
@@ -15,11 +14,10 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
     }
-    const { close, ethersProvider } = getWeb3(this.fields.chain as string);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
-      async ({ block, chain, memoCall }) => {
+      async ({ block, chain, memoCall, ethersProvider }) => {
         blockingTracer.tag("evm.NewTransactionTrigger");
         for (const transaction of block.transactions) {
           if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
@@ -85,7 +83,6 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
       throw e;
     } finally {
       unsubscribe();
-      close();
     }
   }
 }
@@ -202,7 +199,7 @@ export class NewEventTrigger extends TriggerBase<{
               .flat();
             const transactionLogFailures: { [key: string]: number } = memoCall("transactionLogFailures", () => ({}));
             let numProcessed = 0;
-            for (const logEntry of entries as ((typeof entries)[0] & {
+            for (const logEntry of entries as (typeof entries[0] & {
               __decodeFailure?: boolean;
               __decoded?: { [key: string]: string };
             })[]) {

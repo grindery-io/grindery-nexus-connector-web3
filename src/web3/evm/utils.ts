@@ -13,6 +13,7 @@ export function onNewBlockMultiChain(
     chain: string;
     web3: Web3;
     block: BlockTransactionObject;
+    ethersProvider: ReturnType<typeof getWeb3>["ethersProvider"];
     memoCall: <T>(key: string, call: () => T) => T;
   }) => Promise<void>,
   onError: (e: Error) => void
@@ -32,7 +33,7 @@ export function onNewBlockMultiChain(
       console.warn("Unsupported chain:", chain);
       continue;
     }
-    const { web3, close, onNewBlock, web3Wrapper } = getWeb3(chain);
+    const { web3, close, onNewBlock, web3Wrapper, ethersProvider } = getWeb3(chain);
     const onClose = () => {
       onError(new Error(`Web3Wrapper for ${chain} closed`));
     };
@@ -42,7 +43,7 @@ export function onNewBlockMultiChain(
     });
     cleanUpFunctions.push(
       onNewBlock(
-        (block, memoCall) => Promise.resolve(callback({ chain, web3, block, memoCall })).catch(onError),
+        (block, memoCall) => Promise.resolve(callback({ chain, web3, block, ethersProvider, memoCall })).catch(onError),
         onError
       )
     );
