@@ -3,6 +3,7 @@ import { AbiItem } from "web3-utils";
 import { BlockTransactionObject } from "web3-eth";
 import { getWeb3 } from "./web3";
 import { hmac, TAccessToken } from "../../jwt";
+import { CHAIN_MAPPING } from "./chains";
 
 export const HUB_ADDRESS = process.env.EVM_HUB_ADDRESS || "0xC942DFb6cC8Aade0F54e57fe1eD4320411625F8B";
 
@@ -23,7 +24,14 @@ export function onNewBlockMultiChain(
     chains = [chains];
   }
   const cleanUpFunctions = [] as (() => void)[];
+  if (!chains.some((x) => CHAIN_MAPPING[x])) {
+    throw new Error("None of the chains are supported: " + chains.join(","));
+  }
   for (const chain of chains) {
+    if (!CHAIN_MAPPING[chain]) {
+      console.warn("Unsupported chain:", chain);
+      continue;
+    }
     const { web3, close, onNewBlock, web3Wrapper } = getWeb3(chain);
     const onClose = () => {
       onError(new Error(`Web3Wrapper for ${chain} closed`));
