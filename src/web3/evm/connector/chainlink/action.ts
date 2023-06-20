@@ -1,16 +1,7 @@
-import {
-  ConnectorInput,
-  ActionOutput,
-  InputProviderInput,
-  InputProviderOutput
-} from "grindery-nexus-common-utils";
+import { ConnectorInput, ActionOutput, InputProviderInput, InputProviderOutput } from "grindery-nexus-common-utils";
 import { callSmartContract } from "../../call";
 import { sanitizeParameters } from "../../../../utils";
-import {
-  prepareOutputChainlink,
-  clkFields,
-  extractAddressFromPair
-} from "./common";
+import { prepareOutputChainlink, clkFields, extractAddressFromPair } from "./common";
 import BigNumber from "bignumber.js";
 
 /**
@@ -18,10 +9,10 @@ import BigNumber from "bignumber.js";
  * @param params - InputProviderInput<unknown>
  * @returns The return value is a JSON object that contains the following fields:
  */
-export async function clkPriceFeedActionInputProvider(params: InputProviderInput<unknown>): Promise<InputProviderOutput> {
-  return await prepareOutputChainlink(
-    params.fieldData as clkFields
-  );
+export async function clkPriceFeedActionInputProvider(
+  params: InputProviderInput<unknown>
+): Promise<InputProviderOutput> {
+  return await prepareOutputChainlink(params.fieldData as clkFields);
 }
 
 /**
@@ -34,28 +25,32 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
   const fields = input.fields as clkFields;
   const contractAddr = await extractAddressFromPair(fields._getChainlinkPriceFeed);
   /* Calling the smart contract to get the decimals of the token. */
-  const getDecimals = await callSmartContract(await sanitizeParameters({
-    ...input,
-    fields: {
-      ...fields,
-      chain: fields._grinderyChain,
-      contractAddress: contractAddr,
-      functionDeclaration: "function decimals() view returns (uint8)",
-      parameters: {},
-    },
-  }));
+  const getDecimals = await callSmartContract(
+    await sanitizeParameters({
+      ...input,
+      fields: {
+        ...fields,
+        chain: fields._grinderyChain,
+        contractAddress: contractAddr,
+        functionDeclaration: "function decimals() view returns (uint8)",
+        parameters: {},
+      },
+    })
+  );
   const decimals = new BigNumber((getDecimals.payload as any).returnValue);
   /* Getting the pair from the smart contract. */
-  const getPair = await callSmartContract(await sanitizeParameters({
-    ...input,
-    fields: {
-      ...fields,
-      chain: fields._grinderyChain,
-      contractAddress: contractAddr,
-      functionDeclaration: "function description() view returns (string)",
-      parameters: {},
-    },
-  }));
+  const getPair = await callSmartContract(
+    await sanitizeParameters({
+      ...input,
+      fields: {
+        ...fields,
+        chain: fields._grinderyChain,
+        contractAddress: contractAddr,
+        functionDeclaration: "function description() view returns (string)",
+        parameters: {},
+      },
+    })
+  );
   /* Calling the smart contract to get the latest round data. */
   const res = await callSmartContract(
     await sanitizeParameters({
@@ -71,13 +66,11 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
   );
   /* Converting the exchange rate from the smart contract to a human readable format. */
   res.payload = {
-    _exchangeRate: new BigNumber(
-      (res.payload as any).returnValue.return1
-    ).div(
-      new BigNumber(10).pow(decimals)
-    ).toString(),
+    _exchangeRate: new BigNumber((res.payload as any).returnValue.return1)
+      .div(new BigNumber(10).pow(decimals))
+      .toString(),
     _pair: (getPair.payload as any).returnValue,
-    _contractAddress: contractAddr
+    _contractAddress: contractAddr,
   };
   return res;
 }

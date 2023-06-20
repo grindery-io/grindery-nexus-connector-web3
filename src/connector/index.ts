@@ -7,7 +7,7 @@ import {
   genericAbiTriggerInputProvider,
 } from "../web3/evm/connector/genericAbi";
 import { clkPriceFeedAction, clkPriceFeedActionInputProvider } from "../web3/evm/connector/chainlink";
-
+import { balanceOfActionERC20 } from "../web3/evm/connector/erc20";
 import { gnosisSafeSimpleTransfer, gnosisSafeSimpleTransferToken } from "../web3/evm/connector/gnosisSafe";
 import {
   safeTransactionExecutedAddOwner,
@@ -35,6 +35,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     gnosisSafeSimpleTransfer,
     gnosisSafeSimpleTransferToken,
     layerZeroUpdateHash,
+    balanceOfActionERC20,
   },
   triggers: {
     newTransaction: { factory: setupSignal },
