@@ -71,18 +71,14 @@ async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | T
   if (hasDrone) {
     nonce = await droneContract.methods.getNextNonce().call();
   }
-  const transactionHash = await hubContract.methods
-    .getTransactionHash(droneAddress, tx.to, nonce, tx.data)
-    .call();
+  const transactionHash = await hubContract.methods.getTransactionHash(droneAddress, tx.to, nonce, tx.data).call();
   const signature = await vaultSigner.signMessage(transactionHash);
   tx = { ...tx };
   if (hasDrone) {
     tx.data = droneContract.methods.sendTransaction(tx.to, nonce, tx.data, signature).encodeABI();
     tx.to = droneAddress;
   } else {
-    tx.data = hubContract.methods
-      .deployDroneAndSendTransaction(userAddress, tx.to, tx.data, signature)
-      .encodeABI();
+    tx.data = hubContract.methods.deployDroneAndSendTransaction(userAddress, tx.to, tx.data, signature).encodeABI();
     tx.to = HUB_ADDRESS;
   }
   return { tx, droneAddress };
@@ -105,9 +101,9 @@ export async function callSmartContract(
   if (!input.fields._grinderyUserToken) {
     console.warn("_grinderyUserToken is not available");
   }
-  const user = await parseUserAccessToken(
-    input.fields._grinderyUserToken || input.fields.userToken || ""
-  ).catch(() => null);
+  const user = await parseUserAccessToken(input.fields._grinderyUserToken || input.fields.userToken || "").catch(
+    () => null
+  );
   if (!user) {
     throw new Error("User token is invalid");
   }
@@ -117,123 +113,12 @@ export async function callSmartContract(
     /* A function that returns the balance of an address. */
     if (input.fields.functionDeclaration === "getBalanceNative") {
       const address = input.fields.parameters.address as string;
-      const balance = await web3.eth
-        .getBalance(address)
-        .then((result) => web3.utils.fromWei(result));
+      const balance = await web3.eth.getBalance(address).then((result) => web3.utils.fromWei(result));
 
       return {
         key: input.key,
         sessionId: input.sessionId,
         payload: { balance },
-      };
-    }
-
-    // /* The above code is a TypeScript function that is executed when the functionDeclaration is
-    // getBalance. It takes the contractAddress and address from the input and uses them to call the
-    // balanceOf() function on the contract. It then returns the balance in the payload. */
-    // if (input.fields.functionDeclaration === "getBalanceERC20Token") {
-    //   const tokenAddress = input.fields.contractAddress;
-    //   const tokenHolder = input.fields.parameters.address;
-    //   const balanceOfAbi = ERC20;
-
-    //   // Define the ERC-20 token contract
-    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    //   const contract = new web3.eth.Contract(balanceOfAbi as any, tokenAddress);
-
-    //   // Execute balanceOf() to retrieve the token balance
-    //   const balanceWei = await contract.methods.balanceOf(tokenHolder).call();
-    //   const decimals = await contract.methods.decimals().call();
-    //   const balanceTokenUnit = BigNumber.from(balanceWei).div(
-    //     BigNumber.from(10).pow(BigNumber.from(decimals))
-    //   );
-
-    //   return {
-    //     key: input.key,
-    //     sessionId: input.sessionId,
-    //     payload: { balance: balanceTokenUnit.toString() },
-    //   };
-    // }
-
-    /* Getting the symbol, decimals and name of the token. */
-    if (input.fields.functionDeclaration === "getInformationERC20Token") {
-      const abiOfToken = ERC20;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tokenContract = new web3.eth.Contract(abiOfToken as any, input.fields.contractAddress);
-
-      return {
-        key: input.key,
-        sessionId: input.sessionId,
-        payload: {
-          symbol: await tokenContract.methods.symbol().call(),
-          decimals: (await tokenContract.methods.decimals().call()).toString(),
-          name: await tokenContract.methods.name().call(),
-        },
-      };
-    }
-
-    /* Getting the allowance of an ERC20 token. */
-    if (input.fields.functionDeclaration === "getAllowanceERC20Token") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
-      const allowance = await tokenContract.methods
-        .allowance(input.fields.parameters.owner, input.fields.parameters.spender)
-        .call();
-      const decimals = await tokenContract.methods.decimals().call();
-      const allowanceTokenUnit = BigNumber.from(allowance).div(
-        BigNumber.from(10).pow(BigNumber.from(decimals))
-      );
-
-      return {
-        key: input.key,
-        sessionId: input.sessionId,
-        payload: {
-          allowance: allowanceTokenUnit.toString(),
-        },
-      };
-    }
-
-    /* Getting the total supply of an ERC20 token. */
-    if (input.fields.functionDeclaration === "getTotalSupplyERC20Token") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const tokenContract = new web3.eth.Contract(ERC20 as any, input.fields.contractAddress);
-      const totalSupply = await tokenContract.methods.totalSupply().call();
-      const decimals = await tokenContract.methods.decimals().call();
-      const totalSupplyTokenUnit = BigNumber.from(totalSupply).div(
-        BigNumber.from(10).pow(BigNumber.from(decimals))
-      );
-
-      return {
-        key: input.key,
-        sessionId: input.sessionId,
-        payload: {
-          totalSupply: totalSupplyTokenUnit.toString(),
-        },
-      };
-    }
-    /* Calling the getSyndicateInvestmentClubInformation function on the SyndicateERC721 contract. */
-    if (input.fields.functionDeclaration === "getSyndicateInvestmentClubInformation") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const contract = new web3.eth.Contract(SyndicateERC721 as any, input.fields.contractAddress);
-
-      const owner = await contract.methods.owner().call();
-      const name = await contract.methods.name().call();
-      const symbol = await contract.methods.symbol().call();
-      const totalSupply = await contract.methods
-        .totalSupply()
-        .call()
-        .then((result) => web3.utils.fromWei(result));
-
-      console.log(owner, name, symbol, totalSupply);
-
-      return {
-        key: input.key,
-        sessionId: input.sessionId,
-        payload: {
-          owner,
-          name,
-          symbol,
-          totalSupply: totalSupply.toString(),
-        },
       };
     }
 
@@ -274,9 +159,7 @@ export async function callSmartContract(
         console.log("hjsj");
         paramArray.push(input.fields.parameters.recipient);
         const metadata = JSON.stringify(
-          (({ name, description, image }) => ({ name, description, image }))(
-            input.fields.parameters
-          )
+          (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
         );
 
         const config: AxiosRequestConfig = {
@@ -343,10 +226,7 @@ export async function callSmartContract(
           }
           if (functionInfo.outputs?.length) {
             if (decoded.returnData && (decoded.returnData.toLowerCase?.() || "0x") !== "0x") {
-              callResultDecoded = web3.eth.abi.decodeParameters(
-                functionInfo.outputs || [],
-                decoded.returnData
-              );
+              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], decoded.returnData);
               if (functionInfo.outputs.length === 1) {
                 callResultDecoded = callResultDecoded[0];
               }
@@ -366,15 +246,12 @@ export async function callSmartContract(
           sessionId: input.sessionId,
           payload: {
             _grinderyDryRunError:
-              "Can't confirm that the transaction can be executed due to the following error: " +
-              e.toString(),
+              "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
           },
         };
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      txConfig.nonce = web3.utils.toHex(
-        await web3.eth.getTransactionCount(web3.defaultAccount)
-      ) as any;
+      txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
       let result: unknown;
       for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
         if (key in input.fields && typeof input.fields[key] === "string") {
@@ -401,10 +278,7 @@ export async function callSmartContract(
             `Gas limit of ${web3.utils.fromWei(
               String(input.fields.gasLimit),
               "ether"
-            )} is too low, need at least ${web3.utils.fromWei(
-              minFee.mul(txConfig.gas || 1).toString(),
-              "ether"
-            )}`
+            )} is too low, need at least ${web3.utils.fromWei(minFee.mul(txConfig.gas || 1).toString(), "ether")}`
           );
         }
         txConfig.maxFeePerGas = maxFee.toHexString();
@@ -433,26 +307,20 @@ export async function callSmartContract(
           ...(txConfig.maxFeePerGas
             ? {
                 type: 2,
-                maxFeePerGas: txConfig.maxFeePerGas
-                  ? BigNumber.from(txConfig.maxFeePerGas).toHexString()
-                  : undefined,
+                maxFeePerGas: txConfig.maxFeePerGas ? BigNumber.from(txConfig.maxFeePerGas).toHexString() : undefined,
                 maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas
                   ? BigNumber.from(txConfig.maxPriorityFeePerGas).toHexString()
                   : undefined,
               }
             : {
-                gasPrice: txConfig.gasPrice
-                  ? BigNumber.from(txConfig.gasPrice).toHexString()
-                  : undefined,
+                gasPrice: txConfig.gasPrice ? BigNumber.from(txConfig.gasPrice).toHexString() : undefined,
               }),
         });
         const receipt = await web3.eth.sendSignedTransaction(signedTransaction);
         releaseLock(); // Block less time
         result = receipt;
         const cost = BigNumber.from(receipt.gasUsed || txConfig.gas)
-          .mul(
-            BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas)
-          )
+          .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
           .toString();
 
         if (process.env.GAS_DEBIT_WEBHOOK) {
@@ -488,23 +356,14 @@ export async function callSmartContract(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             eventAbi as any
           );
-          const log = receipt.logs.find(
-            (x) => x.topics?.[0] === eventSignature && x.address === droneAddress
-          );
+          const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
           if (!log) {
             throw new Error("No transaction result log in receipt");
           }
-          const resultData = web3.eth.abi.decodeLog(
-            eventAbi?.inputs || [],
-            log.data,
-            log.topics.slice(1)
-          );
+          const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
           if (resultData.success) {
             if (functionInfo.outputs?.length) {
-              callResultDecoded = web3.eth.abi.decodeParameters(
-                functionInfo.outputs || [],
-                resultData.returnData
-              );
+              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
               if (functionInfo.outputs.length === 1) {
                 callResultDecoded = callResultDecoded[0];
               }
