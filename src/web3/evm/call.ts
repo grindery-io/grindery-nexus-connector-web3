@@ -13,8 +13,6 @@ import { BigNumber } from "@ethersproject/bignumber";
 
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
-import ERC20 from "./abi/ERC20.json";
-import SyndicateERC721 from "./abi/ERC721Collective.json";
 import vaultSigner from "./signer";
 
 const hubAvailability = new Map<string, boolean>();
