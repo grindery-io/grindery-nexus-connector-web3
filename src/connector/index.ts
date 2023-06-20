@@ -14,6 +14,7 @@ import {
   allowanceAction,
 } from "../web3/evm/connector/erc20";
 import { InformationInvestmentClub } from "../web3/evm/connector/syndicate";
+import { getBalanceNative } from "../web3/evm/connector/evmWallet";
 import { gnosisSafeSimpleTransfer, gnosisSafeSimpleTransferToken } from "../web3/evm/connector/gnosisSafe";
 import {
   safeTransactionExecutedAddOwner,
@@ -46,6 +47,7 @@ export const CONNECTOR_DEFINITION: ConnectorDefinition = {
     totalSupplyAction,
     allowanceAction,
     InformationInvestmentClub,
+    getBalanceNative,
   },
   triggers: {
     newTransaction: { factory: setupSignal },
