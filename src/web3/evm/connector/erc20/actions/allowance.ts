@@ -3,24 +3,17 @@ import { callSmartContract } from "../../../call";
 import { sanitizeParameters } from "../../../../../utils";
 import { BigNumber } from "@ethersproject/bignumber";
 
-export async function balanceOfActionERC20(input: ConnectorInput<unknown>): Promise<ActionOutput> {
+export async function allowanceAction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
   const fields = input.fields as {
-    [key: string]: string | { address: string };
+    [key: string]: string;
   };
 
-  const getBalance = await callSmartContract(
+  const getAllowance = await callSmartContract(
     await sanitizeParameters({
       ...input,
       fields: {
         ...fields,
-        functionDeclaration: "function balanceOf(address account) view returns (uint256)",
-        parameters: {
-          account: (
-            fields.parameters as {
-              address: string;
-            }
-          ).address,
-        },
+        functionDeclaration: "function allowance(address owner, address spender) view returns (uint256)",
       },
     })
   );
@@ -37,11 +30,11 @@ export async function balanceOfActionERC20(input: ConnectorInput<unknown>): Prom
   );
 
   return {
-    ...getBalance,
+    ...getAllowance,
     payload: {
-      balance: BigNumber.from(
+      allowance: BigNumber.from(
         (
-          getBalance.payload as {
+          getAllowance.payload as {
             returnValue: string;
           }
         ).returnValue
