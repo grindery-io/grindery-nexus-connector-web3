@@ -46,8 +46,6 @@ export function isJson(item: any) {
   } catch (e) {
     return false;
   }
-  if (typeof item === "object" && item !== null) {
-    return true;
-  }
-  return false;
+
+  return typeof item === "object" && item !== null;
 }
