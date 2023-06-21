@@ -1,8 +1,4 @@
-import {
-  ConnectorInput,
-  ConnectorOutput,
-} from "grindery-nexus-common-utils/dist/connector";
-
+import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import * as nftnear from "./near/nftnear";
 import * as txtestalgorand from "./algorand/txtestalgorand";
 import * as nftalgorand from "./algorand/nftalgorand";
@@ -10,10 +6,7 @@ import { DepayActions } from "./utils";
 
 const ACTIONS: {
   [key: string]: {
-    SendTransactionAction(
-      input: ConnectorInput<unknown>,
-      depay: DepayActions<unknown>
-    ): Promise<ConnectorOutput>;
+    SendTransactionAction(input: ConnectorInput<unknown>, depay: DepayActions<unknown>): Promise<ConnectorOutput>;
   };
 } = {
   "near:testnet:NFTMint": nftnear,
@@ -31,10 +24,5 @@ export function SendTransactionAction(
   console.log("SendTransactionAction");
   console.log("module: " + input.key);
 
-  // const key = input.fields.chain.concat(':' + input.key.split(':')[1]);
-
-  const key = input.fields.chain.concat(":" + input.fields.functionDeclaration);
-  const module = ACTIONS[key];
-
-  return module.SendTransactionAction(input, depay);
+  return ACTIONS[input.fields.chain.concat(":" + input.fields.functionDeclaration)].SendTransactionAction(input, depay);
 }

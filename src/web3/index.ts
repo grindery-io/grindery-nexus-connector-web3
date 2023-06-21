@@ -8,7 +8,6 @@ import * as algorandtest from "./algorand/algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { TAccessToken } from "../jwt";
 
-
 export * from "./webhook";
 
 export const CHAINS: {
@@ -33,13 +32,10 @@ export const CHAINS: {
 export function getTriggerClass(
   params: ConnectorInput<{ chain: string | string[] }>
 ): new (params: ConnectorInput) => TriggerBase {
-  const chain = params.fields.chain;
-  const triggers = typeof chain === "string" ? (CHAINS[chain] || evm).Triggers : evm.Triggers;
-
-  const type = params.key;
-  const trigger = triggers.get(type);
+  const module = typeof params.fields.chain === "string" ? (CHAINS[params.fields.chain] || evm).Triggers : evm.Triggers;
+  const trigger = module.get(params.key);
   if (!trigger) {
-    throw new InvalidParamsError(`Unknown trigger type: ${type}`);
+    throw new InvalidParamsError(`Unknown trigger type: ${params.key}`);
   }
   return trigger;
 }
@@ -49,7 +45,6 @@ export async function callSmartContract(
     chain: string;
   }>
 ): Promise<ConnectorOutput> {
-  const chain = input.fields.chain;
-  const module = typeof chain === "string" ? CHAINS[chain] || evm : evm;
+  const module = typeof input.fields.chain === "string" ? CHAINS[input.fields.chain] || evm : evm;
   return module.callSmartContract(input as Parameters<typeof evm.callSmartContract>[0]);
 }

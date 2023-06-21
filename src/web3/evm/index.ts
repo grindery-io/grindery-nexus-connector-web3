@@ -3,15 +3,15 @@ import { TAccessToken } from "../../jwt";
 import { NewTransactionTrigger, NewEventTrigger } from "./triggers";
 import { getUserAddress, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
+import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 
 export { callSmartContract } from "./call";
 
-import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
-
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
-Triggers.set("newTransaction", NewTransactionTrigger);
-Triggers.set("newTransactionAsset", NewTransactionTrigger);
-Triggers.set("newEvent", NewEventTrigger);
+export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>([
+  ["newTransaction", NewTransactionTrigger],
+  ["newTransactionAsset", NewTransactionTrigger],
+  ["newEvent", NewEventTrigger],
+]);
 
 const droneAddressCache = new Map<string, string>();
 

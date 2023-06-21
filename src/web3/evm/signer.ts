@@ -1,5 +1,4 @@
 import { MessageTypes, SignTypedDataVersion, TypedDataV1, TypedMessage } from "@metamask/eth-sig-util";
-
 import { ethers } from "ethers";
 import { callVault } from "../../vaultAgent";
 
@@ -15,8 +14,7 @@ export class VaultSigner extends ethers.Signer {
 
   async getAddress(): Promise<string> {
     if (!this.ethereumAddress) {
-      const key = await callVault<string>(`${this.prefix}GetAddress`);
-      this.ethereumAddress = key;
+      this.ethereumAddress = await callVault<string>(`${this.prefix}GetAddress`);
     }
     return Promise.resolve(this.ethereumAddress);
   }
@@ -39,8 +37,9 @@ export class VaultSigner extends ethers.Signer {
   }
 
   async signTransaction(transaction: ethers.utils.Deferrable<ethers.providers.TransactionRequest>): Promise<string> {
-    const unsignedTx = await ethers.utils.resolveProperties(transaction);
-    return await callVault(`${this.prefix}SignTransaction`, { transaction: unsignedTx });
+    return await callVault(`${this.prefix}SignTransaction`, {
+      transaction: await ethers.utils.resolveProperties(transaction),
+    });
   }
 
   connect(provider: ethers.providers.Provider): VaultSigner {
