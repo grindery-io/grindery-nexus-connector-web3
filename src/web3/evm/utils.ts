@@ -159,19 +159,3 @@ export async function getUserAddress(user: TAccessToken) {
   }
   return userAddress;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getMetadataFromCID(ipfs: any, cid: string): Promise<string> {
-  // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-  // let ipfs = await IPFS.create();
-  const stream = await ipfs.cat(cid);
-  const decoder = new TextDecoder();
-  let data = "";
-
-  for await (const chunk of stream) {
-    // chunks of data are returned as a Uint8Array, convert it back to a string
-    data += decoder.decode(chunk, { stream: true });
-  }
-
-  return data;
-}

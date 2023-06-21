@@ -14,7 +14,8 @@ const ERC20_DECIMALS_ABI = [
   },
 ];
 
-function numberToString(arg) {
+// trunk-ignore(eslint/@typescript-eslint/no-explicit-any)
+function numberToString(arg: any) {
   if (typeof arg === "string") {
     if (!arg.match(/^-?[0-9.]+$/)) {
       throw new Error(
@@ -25,12 +26,7 @@ function numberToString(arg) {
   } else if (typeof arg === "number") {
     return String(arg);
   } else if (typeof arg === "object" && arg.toString && (arg.toTwos || arg.dividedToIntegerBy)) {
-    if (arg.toPrecision) {
-      return String(arg.toPrecision());
-    } else {
-      // eslint-disable-line
-      return arg.toString(10);
-    }
+    return arg.toPrecision ? String(arg.toPrecision()) : arg.toString(10);
   }
   throw new Error(`while converting number to string, invalid number value '${arg}' type ${typeof arg}.`);
 }

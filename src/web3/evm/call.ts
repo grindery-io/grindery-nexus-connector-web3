@@ -8,9 +8,6 @@ import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
 import { BigNumber } from "@ethersproject/bignumber";
-
-// var axios = require('axios');
-
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import ERC20 from "./abi/ERC20.json";
@@ -282,14 +279,6 @@ export async function callSmartContract(
         };
 
         const res = await axios(config);
-
-        // console.log(res.data);
-
-        // const IPFS:any = await Function('return import("ipfs-core")')() as Promise<typeof import('ipfs-core')>
-        // let ipfs = await IPFS.create({repo: "ok" + Math.random()});
-        // const cid = await ipfs.add(metadata);
-        // paramArray.push("ipfs://" + cid.path);
-
         paramArray.push("ipfs://" + res.data.IpfsHash);
       } else {
         for (const i of inputs) {
@@ -434,8 +423,6 @@ export async function callSmartContract(
         const cost = BigNumber.from(receipt.gasUsed || txConfig.gas)
           .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
           .toString();
-
-        // console.log("result: " + JSON.stringify(result))
 
         if (process.env.GAS_DEBIT_WEBHOOK) {
           axios

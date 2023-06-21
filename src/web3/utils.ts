@@ -39,15 +39,13 @@ export type AlgorandDepayActions = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isJson(item: any) {
+export function isJson(item: any): boolean {
   item = typeof item !== "string" ? JSON.stringify(item) : item;
   try {
     item = JSON.parse(item);
   } catch (e) {
     return false;
   }
-  if (typeof item === "object" && item !== null) {
-    return true;
-  }
-  return false;
+
+  return typeof item === "object" && item !== null;
 }
