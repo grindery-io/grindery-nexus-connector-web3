@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import _, { method } from "lodash";
+import _ from "lodash";
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
@@ -446,10 +446,6 @@ Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
-// #########################################################################
-// #########################################################################
-// #########################################################################
-
 const networkId = "mainnet";
 const CONTRACT_NAME = "nft.grindery.near";
 const keyStore = new keyStores.InMemoryKeyStore();
@@ -458,10 +454,6 @@ const keyPair = process.env.PRIVATE_KEY
   : KeyPair.fromRandom("ed25519");
 
 keyStore.setKey(networkId, CONTRACT_NAME, keyPair);
-
-// #########################################################################
-// #########################################################################
-// #########################################################################
 
 export async function callSmartContract(
   input: ConnectorInput<{
@@ -501,11 +493,6 @@ export async function callSmartContract(
 
     const result = JSON.parse(String.fromCharCode(...queryToken.result));
 
-    console.log("name: " + result.name);
-    console.log("symbol: " + result.symbol);
-    console.log("icon: " + result.icon);
-    console.log("decimals: " + result.decimals.toString());
-
     return {
       key: input.key,
       sessionId: input.sessionId,
@@ -536,30 +523,18 @@ export async function callSmartContract(
         "nft_mint",
         args,
         new BN(10000000000000),
-        new BN((await utils.format.parseNearAmount("0.1")) as string)
+        new BN(utils.format.parseNearAmount("0.1") as string)
       ),
     ],
   });
-
-  console.log(result);
 
   return {
     key: input.key,
     sessionId: input.sessionId,
     payload: {
-      // result,
-      // transactionHash: result.transaction_outcome.outcome.receipt_ids
-      // txn_hash: result.transaction.hash,
       transactionHash: result.transaction.hash,
-      // public_key: result.transaction.public_key,
-      // media_url: input.fields.parameters.media,
-      // // signer_id: result.transaction.signer_id,
-      // transactionHash: result.transaction.signer_id
     },
   };
-
-  // console.log("callSmartContract", input);
-  // throw new Error("Not implemented");
 }
 
 export async function getUserDroneAddress(_user: TAccessToken): Promise<string> {
