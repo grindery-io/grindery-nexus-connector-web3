@@ -5,25 +5,14 @@ import mutexify from "mutexify/promise";
 import axios from "axios";
 import { NtaSigner } from "../../signer";
 import { SignTypedDataVersion } from "@metamask/eth-sig-util";
-import ABI from "./abi.json";
+import ABI from "../../abi/GnosisSafe.json";
+import ERC20 from "../../abi/ERC20.json";
 import { getWeb3 } from "../../web3";
 import { sanitizeParameters } from "../../../../utils";
 import AbiCoder from "web3-eth-abi";
 import Web3 from "web3";
 
-const ERC20_TRANSFER = {
-  inputs: [
-    { internalType: "address", name: "recipient", type: "address" },
-    { internalType: "uint256", name: "amount", type: "uint256" },
-  ],
-  name: "transfer",
-  outputs: [{ internalType: "bool", name: "", type: "bool" }],
-  stateMutability: "nonpayable",
-  type: "function",
-};
-
-export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
-
+const ERC20_TRANSFER = ERC20.find((item) => item.name === "transfer");
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
 async function sanitizeInput(input: ConnectorInput<unknown>) {
@@ -76,42 +65,31 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
     if (typeof nonce === "number") {
       nonce = nonce.toString();
     }
-    const params = [
-      parameters.to,
-      String(parameters.value),
-      parameters.data,
-      0,
-      "0",
-      "0",
-      "0",
-      "0x0000000000000000000000000000000000000000",
-      "0x0000000000000000000000000000000000000000",
+
+    const params = {
+      to: parameters.to,
+      value: String(parameters.value),
+      data: parameters.data,
+      operation: 0,
+      safeTxGas: "0",
+      baseGas: "0",
+      gasPrice: "0",
+      gasToken: "0x0000000000000000000000000000000000000000",
+      refundReceiver: "0x0000000000000000000000000000000000000000",
       nonce,
-    ];
+    };
+
     let txHash: string;
     try {
-      const contract = new web3.eth.Contract(ABI as unknown as AbiItem[], contractAddress);
-      txHash = await contract.methods.getTransactionHash(...params).call();
+      const contract = new web3.eth.Contract(ABI as AbiItem[], contractAddress);
+      txHash = await contract.methods.getTransactionHash(...Object.values(params)).call();
     } catch (e) {
       if (!dryRun) {
         throw e;
       }
       txHash = "0x0000000000000000000000000000000000000000";
     }
-    const [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver] = params;
-    const message = {
-      to,
-      value,
-      data,
-      operation,
-      safeTxGas,
-      baseGas,
-      gasPrice,
-      gasToken,
-      refundReceiver,
-      nonce,
-    };
-    message.to = ethers.utils.getAddress(String(message.to));
+    const message = { ...params, to: ethers.utils.getAddress(String(params.to)) };
     const signature = await NtaSigner.signTypedData({
       data: {
         types: {
