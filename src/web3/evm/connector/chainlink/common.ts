@@ -41,13 +41,11 @@ async function getPairs(feed: string): Promise<FieldChoiceSchema[]> {
       if (item.feedCategory === "verified" || !item.feedCategory) {
         pairsArray.push({
           value: item.name.concat(" - ", item.proxyAddress),
-          // .concat(" - decimals:", item.decimals),
           label: item.name,
           sample: item.name,
         });
       }
     });
-    // console.log(pairsArray);
     return pairsArray;
   } catch (err) {
     throw new Error(err);
@@ -61,7 +59,6 @@ async function getPairs(feed: string): Promise<FieldChoiceSchema[]> {
  * @returns A string
  */
 export async function extractAddressFromPair(input?: string): Promise<string> {
-  console.log("inpuuuuuut", input);
   if (!input) {
     return "";
   }
