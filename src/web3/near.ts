@@ -321,14 +321,6 @@ class NewTransactionTrigger extends TriggerBase<{
           if (!("Transfer" in action)) {
             continue;
           }
-          /* Printing out the details of the transaction. */
-          console.log("from", receipt.predecessor_id);
-          console.log("to", receipt.receiver_id);
-          console.log("value", action.Transfer.deposit);
-          console.log("receiptId", receipt.receipt_id);
-          console.log("txHash", receipt.txhash);
-          console.log("blockHash", receipt.block_hash);
-          console.log("blockHeight", receipt.block_height);
           /* Sending a notification to the receiver of the transfer. */
           this.sendNotification({
             _grinderyChain: this.fields.chain,
