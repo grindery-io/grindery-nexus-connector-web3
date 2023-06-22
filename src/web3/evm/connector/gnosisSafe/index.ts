@@ -65,42 +65,31 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
     if (typeof nonce === "number") {
       nonce = nonce.toString();
     }
-    const params = [
-      parameters.to,
-      String(parameters.value),
-      parameters.data,
-      0,
-      "0",
-      "0",
-      "0",
-      "0x0000000000000000000000000000000000000000",
-      "0x0000000000000000000000000000000000000000",
+
+    const params = {
+      to: parameters.to,
+      value: String(parameters.value),
+      data: parameters.data,
+      operation: 0,
+      safeTxGas: "0",
+      baseGas: "0",
+      gasPrice: "0",
+      gasToken: "0x0000000000000000000000000000000000000000",
+      refundReceiver: "0x0000000000000000000000000000000000000000",
       nonce,
-    ];
+    };
+
     let txHash: string;
     try {
-      const contract = new web3.eth.Contract(ABI as unknown as AbiItem[], contractAddress);
-      txHash = await contract.methods.getTransactionHash(...params).call();
+      const contract = new web3.eth.Contract(ABI as AbiItem[], contractAddress);
+      txHash = await contract.methods.getTransactionHash(...Object.values(params)).call();
     } catch (e) {
       if (!dryRun) {
         throw e;
       }
       txHash = "0x0000000000000000000000000000000000000000";
     }
-    const [to, value, data, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver] = params;
-    const message = {
-      to,
-      value,
-      data,
-      operation,
-      safeTxGas,
-      baseGas,
-      gasPrice,
-      gasToken,
-      refundReceiver,
-      nonce,
-    };
-    message.to = ethers.utils.getAddress(String(message.to));
+    const message = { ...params, to: ethers.utils.getAddress(String(params.to)) };
     const signature = await NtaSigner.signTypedData({
       data: {
         types: {
