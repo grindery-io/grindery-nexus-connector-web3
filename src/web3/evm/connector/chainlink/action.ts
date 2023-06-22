@@ -37,7 +37,13 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
       },
     })
   );
-  const decimals = new BigNumber((getDecimals.payload as any).returnValue);
+  const decimals = new BigNumber(
+    (
+      getDecimals.payload as {
+        returnValue: string;
+      }
+    ).returnValue
+  );
   /* Getting the pair from the smart contract. */
   const getPair = await callSmartContract(
     await sanitizeParameters({
@@ -66,10 +72,20 @@ export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promis
   );
   /* Converting the exchange rate from the smart contract to a human readable format. */
   res.payload = {
-    _exchangeRate: new BigNumber((res.payload as any).returnValue.return1)
+    _exchangeRate: new BigNumber(
+      (
+        res.payload as {
+          [key: string]: { [key: string]: string };
+        }
+      ).returnValue.return1
+    )
       .div(new BigNumber(10).pow(decimals))
       .toString(),
-    _pair: (getPair.payload as any).returnValue,
+    _pair: (
+      getPair.payload as {
+        returnValue: string;
+      }
+    ).returnValue,
     _contractAddress: contractAddr,
   };
   return res;
