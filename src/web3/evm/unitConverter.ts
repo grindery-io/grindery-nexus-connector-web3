@@ -14,7 +14,7 @@ const ERC20_DECIMALS_ABI = [
   },
 ];
 
-function numberToString(arg: string) {
+function numberToString(arg: string): string {
   if (!arg.match(/^-?[0-9.]+$/)) {
     throw new Error(
       `while converting number to string, invalid number value '${arg}', should be a number matching (^-?[0-9.]+).`
@@ -61,9 +61,7 @@ function scaleDecimals(etherInput: string, decimals: number) {
     fraction += "0";
   }
 
-  whole = new BN(whole);
-  fraction = new BN(fraction);
-  var wei = whole.mul(base).add(fraction); // eslint-disable-line
+  let wei = new BN(whole).mul(base).add(new BN(fraction));
 
   if (negative) {
     wei = wei.mul(new BN(-1));
