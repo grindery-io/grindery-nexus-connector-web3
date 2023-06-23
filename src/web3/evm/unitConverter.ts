@@ -14,21 +14,13 @@ const ERC20_DECIMALS_ABI = [
   },
 ];
 
-// trunk-ignore(eslint/@typescript-eslint/no-explicit-any)
-function numberToString(arg: any) {
-  if (typeof arg === "string") {
-    if (!arg.match(/^-?[0-9.]+$/)) {
-      throw new Error(
-        `while converting number to string, invalid number value '${arg}', should be a number matching (^-?[0-9.]+).`
-      );
-    }
-    return arg;
-  } else if (typeof arg === "number") {
-    return String(arg);
-  } else if (typeof arg === "object" && arg.toString && (arg.toTwos || arg.dividedToIntegerBy)) {
-    return arg.toPrecision ? String(arg.toPrecision()) : arg.toString(10);
+function numberToString(arg: string): string {
+  if (!arg.match(/^-?[0-9.]+$/)) {
+    throw new Error(
+      `while converting number to string, invalid number value '${arg}', should be a number matching (^-?[0-9.]+).`
+    );
   }
-  throw new Error(`while converting number to string, invalid number value '${arg}' type ${typeof arg}.`);
+  return arg;
 }
 
 function scaleDecimals(etherInput: string, decimals: number) {
@@ -69,9 +61,7 @@ function scaleDecimals(etherInput: string, decimals: number) {
     fraction += "0";
   }
 
-  whole = new BN(whole);
-  fraction = new BN(fraction);
-  var wei = whole.mul(base).add(fraction); // eslint-disable-line
+  let wei = new BN(whole).mul(base).add(new BN(fraction));
 
   if (negative) {
     wei = wei.mul(new BN(-1));
