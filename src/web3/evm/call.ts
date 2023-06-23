@@ -1,10 +1,10 @@
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
-import { TransactionConfig, TransactionReceipt } from "web3-core";
+import { TransactionConfig } from "web3-core";
 import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
 import { parseUserAccessToken } from "../../jwt";
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 import Web3 from "web3";
 import mutexify from "mutexify/promise";
 import { BigNumber } from "@ethersproject/bignumber";
