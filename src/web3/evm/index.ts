@@ -4,6 +4,7 @@ import { NewTransactionTrigger, NewEventTrigger } from "./triggers";
 import { getUserAddress, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
+import { AbiItem } from "web3-utils";
 
 export { callSmartContract } from "./call";
 
@@ -20,8 +21,7 @@ export async function getUserDroneAddress(user: TAccessToken) {
   if (!droneAddressCache.has(userAddress)) {
     const { web3, close } = getWeb3("eip155:1");
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hubContract = new web3.eth.Contract(GrinderyNexusHub as any, HUB_ADDRESS);
+      const hubContract = new web3.eth.Contract(GrinderyNexusHub as AbiItem[], HUB_ADDRESS);
       const droneAddress = await hubContract.methods.getUserDroneAddress(userAddress).call();
       droneAddressCache.set(userAddress, droneAddress);
     } finally {
