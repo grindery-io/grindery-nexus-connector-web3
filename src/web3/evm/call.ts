@@ -362,16 +362,6 @@ export async function callSmartContract(
         }
       }
 
-      if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
-        return {
-          key: input.key,
-          sessionId: input.sessionId,
-          payload: {
-            transactionHash: (result as TransactionReceipt).transactionHash,
-          },
-        };
-      }
-
       return {
         key: input.key,
         sessionId: input.sessionId,
