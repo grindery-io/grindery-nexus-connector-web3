@@ -277,33 +277,30 @@ export async function callSmartContract(
           minFee: minFee.toString(),
         };
       } else {
-        const signedTransaction = await vaultSigner.signTransaction({
-          from: txConfig.from?.toString(),
-          to: txConfig.to,
-          data: txConfig.data,
-          value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
-          nonce: txConfig.nonce,
-          chainId: await web3.eth.getChainId(),
-          gasLimit: txConfig.gas ? BigNumber.from(txConfig.gas).toHexString() : undefined,
-          ...(txConfig.maxFeePerGas
-            ? {
-                type: 2,
-                maxFeePerGas: txConfig.maxFeePerGas ? BigNumber.from(txConfig.maxFeePerGas).toHexString() : undefined,
-                maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas
-                  ? BigNumber.from(txConfig.maxPriorityFeePerGas).toHexString()
-                  : undefined,
-              }
-            : {
-                gasPrice: txConfig.gasPrice ? BigNumber.from(txConfig.gasPrice).toHexString() : undefined,
-              }),
-        });
-        const receipt = await web3.eth.sendSignedTransaction(signedTransaction);
+        const receipt = await web3.eth.sendSignedTransaction(
+          await vaultSigner.signTransaction({
+            from: txConfig.from?.toString(),
+            to: txConfig.to,
+            data: txConfig.data,
+            value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
+            nonce: txConfig.nonce,
+            chainId: await web3.eth.getChainId(),
+            gasLimit: txConfig.gas ? BigNumber.from(txConfig.gas).toHexString() : undefined,
+            ...(txConfig.maxFeePerGas
+              ? {
+                  type: 2,
+                  maxFeePerGas: txConfig.maxFeePerGas ? BigNumber.from(txConfig.maxFeePerGas).toHexString() : undefined,
+                  maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas
+                    ? BigNumber.from(txConfig.maxPriorityFeePerGas).toHexString()
+                    : undefined,
+                }
+              : {
+                  gasPrice: txConfig.gasPrice ? BigNumber.from(txConfig.gasPrice).toHexString() : undefined,
+                }),
+          })
+        );
         releaseLock(); // Block less time
         result = receipt;
-        const cost = BigNumber.from(receipt.gasUsed || txConfig.gas)
-          .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
-          .toString();
-
         if (process.env.GAS_DEBIT_WEBHOOK) {
           axios
             .post(process.env.GAS_DEBIT_WEBHOOK, {
@@ -312,7 +309,9 @@ export async function callSmartContract(
               chain: input.fields.chain,
               contractAddress: input.fields.contractAddress,
               user: user.sub,
-              gasCost: cost,
+              gasCost: BigNumber.from(receipt.gasUsed || txConfig.gas)
+                .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
+                .toString(),
             })
             .catch((e) => {
               const resp = e.response as AxiosResponse;
@@ -350,7 +349,6 @@ export async function callSmartContract(
                 returnValue: callResultDecoded,
                 contractAddress: input.fields.contractAddress,
               };
-              console.log("result", result);
             }
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
