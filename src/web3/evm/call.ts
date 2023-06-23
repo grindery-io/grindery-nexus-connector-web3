@@ -338,18 +338,16 @@ export async function callSmartContract(
             throw new Error("No transaction result log in receipt");
           }
           const resultData = web3.eth.abi.decodeLog(eventAbi?.inputs || [], log.data, log.topics.slice(1));
-          if (resultData.success) {
-            if (functionInfo.outputs?.length) {
-              callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
-              if (functionInfo.outputs.length === 1) {
-                callResultDecoded = callResultDecoded[0];
-              }
-              result = {
-                ...receipt,
-                returnValue: callResultDecoded,
-                contractAddress: input.fields.contractAddress,
-              };
+          if (resultData.success && functionInfo.outputs?.length) {
+            callResultDecoded = web3.eth.abi.decodeParameters(functionInfo.outputs || [], resultData.returnData);
+            if (functionInfo.outputs.length === 1) {
+              callResultDecoded = callResultDecoded[0];
             }
+            result = {
+              ...receipt,
+              returnValue: callResultDecoded,
+              contractAddress: input.fields.contractAddress,
+            };
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
           }
