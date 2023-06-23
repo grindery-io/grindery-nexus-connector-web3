@@ -2,6 +2,7 @@ import BN from "bn.js";
 import Web3 from "web3";
 import { getWeb3 } from "./web3";
 import ERC20 from "./abi/ERC20.json";
+import { AbiItem } from "web3-utils";
 
 const ERC20_DECIMALS_ABI = ERC20.find((item) => item.name === "decimals");
 
@@ -23,12 +24,12 @@ function numberToString(arg: any) {
 }
 
 function scaleDecimals(etherInput: string, decimals: number) {
-  let ether = numberToString(etherInput); // eslint-disable-line
+  let ether = numberToString(etherInput);
   const base = new BN(10).pow(new BN(decimals));
   const baseLength = base.toString(10).length - 1;
 
   // Is it negative?
-  const negative = ether.substring(0, 1) === "-"; // eslint-disable-line
+  const negative = ether.substring(0, 1) === "-";
   if (negative) {
     ether = ether.substring(1);
   }
@@ -38,13 +39,13 @@ function scaleDecimals(etherInput: string, decimals: number) {
   }
 
   // Split it into a whole and fractional part
-  const comps = ether.split("."); // eslint-disable-line
+  const comps = ether.split(".");
   if (comps.length > 2) {
     throw new Error(`[ethjs-unit] while converting number ${etherInput} to wei,  too many decimal points`);
   }
 
   let whole = comps[0],
-    fraction = comps[1]; // eslint-disable-line
+    fraction = comps[1];
 
   if (!whole) {
     whole = "0";
@@ -62,7 +63,7 @@ function scaleDecimals(etherInput: string, decimals: number) {
 
   whole = new BN(whole);
   fraction = new BN(fraction);
-  var wei = whole.mul(base).add(fraction); // eslint-disable-line
+  let wei = whole.mul(base).add(fraction);
 
   if (negative) {
     wei = wei.mul(new BN(-1));
@@ -104,8 +105,7 @@ const UNIT_CONVERTERS: [
       const { web3, close } = getWeb3(fields.chain as string);
       let decimals: number;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const contract = new web3.eth.Contract(ERC20_DECIMALS_ABI as any, contractAddress);
+        const contract = new web3.eth.Contract(ERC20_DECIMALS_ABI as AbiItem, contractAddress);
         decimals = await contract.methods.decimals().call({ from: contractAddress });
       } finally {
         close();
@@ -116,7 +116,6 @@ const UNIT_CONVERTERS: [
   [
     /^([^-]+)->wei$/,
     async (value: unknown, m: RegExpMatchArray) => {
-      // console.log(String(value));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return Web3.utils.toWei(String(value), m[1] as any);
     },
