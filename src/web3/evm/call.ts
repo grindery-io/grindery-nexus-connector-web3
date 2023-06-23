@@ -232,8 +232,7 @@ export async function callSmartContract(
           },
         };
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      txConfig.nonce = web3.utils.toHex(await web3.eth.getTransactionCount(web3.defaultAccount)) as any;
+      txConfig.nonce = await web3.eth.getTransactionCount(web3.defaultAccount);
       let result: unknown;
       for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
         if (key in input.fields && typeof input.fields[key] === "string") {
@@ -334,10 +333,7 @@ export async function callSmartContract(
 
         if (droneAddress) {
           const eventAbi = GrinderyNexusDrone.find((x) => x.name === "TransactionResult");
-          const eventSignature = web3.eth.abi.encodeEventSignature(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            eventAbi as any
-          );
+          const eventSignature = web3.eth.abi.encodeEventSignature(eventAbi as AbiItem);
           const log = receipt.logs.find((x) => x.topics?.[0] === eventSignature && x.address === droneAddress);
           if (!log) {
             throw new Error("No transaction result log in receipt");
