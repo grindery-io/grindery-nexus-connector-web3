@@ -25,8 +25,7 @@ export async function safeDepositReceivedNative(input: ConnectorInput): Promise<
   return ret;
 }
 export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<TriggerBase> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  input = (await sanitizeParameters(input)) as any;
+  input = await sanitizeParameters(input);
   const ret = new evm.NewEventTrigger(
     await sanitizeParameters({
       ...input,
