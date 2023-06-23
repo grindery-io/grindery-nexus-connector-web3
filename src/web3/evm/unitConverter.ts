@@ -1,18 +1,9 @@
 import BN from "bn.js";
 import Web3 from "web3";
 import { getWeb3 } from "./web3";
+import ERC20 from "./abi/ERC20.json";
 
-const ERC20_DECIMALS_ABI = [
-  {
-    constant: true,
-    inputs: [],
-    name: "decimals",
-    outputs: [{ name: "", type: "uint8" }],
-    payable: false,
-    stateMutability: "view",
-    type: "function",
-  },
-];
+const ERC20_DECIMALS_ABI = ERC20.find((item) => item.name === "decimals");
 
 // trunk-ignore(eslint/@typescript-eslint/no-explicit-any)
 function numberToString(arg: any) {
