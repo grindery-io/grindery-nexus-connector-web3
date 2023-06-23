@@ -11,6 +11,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import vaultSigner from "./signer";
+import { AbiItem } from "web3-utils";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -58,14 +59,12 @@ async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | T
   if (!(await isHubAvailable(chain, web3))) {
     return { tx, droneAddress: null };
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hubContract = new web3.eth.Contract(GrinderyNexusHub as any, HUB_ADDRESS);
+  const hubContract = new web3.eth.Contract(GrinderyNexusHub as AbiItem[], HUB_ADDRESS);
   const droneAddress = await hubContract.methods.getUserDroneAddress(userAddress).call();
   const code = await web3.eth.getCode(droneAddress).catch(() => "");
   const hasDrone = !!code && code !== "0x";
   let nonce = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const droneContract = new web3.eth.Contract(GrinderyNexusDrone as any, droneAddress);
+  const droneContract = new web3.eth.Contract(GrinderyNexusDrone as AbiItem[], droneAddress);
   if (hasDrone) {
     nonce = await droneContract.methods.getNextNonce().call();
   }
@@ -135,40 +134,37 @@ export async function callSmartContract(
         };
       }
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const paramArray = [] as any[];
+      const paramArray = [] as string[];
       functionInfo = parseFunctionDeclaration(input.fields.functionDeclaration);
       const inputs = functionInfo.inputs || [];
 
       // NFT minting ipfs metadata
       if (functionInfo.name === "mintNFT" || functionInfo.name === "mintNFTs") {
-        console.log("hjsj");
-        paramArray.push(input.fields.parameters.recipient);
-        const metadata = JSON.stringify(
-          (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
-        );
-
-        const config: AxiosRequestConfig = {
-          method: "post",
-          url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-          headers: {
-            "Content-Type": "application/json",
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            pinata_api_key: process.env.PINATA_API_KEY!,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            pinata_secret_api_key: process.env.PINATA_API_SECRET!,
-          },
-          data: metadata,
-        };
-
-        const res = await axios(config);
-        paramArray.push("ipfs://" + res.data.IpfsHash);
+        paramArray.push((input.fields.parameters as { [key: string]: string }).recipient);
+        try {
+          const res = await axios({
+            method: "post",
+            url: "https://api.pinata.cloud/pinning/pinJSONToIPFS",
+            headers: {
+              "Content-Type": "application/json",
+              pinata_api_key: process.env.PINATA_API_KEY || "",
+              pinata_secret_api_key: process.env.PINATA_API_SECRET || "",
+            },
+            data: JSON.stringify(
+              (({ name, description, image }) => ({ name, description, image }))(input.fields.parameters)
+            ),
+          });
+          paramArray.push("ipfs://" + res.data.IpfsHash);
+        } catch (e) {
+          console.error("Failed to pin JSON to IPFS via Pinata: ", e);
+          throw e;
+        }
       } else {
         for (const i of inputs) {
           if (!(i.name in input.fields.parameters)) {
             throw new Error("Missing parameter " + i.name);
           }
-          paramArray.push(input.fields.parameters[i.name]);
+          paramArray.push((input.fields.parameters as { [key: string]: string })[i.name]);
         }
       }
 
