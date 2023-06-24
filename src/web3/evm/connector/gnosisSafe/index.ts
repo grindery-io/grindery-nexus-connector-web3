@@ -17,22 +17,27 @@ const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {
 
 async function sanitizeInput(input: ConnectorInput<unknown>) {
   const parameters = input.fields as { [key: string]: string };
-  const authResp = await axios.post(
-    (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "safe") +
-      "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
-    { safe: "{{ auth.safe }}", chainId: "{{ auth.chainId }}" },
-    {
-      headers: {
-        Authorization: `Bearer ${input.authentication}`,
-        "Content-Type": "application/json",
-        "x-grindery-template-scope": "all",
-      },
+  if (!["chainId", "contractAddress"].every((x) => parameters[x])) {
+    if (!input.authentication) {
+      throw new Error("Authentication required");
     }
-  );
-  const chainId = authResp.data.chainId;
-  parameters.chain = `eip155:${chainId}`;
-  parameters.chainId = chainId;
-  parameters.contractAddress = authResp.data.safe;
+    const authResp = await axios.post(
+      (process.env.CREDENTIAL_MANAGER_REQUEST_PREFIX || "").replace("$CDS_NAME", "safe") +
+        "grindery-nexus-orchestrator:3000/webhook/web3/callSmartContract/echo",
+      { safe: "{{ auth.safe }}", chainId: "{{ auth.chainId }}" },
+      {
+        headers: {
+          Authorization: `Bearer ${input.authentication}`,
+          "Content-Type": "application/json",
+          "x-grindery-template-scope": "all",
+        },
+      }
+    );
+    const chainId = authResp.data.chainId;
+    parameters.chainId = chainId;
+    parameters.contractAddress = authResp.data.safe;
+  }
+  parameters.chain = `eip155:${parameters.chainId}`;
   await sanitizeParameters(input, []);
 }
 
