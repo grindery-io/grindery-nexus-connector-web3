@@ -37,15 +37,3 @@ export type AlgorandDepayActions = {
   userAccount: algosdk.Account;
   receiver: string;
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isJson(item: any): boolean {
-  item = typeof item !== "string" ? JSON.stringify(item) : item;
-  try {
-    item = JSON.parse(item);
-  } catch (e) {
-    return false;
-  }
-
-  return typeof item === "object" && item !== null;
-}
