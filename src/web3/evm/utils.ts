@@ -56,14 +56,8 @@ export function onNewBlockMultiChain(
     cleanUpFunctions.splice(0, cleanUpFunctions.length);
   };
 }
-export function isSameAddress(a, b) {
-  if (!a || !b) {
-    return false;
-  }
-  if (/^0x/.test(a) && /^0x/.test(b)) {
-    return a.toLowerCase() === b.toLowerCase();
-  }
-  return a === b;
+export function isSameAddress(a: string | null, b: string | null): boolean {
+  return !!a && !!b && (/^0x/.test(a) && /^0x/.test(b) ? a.toLowerCase() === b.toLowerCase() : a === b);
 }
 export function parseEventDeclaration(eventDeclaration: string): AbiItem {
   const m = /^\s*(event +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(eventDeclaration);
