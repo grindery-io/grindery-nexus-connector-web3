@@ -16,9 +16,9 @@ const LAVANET = (wsPath: string, httpsPath: string): [string, string] => [
   `wss://g.w.lavanet.xyz:443/gateway/${wsPath}/${process.env.LAVANET_API_KEY}`,
   `https://g.w.lavanet.xyz:443/gateway/${httpsPath}/${process.env.LAVANET_API_KEY}`,
 ];
-const CHAINSTACK = (nodeId: string): [string, string] => [
-  `wss://ws-${nodeId}.p2pify.com/${process.env.CHAINSTACK_API_KEY}`,
-  `https://${nodeId}.p2pify.com/${process.env.CHAINSTACK_API_KEY}`,
+const CHAINSTACK = (nodeId: string, key?: string): [string, string] => [
+  `wss://ws-${nodeId}.p2pify.com/${key || process.env.CHAINSTACK_API_KEY}`,
+  `https://${nodeId}.p2pify.com/${key || process.env.CHAINSTACK_API_KEY}`,
 ];
 
 export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
@@ -39,7 +39,7 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:80001": ANKR("polygon_mumbai"),
   "eip155:5": ALCHEMY("eth-goerli"),
   "eip155:11155111": ANKR("eth_sepolia"),
-  "eip155:97": GETBLOCK("bsc", "testnet"),
+  "eip155:97": CHAINSTACK("nd-519-425-794", process.env.CHAINSTACK_API_KEY_2), // BSC Testnet
   "eip155:4002": ANKR("fantom_testnet"),
   "eip155:1442": ANKR("polygon_zkevm_testnet"),
   "eip155:338": CHAINSTACK("nd-326-373-985"), // Cronos testnet
