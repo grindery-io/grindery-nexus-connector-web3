@@ -17,7 +17,7 @@ jobs:
           require: admin
         id: check-user-permission
       - name: Check permission
-        if: not steps.check-user-permission.outputs.require-result
+        if: "!steps.check-user-permission.outputs.require-result"
         run: exit 1
       - uses: hmarr/auto-approve-action@v3
         with:
