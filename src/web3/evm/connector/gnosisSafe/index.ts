@@ -17,6 +17,11 @@ const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {
 
 async function sanitizeInput(input: ConnectorInput<unknown>) {
   const parameters = input.fields as { [key: string]: string };
+  const m = /^eip155:(\d+)$/.exec(parameters._grinderyChain || "");
+  if (m) {
+    parameters.chainId = m[1];
+  }
+  parameters.contractAddress = parameters.contractAddress || parameters._grinderyContractAddress;
   if (!["chainId", "contractAddress"].every((x) => parameters[x])) {
     if (!input.authentication) {
       throw new Error("Authentication required");
