@@ -63,8 +63,7 @@ export async function getAlgodClient(chain: string) {
   const networkId = await getNetworkId(chain);
   const baseServer = `https://${networkId}-algorand.api.purestake.io/ps2`;
   const port = "";
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const token = { "X-API-Key": process.env.ALGORAND_API_KEY! };
+  const token = { "X-API-Key": process.env.ALGORAND_API_KEY || "" };
 
   return new algosdk.Algodv2(token, baseServer, port);
 }

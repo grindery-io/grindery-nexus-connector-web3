@@ -373,12 +373,7 @@ export async function callSmartContract(
   await keyStore.setKey(networkId, CONTRACT_NAME, KeyPair.fromString(process.env.PRIVATE_KEY as string));
 
   // Get grindery account
-  const grinderyAccount = await nearGetAccount(
-    input.fields.chain,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    process.env.NEAR_ACCOUNT_ID!,
-    keyStore
-  );
+  const grinderyAccount = await nearGetAccount(input.fields.chain, process.env.NEAR_ACCOUNT_ID || "", keyStore);
 
   // Get user key pair
   const seed = (await hmac("grindery-near-key/" + user.sub)).subarray(0, 32);

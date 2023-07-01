@@ -43,22 +43,19 @@ export async function SendTransactionAction(
   };
 
   depay.fields.comp.addMethodCall({
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    appID: Number(process.env.ALGORAND_APP_ID!),
+    appID: Number(process.env.ALGORAND_APP_ID || ""),
     method: parseFunctionDeclarationAlgorand(input.fields.functionDeclaration),
     // method: test,
     methodArgs: [
       0,
       {
         txn: new Transaction({
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          from: depay.fields.grinderyAccount.addr!,
+          from: depay.fields.grinderyAccount.addr,
           to: depay.fields.receiver,
           amount: 0,
           ...spNoFee,
         }),
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount!),
+        signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
       },
       0,
     ],

@@ -4,8 +4,7 @@ import { JSONRPCRequest, JSONRPCResponse } from "json-rpc-2.0";
 const auth = new GoogleAuth();
 let client: OAuth2Client;
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-const VAULT_AGENT_URL = process.env.VAULT_AGENT_URL!;
+const VAULT_AGENT_URL = process.env.VAULT_AGENT_URL || "";
 
 async function getClient() {
   if (!client) {

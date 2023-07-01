@@ -404,8 +404,7 @@ export async function callSmartContract(
 
   // Get user account
   const userAccount = await getUserAccountAlgorand(user);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
+  const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY || "");
 
   // Set new atomicTransactionComposer
   const comp = new algosdk.AtomicTransactionComposer();
