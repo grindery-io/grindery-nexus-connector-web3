@@ -26,13 +26,6 @@ export async function SendTransactionAction(
   // Feed the user account
   await feedAccount(depay.fields.grinderyAccount, depay.fields.userAccount, 200000, depay.fields.algodClient);
 
-  console.log("");
-  console.log("==> CREATE ASSET");
-  console.log(
-    "User account balance: %d microAlgos",
-    await getbalance(depay.fields.userAccount, depay.fields.algodClient)
-  );
-
   // Whether user accounts will need to be unfrozen before transacting
   const defaultFrozen = false;
   // Used to display asset units to user
