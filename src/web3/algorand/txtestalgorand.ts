@@ -21,58 +21,46 @@ export async function SendTransactionAction(
   const spNoFee = await setSpFee(0, depay.fields.algodClient);
   const spFullFee = await setSpFee(3 * algosdk.ALGORAND_MIN_TX_FEE, depay.fields.algodClient);
 
-  // Transaction from the user to the dApp (amount = 0 and fees = 0)
-  const txn = algosdk.makePaymentTxnWithSuggestedParams(
-    depay.fields.userAccount.addr,
-    depay.fields.receiver,
-    0,
-    undefined,
-    undefined,
-    spNoFee
-  );
-
   depay.fields.comp.addTransaction({
-    txn,
+    // Transaction from the user to the dApp (amount = 0 and fees = 0)
+    txn: algosdk.makePaymentTxnWithSuggestedParams(
+      depay.fields.userAccount.addr,
+      depay.fields.receiver,
+      0,
+      undefined,
+      undefined,
+      spNoFee
+    ),
     signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.userAccount),
   });
 
-  const commonParamsFullFee = {
-    sender: depay.fields.grinderyAccount.addr,
-    suggestedParams: spFullFee,
-    signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
-  };
-
   depay.fields.comp.addMethodCall({
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    appID: Number(process.env.ALGORAND_APP_ID!),
+    appID: Number(process.env.ALGORAND_APP_ID),
     method: parseFunctionDeclarationAlgorand(input.fields.functionDeclaration),
-    // method: test,
     methodArgs: [
       0,
       {
         txn: new Transaction({
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          from: depay.fields.grinderyAccount.addr!,
+          from: depay.fields.grinderyAccount.addr,
           to: depay.fields.receiver,
           amount: 0,
           ...spNoFee,
         }),
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount!),
+        signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
       },
       0,
     ],
-    ...commonParamsFullFee,
+    ...{
+      sender: depay.fields.grinderyAccount.addr,
+      suggestedParams: spFullFee,
+      signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
+    },
   });
-
-  // Finally, execute the composed group and print out the results
-  const result = await depay.fields.comp.execute(depay.fields.algodClient, 2);
-
-  console.log("result", result);
 
   return {
     key: input.key,
     sessionId: input.sessionId,
-    payload: result,
+    // Finally, execute the composed group and print out the results
+    payload: await depay.fields.comp.execute(depay.fields.algodClient, 2),
   };
 }
