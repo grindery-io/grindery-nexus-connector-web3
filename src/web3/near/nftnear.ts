@@ -18,10 +18,7 @@ export async function SendTransactionAction(
   depay: DepayActions<NearDepayActions>
 ): Promise<ConnectorOutput> {
   // Make deposit from grindery account to the user account
-  await depay.fields.grinderyAccount.sendMoney(
-    depay.fields.userAccount.accountId,
-    await utils.format.parseNearAmount("0.1")
-  );
+  await depay.fields.grinderyAccount.sendMoney(depay.fields.userAccount.accountId, utils.format.parseNearAmount("0.1"));
 
   // Set arguments for NFT minting
   const args = {
@@ -42,7 +39,7 @@ export async function SendTransactionAction(
         "nft_mint",
         args,
         new BN(10000000000000),
-        new BN((await utils.format.parseNearAmount("0.1")) as string)
+        new BN(utils.format.parseNearAmount("0.1") as string)
       ),
     ],
   });

@@ -384,7 +384,7 @@ export async function callSmartContract(
   const seed = (await hmac("grindery-near-key/" + user.sub)).subarray(0, 32);
   const newkeypairtmp = nacl.sign.keyPair.fromSeed(seed);
   const newKeyPair = new utils.KeyPairEd25519(base_encode(newkeypairtmp.secretKey));
-  const newPublicKey = await newKeyPair.getPublicKey();
+  const newPublicKey = newKeyPair.getPublicKey();
 
   // Get user implicit account from the new key pair
   const implicit_user_id = Buffer.from(utils.PublicKey.fromString(newPublicKey.toString()).data).toString("hex");
@@ -399,7 +399,7 @@ export async function callSmartContract(
   } catch (e) {
     // If ueser account doens't exist, then create an implicit grinderyAccount via transaction
     if (e.type === "AccountDoesNotExist") {
-      await grinderyAccount.sendMoney(implicit_user_id, new BN((await utils.format.parseNearAmount("1")) as string));
+      await grinderyAccount.sendMoney(implicit_user_id, new BN(utils.format.parseNearAmount("1") as string));
       console.log("new grinderyAccount created with userID ", implicit_user_id);
     }
   }
