@@ -21,8 +21,5 @@ export function SendTransactionAction(
   input: ConnectorInput<{ chain: string; functionDeclaration: string }>,
   depay: DepayActions<unknown>
 ) {
-  console.log("SendTransactionAction");
-  console.log("module: " + input.key);
-
   return ACTIONS[input.fields.chain.concat(":" + input.fields.functionDeclaration)].SendTransactionAction(input, depay);
 }

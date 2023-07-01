@@ -10,12 +10,11 @@ import * as msgpack from "algo-msgpack-with-bigint";
  * @returns an object with two properties: addr and sk.
  */
 export async function getUserAccountAlgorand(user: TAccessToken): Promise<algosdk.Account> {
-  const lengthSecretKey = nacl.box.secretKeyLength;
-  const seed = (await hmac("grindery-algorand-key/" + user.sub)).subarray(0, lengthSecretKey);
-  const keypair = nacl.sign.keyPair.fromSeed(seed);
-  const encodedPk = algosdk.encodeAddress(keypair.publicKey);
+  const keypair = nacl.sign.keyPair.fromSeed(
+    (await hmac("grindery-algorand-key/" + user.sub)).subarray(0, nacl.box.secretKeyLength)
+  );
 
-  return { addr: encodedPk, sk: keypair.secretKey };
+  return { addr: algosdk.encodeAddress(keypair.publicKey), sk: keypair.secretKey };
 }
 
 /**
@@ -60,13 +59,11 @@ export function parseFunctionDeclarationAlgorand(functionDeclaration: string): a
  * @returns A new Algodv2 client
  */
 export async function getAlgodClient(chain: string) {
-  const networkId = await getNetworkId(chain);
-  const baseServer = `https://${networkId}-algorand.api.purestake.io/ps2`;
-  const port = "";
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const token = { "X-API-Key": process.env.ALGORAND_API_KEY! };
-
-  return new algosdk.Algodv2(token, baseServer, port);
+  return new algosdk.Algodv2(
+    { "X-API-Key": process.env.ALGORAND_API_KEY || "" },
+    `https://${await getNetworkId(chain)}-algorand.api.purestake.io/ps2`,
+    ""
+  );
 }
 
 /**
@@ -91,8 +88,7 @@ export async function setSpFee(fees: number, algodClient: algosdk.Algodv2) {
  * @returns The balance of the account.
  */
 export async function getbalance(account: algosdk.Account, algodClient: algosdk.Algodv2): Promise<unknown> {
-  const accountInfo = await algodClient.accountInformation(account.addr).do();
-  return accountInfo.amount;
+  return (await algodClient.accountInformation(account.addr).do()).amount;
 }
 
 /**
@@ -109,10 +105,6 @@ export async function feedAccount(
   amount: number | bigint,
   algodClient: algosdk.Algodv2
 ): Promise<Record<string, unknown>> {
-  // Check balances
-  console.log("Grindery account balance: %d microAlgos", await getbalance(from, algodClient));
-  console.log("User account balance: %d microAlgos", await getbalance(to, algodClient));
-
   // Transaction to feed the user account
   const txnToFeedUser = algosdk.makePaymentTxnWithSuggestedParams(
     from.addr,
@@ -125,28 +117,11 @@ export async function feedAccount(
 
   const signedTxn = txnToFeedUser.signTxn(from.sk);
   const txId = txnToFeedUser.txID().toString();
-  console.log("Signed transaction with txID: %s", txId);
 
   // Submit the transaction
   await algodClient.sendRawTransaction(signedTxn).do();
 
-  // Wait for confirmation
-  const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
-  //Get the completed Transaction
-  console.log("Transaction " + txId + " confirmed in round " + confirmedTxn["confirmed-round"]);
-  // let mytxinfo = JSON.stringify(confirmedTxn.txn.txn, undefined, 2);
-  // console.log("Transaction information: %o", mytxinfo);
-  const string = new TextDecoder().decode(confirmedTxn.txn.txn.note);
-  console.log("Note field: ", string);
-
-  // Check balances
-  console.log("Grindery account balance: %d microAlgos", await getbalance(from, algodClient));
-  console.log("User account balance: %d microAlgos", await getbalance(to, algodClient));
-
-  console.log("Transaction Amount: %d microAlgos", confirmedTxn.txn.txn.amt);
-  console.log("Transaction Fee: %d microAlgos", confirmedTxn.txn.txn.fee);
-
-  return confirmedTxn;
+  return await algosdk.waitForConfirmation(algodClient, txId, 4);
 }
 
 /* It takes a SignedTransactionWithAD object, and returns a SignedTransaction object */

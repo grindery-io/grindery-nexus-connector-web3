@@ -91,67 +91,44 @@ export async function SendTransactionAction(
   const hashImageBase64 = hashImage.digest("base64");
   metadataraw.image_integrity = "sha256-" + hashImageBase64;
 
-  //     const fullPathImage = __dirname + '/contracts/nft/nft_img.png';
-  // //    const metadatafileImage = (await fs.readFileSync(fullPathImage));
-  //     const metadatafileImage = (await fs.readFile(fullPathImage));
-  //     const hashImage = crypto.createHash('sha256');
-  //     hashImage.update(metadatafileImage);
-  //     const hashImageBase64 = hashImage.digest("base64");
-  //     const imageIntegrity = "sha256-" + hashImageBase64;
-  // // use this in yout metadata.json file
-  // console.log("image_integrity : " + imageIntegrity);
-
   const hash = crypto.createHash("sha256");
   hash.update(Buffer.from(JSON.stringify(metadataraw)));
 
-  const metadata = new Uint8Array(hash.digest()); // use this in your code
-  const spNoFee = await setSpFee(0, depay.fields.algodClient);
-  const spFullFee = await setSpFee(2 * algosdk.ALGORAND_MIN_TX_FEE, depay.fields.algodClient);
-
-  // signing and sending "txn" allows "addr" to create an asset
-  const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-    from: depay.fields.userAccount.addr,
-    total,
-    decimals,
-    assetName,
-    unitName,
-    assetURL: undefined,
-    assetMetadataHash: metadata,
-    defaultFrozen,
-    freeze: freezeAddr,
-    manager: managerAddr,
-    clawback: clawbackAddr,
-    reserve: reserveAddr,
-    suggestedParams: spNoFee,
-  });
-
   depay.fields.comp.addTransaction({
-    txn,
+    // signing and sending "txn" allows "addr" to create an asset
+    txn: algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
+      from: depay.fields.userAccount.addr,
+      total,
+      decimals,
+      assetName,
+      unitName,
+      assetURL: undefined,
+      assetMetadataHash: new Uint8Array(hash.digest()),
+      defaultFrozen,
+      freeze: freezeAddr,
+      manager: managerAddr,
+      clawback: clawbackAddr,
+      reserve: reserveAddr,
+      suggestedParams: await setSpFee(0, depay.fields.algodClient),
+    }),
     signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.userAccount),
   });
 
-  const txnToPayGas = algosdk.makePaymentTxnWithSuggestedParams(
-    depay.fields.grinderyAccount.addr,
-    depay.fields.receiver,
-    0,
-    undefined,
-    undefined,
-    spFullFee
-  );
-
   depay.fields.comp.addTransaction({
-    txn: txnToPayGas,
+    txn: algosdk.makePaymentTxnWithSuggestedParams(
+      depay.fields.grinderyAccount.addr,
+      depay.fields.receiver,
+      0,
+      undefined,
+      undefined,
+      await setSpFee(2 * algosdk.ALGORAND_MIN_TX_FEE, depay.fields.algodClient)
+    ),
     signer: algosdk.makeBasicAccountTransactionSigner(depay.fields.grinderyAccount),
   });
-
-  const result = await depay.fields.comp.execute(depay.fields.algodClient, 2);
-
-  console.log("result = " + JSON.stringify(result));
-  console.log("payload = " + result.txIDs[0]);
 
   return {
     key: input.key,
     sessionId: input.sessionId,
-    payload: { TxHash: result.txIDs[0] },
+    payload: { TxHash: (await depay.fields.comp.execute(depay.fields.algodClient, 2)).txIDs[0] },
   };
 }

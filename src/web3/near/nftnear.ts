@@ -47,13 +47,10 @@ export async function SendTransactionAction(
     ],
   });
 
-  console.log("result", result);
-
   return {
     key: input.key,
     sessionId: input.sessionId,
     payload: { transactionHash: result.transaction.hash },
-    // payload: {transactionHash: result.transactions.receipt_id}
   };
 
   throw new Error("Unsupported call");
