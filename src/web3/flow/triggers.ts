@@ -370,7 +370,6 @@ class NewTransactionTrigger extends TriggerBase<{
       throw new InvalidParamsError("from or to is required");
     }
     const contract = this.fields.contract; //"A.1654653399040a61.FlowToken";
-    // const contract = "A.7e60df042a9c0868.FlowToken";
     const subscriber = getSubscriber(contract);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.from, this.fields.to);
     /* Subscribing to the event TokensDeposited/TokensWithdrawn[amount] on the contract at the address

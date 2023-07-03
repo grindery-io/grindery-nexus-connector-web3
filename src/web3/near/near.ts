@@ -218,7 +218,6 @@ class NewTransactionTrigger extends TriggerBase<{
     const unsubscribe = SUBSCRIBER.subscribe({
       callback: async (receipt: Receipt) => {
         blockingTracer.tag("near.NewTransactionTrigger");
-        // console.log(receipt);
         if (
           this.fields.from &&
           this.fields.from !== normalizeAddress(receipt.receipt.Action?.signer_id) &&
@@ -386,8 +385,6 @@ export async function callSmartContract(
   await keyStore.setKey(networkId, implicit_user_id, newKeyPair);
   const useraccount = await nearGetAccount(input.fields.chain, implicit_user_id, keyStore);
 
-  console.log("implicit_user_id", implicit_user_id);
-
   // Test the state of the user account to know if it exists
   try {
     await useraccount.state();
@@ -395,7 +392,6 @@ export async function callSmartContract(
     // If ueser account doens't exist, then create an implicit grinderyAccount via transaction
     if (e.type === "AccountDoesNotExist") {
       await grinderyAccount.sendMoney(implicit_user_id, new BN((await utils.format.parseNearAmount("1")) as string));
-      console.log("new grinderyAccount created with userID ", implicit_user_id);
     }
   }
 
