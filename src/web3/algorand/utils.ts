@@ -61,7 +61,7 @@ export function parseFunctionDeclarationAlgorand(functionDeclaration: string): a
 export async function getAlgodClient(chain: string) {
   return new algosdk.Algodv2(
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    { "X-API-Key": process.env.ALGORAND_API_KEY! },
+    { "X-API-Key": process.env.ALGORAND_API_KEY || "" },
     `https://${await getNetworkId(chain)}-algorand.api.purestake.io/ps2`,
     ""
   );

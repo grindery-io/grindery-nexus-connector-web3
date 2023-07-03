@@ -350,8 +350,11 @@ function getSubscriber(contractAddress: string): ContractSubscriber {
   if (!subscribers.has(contractAddress)) {
     subscribers.set(contractAddress, new ContractSubscriber(contractAddress));
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return subscribers.get(contractAddress)!;
+  const subscriber = subscribers.get(contractAddress);
+  if (subscriber === undefined) {
+    throw new Error(`Subscriber not found for contract address: ${contractAddress}`);
+  }
+  return subscriber;
 }
 /* It subscribes to the `TokensDeposited` and `TokensWithdrawn` events of the `FlowToken` contract, and
 sends a notification for each event that matches the `from` and `to` parameters */

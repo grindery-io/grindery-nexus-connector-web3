@@ -82,8 +82,7 @@ export async function callSmartContract(
 export async function createAccount() {
   return await _createAccount({
     senderArgs: {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      accountAddress: process.env.FLOW_PROPOSER_ADDRESS!,
+      accountAddress: process.env.FLOW_PROPOSER_ADDRESS || "",
       keyId: 0,
     },
     payerArgs: {
