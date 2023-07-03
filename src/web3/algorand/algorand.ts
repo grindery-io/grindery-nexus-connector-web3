@@ -228,13 +228,6 @@ class NewTransactionTrigger extends TriggerBase<{
             .div(new BigNumber(10).pow(new BigNumber(assetInfo.params.decimals.toString())))
             .toString();
         }
-        /* Printing the transaction details to the console. */
-        console.log("from", tx_from);
-        console.log("to", tx_to);
-        console.log("amount", tx_amount);
-        console.log("txID", tx_id);
-        console.log("blockHash", tx.blockHash);
-        console.log("blockRnd", tx.blockRnd?.toString());
         /* Sending a notification to the user. */
         this.sendNotification({
           from: tx_from,
@@ -333,22 +326,6 @@ Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
 Triggers.set("newEvent", NewEventTrigger);
 
-/*
-const createAccount = function () {
-  try {
-    const userAccount = algosdk.generateAccount();
-    console.log("Account Address = " + userAccount.addr);
-    const account_mnemonic = algosdk.secretKeyToMnemonic(userAccount.sk);
-    console.log("Account Mnemonic = " + account_mnemonic);
-    console.log("Account created. Save off Mnemonic and address");
-    console.log("Add funds to account using the TestNet Dispenser: ");
-    console.log("https://dispenser.testnet.aws.algodev.network/ ");
-    return userAccount;
-  } catch (err) {
-    console.log("err", err);
-  }
-};
-*/
 export async function callSmartContract(
   input: ConnectorInput<{
     chain: string;
@@ -368,21 +345,9 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
-  const algodClient = await getAlgodClient(input.fields.chain);
   /* The above code is using the Algorand Standard Asset API to get information about an asset. */
   if (input.fields.functionDeclaration === "getInformationAsset") {
     const scrutinizedAsset = await arApi(["assets", input.fields.parameters.assetid as string]);
-    /* Printing out the values of the fields of the scrutinizedAsset object. */
-    console.log("index", scrutinizedAsset.index.toString());
-    console.log("clawback", scrutinizedAsset.params.clawback);
-    console.log("creator", scrutinizedAsset.params.creator);
-    console.log("decimals", scrutinizedAsset.params.decimals.toString());
-    console.log("freeze", scrutinizedAsset.params.freeze);
-    console.log("manager", scrutinizedAsset.params.manager);
-    console.log("name", scrutinizedAsset.params.name);
-    console.log("reserve", scrutinizedAsset.params.reserve);
-    console.log("total", scrutinizedAsset.params.total.toString());
-    console.log("unit-name", scrutinizedAsset.params["unit-name"]);
     /* Returning the asset information in a format that the frontend can understand. */
     return {
       key: input.key,
@@ -402,27 +367,14 @@ export async function callSmartContract(
     };
   }
 
-  // Get user account
-  const userAccount = await getUserAccountAlgorand(user);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const grinderyAccount = algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY!);
-
-  // Set new atomicTransactionComposer
-  const comp = new algosdk.AtomicTransactionComposer();
-
-  // Set the three accounts: sender (user), intermediary to pay gas fees (grindery) and receiver
-  // const sender = userAccount.addr;
-  // const intermediary = grinderyAccount.addr;
-  const receiver = input.fields.contractAddress;
-
   // Set depay parameters for Algorand
   const depayparameter: DepayActions<AlgorandDepayActions> = {
     fields: {
-      comp,
-      algodClient,
-      userAccount,
-      grinderyAccount,
-      receiver,
+      comp: new algosdk.AtomicTransactionComposer(),
+      algodClient: await getAlgodClient(input.fields.chain),
+      userAccount: await getUserAccountAlgorand(user),
+      grinderyAccount: algosdk.mnemonicToSecretKey(process.env.ALGORAND_MNEMONIC_GRINDERY || ""),
+      receiver: input.fields.contractAddress,
     },
   };
 
