@@ -270,7 +270,7 @@ class ReceiptSubscriber extends EventEmitter {
    */
   subscribe({ callback, onError }: { callback: (receipt: Receipt) => void; onError: (error: unknown) => void }) {
     const handler = async (receipt: Receipt) => {
-      await callback(receipt);
+      callback(receipt);
     };
     const errorHandler = (error: unknown) => {
       onError(error);
