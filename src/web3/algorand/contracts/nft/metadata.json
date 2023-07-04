@@ -1,25 +1,25 @@
 {
-    "name": "ALICEART",
-    "description": "Alice's Artwork",
-    "image": "https://c0.lestechnophiles.com/www.numerama.com/wp-content/uploads/2021/12/nft-singes-1024x576.jpg?webp=1&key=681596ec",
-    "image_integrity": "sha256-/tih/7ew0eziEZIVD4qoTWb0YrElAuRG3b40SnEstyk=",
-    "properties": {
-        "simple_property": "Alice's first artwork",
-        "rich_property": {
-            "name": "AliceArt",
-            "value": "001",
-            "display_value": "001",
-            "class": "emphasis",
-            "css": {
-                "color": "#ffffff",
-                "font-weight": "bold",
-                "text-decoration": "underline"
-            }
-        },
-        "array_property": {
-            "name": "Artwork",
-            "value": [1, 2, 3, 4],
-            "class": "emphasis"
-        }
+  "name": "ALICEART",
+  "description": "Alice's Artwork",
+  "image": "https://c0.lestechnophiles.com/www.numerama.com/wp-content/uploads/2021/12/nft-singes-1024x576.jpg?webp=1&key=681596ec",
+  "image_integrity": "sha256-/tih/7ew0eziEZIVD4qoTWb0YrElAuRG3b40SnEstyk=",
+  "properties": {
+    "simple_property": "Alice's first artwork",
+    "rich_property": {
+      "name": "AliceArt",
+      "value": "001",
+      "display_value": "001",
+      "class": "emphasis",
+      "css": {
+        "color": "#ffffff",
+        "font-weight": "bold",
+        "text-decoration": "underline"
+      }
+    },
+    "array_property": {
+      "name": "Artwork",
+      "value": [1, 2, 3, 4],
+      "class": "emphasis"
     }
+  }
 }
