@@ -7,8 +7,6 @@ import { base58_to_binary, binary_to_base58 } from "base58-js";
 import { connect, keyStores, utils } from "near-api-js";
 import crypto from "crypto";
 
-
-
 /**
  * It takes an address, and if it's a base58 encoded address, it converts it to a hex encoded address
  * @param {T} address - The address to normalize.
@@ -36,14 +34,10 @@ export function normalizeAddress<T>(address: T): T {
  * @param {string | undefined} user - The user's username.
  * @returns A new keypair
  */
-export async function getUserAccountNear(
-  user: string | undefined
-): Promise<unknown> {
+export async function getUserAccountNear(user: string | undefined): Promise<unknown> {
   const seed = (await hmac("grindery-near-key/" + user)).subarray(0, 32);
   const newkeypairtmp = nacl.sign.keyPair.fromSeed(seed);
-  const newKeyPair = new utils.KeyPairEd25519(
-    base_encode(newkeypairtmp.secretKey)
-  );
+  const newKeyPair = new utils.KeyPairEd25519(base_encode(newkeypairtmp.secretKey));
 
   return newKeyPair;
 }
@@ -55,11 +49,7 @@ export async function getUserAccountNear(
  * about.
  * @returns The account object.
  */
-export async function nearGetAccount(
-  chain: string,
-  accountId: string,
-  keyStore: keyStores.KeyStore | undefined
-) {
+export async function nearGetAccount(chain: string, accountId: string, keyStore: keyStores.KeyStore | undefined) {
   const networkId = await getNetworkId(chain);
   // const keyStore = await getKeyStore();
   const config = {
@@ -80,7 +70,6 @@ export async function nearGetAccount(
  * @returns A receipt ID.
  */
 export async function receiptIdFromTx(txHash: string, blockHash: string, salt: number): Promise<string> {
-
   if (!blockHash || !txHash) {
     return "";
   }
@@ -93,7 +82,7 @@ export async function receiptIdFromTx(txHash: string, blockHash: string, salt: n
   saltBinary[0] = salt;
   const mergeArray = new Uint8Array(txHashBinary.length + blockHashBinary.length + saltBinary.length);
   let offset = 0;
-  [txHashBinary, blockHashBinary, saltBinary].forEach(item => {
+  [txHashBinary, blockHashBinary, saltBinary].forEach((item) => {
     mergeArray.set(item, offset);
     offset += item.length;
   });

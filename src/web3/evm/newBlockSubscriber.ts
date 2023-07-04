@@ -19,6 +19,7 @@ export class NewBlockSubscriber extends EventEmitter {
     this.resetSubscription();
     this.resetPoller();
   }
+
   close() {
     this.closed = true;
     this.removeAllListeners();
@@ -32,6 +33,7 @@ export class NewBlockSubscriber extends EventEmitter {
       this.resetSubscriptionTimer = null;
     }
   }
+
   unsubscribe() {
     if (this.newBlockSubscription) {
       this.newBlockSubscription.unsubscribe((err) => {
@@ -42,6 +44,7 @@ export class NewBlockSubscriber extends EventEmitter {
     }
     this.newBlockSubscription = null;
   }
+
   resetSubscription() {
     this.unsubscribe();
     if (this.closed) {
@@ -91,6 +94,7 @@ export class NewBlockSubscriber extends EventEmitter {
         });
     }, 1000);
   }
+
   async poll() {
     blockingTracer.tag("newBlockSubScriber.poll");
     if (this.pollTimer) {
@@ -140,6 +144,7 @@ export class NewBlockSubscriber extends EventEmitter {
     }
     this.resetPoller();
   }
+
   resetPoller() {
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
@@ -152,6 +157,7 @@ export class NewBlockSubscriber extends EventEmitter {
       this.poll();
     }, 30000);
   }
+
   async checkNewBlocks() {
     blockingTracer.tag("newBlockSubScriber.checkNewBlocks");
     if (this.nextBlock <= 0) {

@@ -44,8 +44,8 @@ function scaleDecimals(etherInput: string, decimals: number) {
     throw new Error(`[ethjs-unit] while converting number ${etherInput} to wei,  too many decimal points`);
   }
 
-  let whole = comps[0],
-    fraction = comps[1];
+  let whole = comps[0];
+  let fraction = comps[1];
 
   if (!whole) {
     whole = "0";

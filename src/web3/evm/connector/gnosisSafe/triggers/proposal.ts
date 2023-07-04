@@ -37,6 +37,7 @@ class SafeProposalListener extends EventEmitter {
     super();
     this.address = ethers.utils.getAddress(address);
   }
+
   static getInstance(address: string, chainId: number) {
     const cacheKey = `${chainId}/${address}`;
     if (!this.allInstances.has(cacheKey)) {
@@ -44,6 +45,7 @@ class SafeProposalListener extends EventEmitter {
     }
     return this.allInstances.get(cacheKey) as SafeProposalListener;
   }
+
   private maybeStart() {
     if (this.running) {
       return;
@@ -55,9 +57,10 @@ class SafeProposalListener extends EventEmitter {
     this.main()
       .catch((e) => console.error(`[${this.chainId}/${this.address}] Unexpected error:`, e))
       .finally(() => (this.running = false))
-      .then(() => new Promise((res) => setTimeout(res, 5000)))
+      .then(() => new Promise((resolve) => setTimeout(resolve, 5000)))
       .then(this.maybeStart.bind(this));
   }
+
   private async main() {
     const snapshot = new Map<string, Record<string, SafeApiTx>>();
     let starting = true;
@@ -121,16 +124,19 @@ class SafeProposalListener extends EventEmitter {
         }
       }
       starting = false;
-      await new Promise((res) => setTimeout(res, 30000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
     }
   }
+
   on(e: "safe_event", listener: (obj: SafeEvent) => void) {
     setImmediate(this.maybeStart.bind(this));
     return super.on(e, listener);
   }
+
   off(e: "safe_event", listener: (obj: SafeEvent) => void) {
     return super.off(e, listener);
   }
+
   emit(e: "safe_event", obj: SafeEvent) {
     return super.emit(e, obj);
   }

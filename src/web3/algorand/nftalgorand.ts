@@ -1,7 +1,7 @@
 import axios from "axios";
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
 import { DepayActions, AlgorandDepayActions } from "../utils";
-import { setSpFee, feedAccount, getbalance } from "./utils";
+import { setSpFee, feedAccount } from "./utils";
 import algosdk from "algosdk";
 import nftMetadata from "./contracts/nft/metadata.json";
 import _ from "lodash";

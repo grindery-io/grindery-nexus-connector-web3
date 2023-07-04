@@ -199,7 +199,7 @@ export class NewEventTrigger extends TriggerBase<{
               .flat();
             const transactionLogFailures: { [key: string]: number } = memoCall("transactionLogFailures", () => ({}));
             let numProcessed = 0;
-            for (const logEntry of entries as (typeof entries[0] & {
+            for (const logEntry of entries as ((typeof entries)[0] & {
               __decodeFailure?: boolean;
               __decoded?: { [key: string]: string };
             })[]) {
@@ -223,7 +223,7 @@ export class NewEventTrigger extends TriggerBase<{
               if (numProcessed > 50) {
                 numProcessed = 0;
                 // Try not to block event loop for too long
-                await new Promise((res) => setImmediate(res));
+                await new Promise((resolve) => setImmediate(resolve));
               }
               const inputs = eventInfo.inputs || [];
               const numIndexedInputs = inputs.filter((x) => x.indexed).length;
@@ -269,8 +269,8 @@ export class NewEventTrigger extends TriggerBase<{
                 continue;
               }
               const event = {} as { [key: string]: unknown };
-              event["_grinderyContractAddress"] = logEntry.address;
-              event["_grinderyChain"] = chain;
+              event._grinderyContractAddress = logEntry.address;
+              event._grinderyChain = chain;
               let match = true;
               for (const input of inputs) {
                 const name = input.name;

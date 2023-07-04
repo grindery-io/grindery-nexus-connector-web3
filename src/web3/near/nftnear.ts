@@ -49,6 +49,4 @@ export async function SendTransactionAction(
     sessionId: input.sessionId,
     payload: { transactionHash: result.transaction.hash },
   };
-
-  throw new Error("Unsupported call");
 }

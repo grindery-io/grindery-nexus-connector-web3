@@ -53,7 +53,9 @@ type ParsedEvent = EventHeader & {
  * @returns Block[] | BlockEvent[] | unknown
  */
 async function flowApi(path: "blocks", params: { [key: string]: string }): Promise<Block[]>;
+// eslint-disable-next-line no-redeclare
 async function flowApi(path: "events", params: { [key: string]: string }): Promise<BlockEvent[]>;
+// eslint-disable-next-line no-redeclare
 async function flowApi(path: string, params: { [key: string]: string }): Promise<unknown> {
   const response = await axios.get("https://rest-mainnet.onflow.org/v1/" + path, {
     params,
@@ -75,6 +77,7 @@ class EventAggregator {
    * @param {number} startHeight - The block height at which the contract was deployed.
    * @param {string} contractAddress - The address of the contract you want to interact with.
    */
+  // eslint-disable-next-line no-useless-constructor
   constructor(private startHeight: number, private contractAddress: string) {}
   /**
    * It fetches an event, but only if it hasn't already been fetched
@@ -98,6 +101,7 @@ class EventAggregator {
       this.fetchPromises.delete(type);
     }
   }
+
   /**
    * It fetches events from the Flow blockchain and stores them in a map
    * @param {string} type - The event type to fetch.
@@ -152,6 +156,7 @@ class EventAggregator {
       }
     }
   }
+
   /**
    * It fetches events of a given type, and then calls a callback function for each transaction that
    * has events of that type
@@ -167,6 +172,7 @@ class EventAggregator {
       }
     }
   }
+
   /**
    * This function returns the endHeight property of the object
    * @returns The endHeight property of the object.
@@ -183,6 +189,7 @@ class ContractSubscriber extends EventEmitter {
     super();
     this.setMaxListeners(1000);
   }
+
   /**
    * It loops over all the listeners of the `process` event, and calls them with an `EventAggregator`
    * object
@@ -219,6 +226,7 @@ class ContractSubscriber extends EventEmitter {
     }
     this.running = false;
   }
+
   /**
    * It subscribes to a Flow event, and calls the callback function when the event is emitted
    * @param  - `eventDeclaration` is a string that describes the events you want to subscribe to. It's
@@ -312,6 +320,7 @@ class ContractSubscriber extends EventEmitter {
               return;
             }
           }
+          // eslint-disable-next-line n/no-callback-literal
           callback({
             _metadata: {
               transactionId: event.transaction_id,
@@ -369,13 +378,13 @@ class NewTransactionTrigger extends TriggerBase<{
     if (!this.fields.from && !this.fields.to && this.key === "newTransaction") {
       throw new InvalidParamsError("from or to is required");
     }
-    const contract = this.fields.contract; //"A.1654653399040a61.FlowToken";
+    const contract = this.fields.contract; // "A.1654653399040a61.FlowToken";
     const subscriber = getSubscriber(contract);
     console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.from, this.fields.to);
     /* Subscribing to the event TokensDeposited/TokensWithdrawn[amount] on the contract at the address
     contract. */
     const unsubscribe = subscriber.subscribe({
-      eventDeclaration: this.fields.eventDeclaration, //"TokensDeposited/TokensWithdrawn[amount]",
+      eventDeclaration: this.fields.eventDeclaration, // "TokensDeposited/TokensWithdrawn[amount]",
       parameterFilters: {
         ...(this.fields.from ? { from: this.fields.from } : {}),
         ...(this.fields.to ? { to: this.fields.to } : {}),
@@ -433,8 +442,8 @@ class NewEventTrigger extends TriggerBase<{
       eventDeclaration: this.fields.eventDeclaration,
       parameterFilters: this.fields.parameterFilters,
       callback: (output) => {
-        output["_grinderyChain"] = this.fields.chain;
-        output["_grinderyContractAddress"] = this.fields.contractAddress;
+        output._grinderyChain = this.fields.chain;
+        output._grinderyContractAddress = this.fields.contractAddress;
         console.log(`[${this.sessionId}] Sending notification:`, output._metadata.transactionId);
         this.sendNotification(output);
       },
@@ -450,6 +459,7 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
+// eslint-disable-next-line func-call-spacing
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);

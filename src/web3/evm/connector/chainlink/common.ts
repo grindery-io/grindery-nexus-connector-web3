@@ -45,6 +45,7 @@ async function getPairs(feed: string): Promise<FieldChoiceSchema[]> {
           sample: item.name,
         });
       }
+      return null;
     });
     return pairsArray;
   } catch (err) {

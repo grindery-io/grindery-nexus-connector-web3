@@ -4,12 +4,11 @@ import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-com
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { backOff } from "exponential-backoff";
 import blockingTracer from "../../blockingTracer";
-import { hmac, TAccessToken } from "../../jwt";
+import { hmac, TAccessToken, parseUserAccessToken } from "../../jwt";
 import { base58_to_binary } from "base58-js";
 import { base_encode } from "./serialize";
 import { nearGetAccount } from "./utils";
 import { SendTransactionAction } from "../actions";
-import { parseUserAccessToken } from "../../jwt";
 import { getNetworkId, DepayActions, NearDepayActions } from "../utils";
 import nacl from "tweetnacl";
 import BN from "bn.js";
@@ -66,6 +65,7 @@ class ReceiptSubscriber extends EventEmitter {
     super();
     this.setMaxListeners(1000);
   }
+
   async main() {
     blockingTracer.tag("near.ReceiptSubscriber.main");
     if (this.running) {
@@ -99,6 +99,7 @@ class ReceiptSubscriber extends EventEmitter {
           continue;
         }
         const pendingBlocks = [response];
+        // eslint-disable-next-line no-unmodified-loop-condition
         while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
           pendingBlocks.unshift(
             await near.connection.provider.block({
@@ -154,7 +155,7 @@ class ReceiptSubscriber extends EventEmitter {
           this.running = false;
           break;
         } else {
-          await new Promise((res) => setTimeout(res, 5000));
+          await new Promise((resolve) => setTimeout(resolve, 5000));
           lastErrorHeight = currentHeight;
           continue;
         }
@@ -163,6 +164,7 @@ class ReceiptSubscriber extends EventEmitter {
     this.running = false;
     console.log("[Near] event main loop stopped");
   }
+
   subscribe({ callback, onError }: { callback: (receipt: Receipt) => void; onError: (error: unknown) => void }) {
     const handler = async (receipt: Receipt) => {
       await callback(receipt);
@@ -339,6 +341,7 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
+// eslint-disable-next-line func-call-spacing
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
@@ -391,7 +394,7 @@ export async function callSmartContract(
   } catch (e) {
     // If ueser account doens't exist, then create an implicit grinderyAccount via transaction
     if (e.type === "AccountDoesNotExist") {
-      await grinderyAccount.sendMoney(implicit_user_id, new BN((utils.format.parseNearAmount("1")) as string));
+      await grinderyAccount.sendMoney(implicit_user_id, new BN(utils.format.parseNearAmount("1") as string));
     }
   }
 
