@@ -8,9 +8,9 @@ export async function setupSignal(params: ConnectorInput): Promise<TriggerBase> 
   if (!("chain" in (params.fields as Record<string, unknown>))) {
     throw new InvalidParamsError("Missing chain parameter");
   }
-  const trigger = getTriggerClass(params as ConnectorInput<{ chain: string | string[] }>);
-  if (trigger) {
-    return new trigger(params);
+  const Trigger = getTriggerClass(params as ConnectorInput<{ chain: string | string[] }>);
+  if (Trigger) {
+    return new Trigger(params);
   } else {
     throw new Error(`Invalid trigger: ${params.key}`);
   }

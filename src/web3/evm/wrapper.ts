@@ -49,6 +49,7 @@ export class Web3Wrapper extends EventEmitter {
         )
       : this.web3Full;
   }
+
   private createProvider() {
     this.provider = instrumentProvider(
       new Web3.providers.WebsocketProvider(this.url, {
@@ -73,6 +74,7 @@ export class Web3Wrapper extends EventEmitter {
   redactedUrl() {
     return this.url.replace(/([0-9a-f-]{8,}|[0-9a-z_-]{20,})/gi, "***");
   }
+
   close() {
     if (this.ref <= 0) {
       return;
@@ -99,15 +101,18 @@ export class Web3Wrapper extends EventEmitter {
       this.removeAllListeners();
     }
   }
+
   isClosed() {
     return this.ref <= 0;
   }
+
   addRef() {
     if (this.ref <= 0) {
       throw new Error("Web3Wrapper already closed");
     }
     this.ref++;
   }
+
   private reconnectProvider() {
     if (this.isClosed()) {
       return;
@@ -152,6 +157,7 @@ export class Web3Wrapper extends EventEmitter {
       }, 100);
     }, 100 * Math.pow(2, this.reconnectCount));
   }
+
   private subscribeToNewBlockHeader() {
     if (this.isClosed()) {
       return;
@@ -195,6 +201,7 @@ export class Web3Wrapper extends EventEmitter {
       });
     }
   }
+
   onNewBlock(
     callback: (block: BlockTransactionObject, memoCall: <T>(key: string, call: () => T) => T) => void,
     onError: (e: Error) => void

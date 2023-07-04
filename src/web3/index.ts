@@ -1,14 +1,15 @@
 import { ConnectorInput, ConnectorOutput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import * as evm from "./evm";
 import * as near from "./near";
-import * as neartest from "./near";
 import * as flow from "./flow";
 import * as algorand from "./algorand/algorand";
-import * as algorandtest from "./algorand/algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { TAccessToken } from "../jwt";
 
 export * from "./webhook";
+
+const neartest = near;
+const algorandtest = algorand;
 
 export const CHAINS: {
   [key: string]: {

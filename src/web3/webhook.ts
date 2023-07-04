@@ -26,7 +26,7 @@ const WEBHOOK_FUNCTIONS = {
     }
     return { droneAddress };
   },
-  async flowCreateAccountBegin(_params: ConnectorInput<WebhookParams>) {
+  async flowCreateAccountBegin() {
     return flow.createAccountBegin();
   },
   async flowCreateAccountQuery(params: ConnectorInput<WebhookParams>) {

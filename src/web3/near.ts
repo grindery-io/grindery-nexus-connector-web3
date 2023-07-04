@@ -6,9 +6,8 @@ import { backOff } from "exponential-backoff";
 import blockingTracer from "../blockingTracer";
 import { parseUserAccessToken, TAccessToken } from "../jwt";
 import { v4 as uuidv4 } from "uuid";
-import { KeyPair } from "near-api-js";
 import BN from "bn.js";
-import { connect, transactions, keyStores, utils } from "near-api-js";
+import { connect, transactions, keyStores, utils, KeyPair } from "near-api-js";
 import { normalizeAddress, receiptIdFromTx } from "./near/utils";
 
 type Receipt = {
@@ -65,6 +64,7 @@ class ReceiptSubscriber extends EventEmitter {
     super();
     this.setMaxListeners(1000);
   }
+
   /**
    * It connects to the NEAR blockchain, and then it loops forever, getting the latest block, getting
    * the receipts from that block, and then calling the "process" event listeners with each receipt
@@ -107,6 +107,7 @@ class ReceiptSubscriber extends EventEmitter {
           continue;
         }
         const pendingBlocks = [response];
+        // eslint-disable-next-line no-unmodified-loop-condition
         while (currentHash && pendingBlocks[0].header.prev_hash !== currentHash) {
           pendingBlocks.unshift(
             await near.connection.provider.block({
@@ -154,11 +155,9 @@ class ReceiptSubscriber extends EventEmitter {
                 }
                 for (const receipt of chunkDetails.receipts) {
                   /* Finding the index of the receipt in the txReceipt array. */
-                  const it = txReceipt.findIndex((e) => {
-                    if (e.receipts.findIndex((r) => r.receiptId === receipt.receipt_id) !== -1) {
-                      return true;
-                    }
-                  });
+                  const it = txReceipt.findIndex(
+                    (e) => e.receipts.findIndex((r) => r.receiptId === receipt.receipt_id) !== -1
+                  );
 
                   if (it !== -1) {
                     /* Index receipt and parent */
@@ -252,7 +251,7 @@ class ReceiptSubscriber extends EventEmitter {
           this.running = false;
           break;
         } else {
-          await new Promise((res) => setTimeout(res, 5000));
+          await new Promise((resolve) => setTimeout(resolve, 5000));
           lastErrorHeight = currentHeight;
           continue;
         }
@@ -432,6 +431,7 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
+// eslint-disable-next-line func-call-spacing
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
 Triggers.set("newTransaction", NewTransactionTrigger);
 Triggers.set("newTransactionAsset", NewTransactionTrigger);
@@ -507,6 +507,7 @@ export async function callSmartContract(
   };
 
   // Need array indexing to fix TS2445
+  // eslint-disable-next-line dot-notation
   const result = await account["signAndSendTransaction"]({
     receiverId: input.fields.contractAddress,
     actions: [

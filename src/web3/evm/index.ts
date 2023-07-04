@@ -8,6 +8,7 @@ import { AbiItem } from "web3-utils";
 
 export { callSmartContract } from "./call";
 
+// eslint-disable-next-line func-call-spacing
 export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
