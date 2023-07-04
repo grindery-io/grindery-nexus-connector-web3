@@ -12,7 +12,8 @@
     "server:dist": "cd dist && node server",
     "test": "eslint --ext js,ts src/ && tsc -p tsconfig.json --noEmit",
     "prepare": "husky install",
-    "prettier:check": "prettier --check \"**/*.{js,json,md,ts,yml}\""
+    "prettier:check": "prettier --check \"**/*.{js,json,md,ts}\"",
+    "prettier:write": "prettier --write \"**/*.{js,json,md,ts}\""
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx}": [

@@ -9,9 +9,6 @@
     "sourceMap": true,
     "useUnknownInCatchVariables": false,
     "resolveJsonModule": true,
-    "lib": [
-      "es2018",
-      "dom"
-    ]
+    "lib": ["es2018", "dom"]
   }
 }
