@@ -43,7 +43,6 @@ export function onNewBlockMultiChain(
     });
     cleanUpFunctions.push(
       onNewBlock(
-        // eslint-disable-next-line n/no-callback-literal
         (block, memoCall) => Promise.resolve(callback({ chain, web3, block, ethersProvider, memoCall })).catch(onError),
         onError
       )

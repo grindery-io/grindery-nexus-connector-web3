@@ -320,7 +320,6 @@ class ContractSubscriber extends EventEmitter {
               return;
             }
           }
-          // eslint-disable-next-line n/no-callback-literal
           callback({
             _metadata: {
               transactionId: event.transaction_id,

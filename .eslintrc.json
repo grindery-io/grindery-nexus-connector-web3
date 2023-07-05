@@ -12,7 +12,7 @@
     "es6": true,
     "node": true
   },
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "standard"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   "plugins": ["@typescript-eslint", "import"],
   "overrides": [
     {
@@ -27,6 +27,9 @@
     }
   ],
   "rules": {
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-redeclare": ["error"],
     "no-var": "warn",
     "object-shorthand": ["warn", "properties"],
 
@@ -43,9 +46,9 @@
     "block-spacing": ["error", "always"],
     "brace-style": ["error", "1tbs", { "allowSingleLine": true }],
     "camelcase": "off",
-    "comma-dangle": "off",
-    "comma-spacing": ["error", { "before": false, "after": true }],
-    "comma-style": ["error", "last"],
+    "comma-spacing": [2, { "after": true }],
+    "comma-style": [2, "last"],
+    "comma-dangle": 0,
     "computed-property-spacing": ["error", "never", { "enforceForClassMembers": true }],
     "constructor-super": "error",
     "curly": ["error", "multi-line"],
@@ -128,7 +131,7 @@
     "no-octal": "error",
     "no-octal-escape": "error",
     "no-proto": "error",
-    "no-redeclare": ["error", { "builtinGlobals": false }],
+    "no-redeclare": "off",
     "no-regex-spaces": "error",
     "no-return-assign": ["error", "except-parens"],
     "no-self-assign": ["error", { "props": true }],
@@ -158,15 +161,7 @@
         "allowTaggedTemplates": true
       }
     ],
-    "no-unused-vars": [
-      "error",
-      {
-        "args": "none",
-        "caughtErrors": "none",
-        "ignoreRestSiblings": true,
-        "vars": "all"
-      }
-    ],
+    "no-unused-vars": "off",
     "no-use-before-define": ["error", { "functions": false, "classes": false, "variables": false }],
     "no-useless-call": "error",
     "no-useless-computed-key": "error",
@@ -229,16 +224,6 @@
     "import/no-absolute-path": ["error", { "esmodule": true, "commonjs": true, "amd": false }],
     "import/no-duplicates": "error",
     "import/no-named-default": "error",
-    "import/no-webpack-loader-syntax": "error",
-
-    "n/handle-callback-err": ["error", "^(err|error)$"],
-    "n/no-callback-literal": "error",
-    "n/no-deprecated-api": "error",
-    "n/no-exports-assign": "error",
-    "n/no-new-require": "error",
-    "n/no-path-concat": "error",
-    "n/process-exit-as-throw": "error",
-
-    "promise/param-names": "error"
+    "import/no-webpack-loader-syntax": "error"
   }
 }
