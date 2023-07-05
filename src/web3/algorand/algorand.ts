@@ -88,13 +88,9 @@ type AssetParams = {
  * @returns The return type is unknown.
  */
 async function arApi(path: "status"): Promise<Status>;
-// eslint-disable-next-line no-redeclare
 async function arApi(path: ["blocks", string]): Promise<BlockResponse>;
-// eslint-disable-next-line no-redeclare
 async function arApi(path: ["blocks", string, "hash"]): Promise<BlockHashResponse>;
-// eslint-disable-next-line no-redeclare
 async function arApi(path: ["assets", string]): Promise<AssetParams>;
-// eslint-disable-next-line no-redeclare
 async function arApi(path: string | string[]): Promise<unknown> {
   if (Array.isArray(path)) {
     path = path.join("/");

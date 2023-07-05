@@ -53,9 +53,7 @@ type ParsedEvent = EventHeader & {
  * @returns Block[] | BlockEvent[] | unknown
  */
 async function flowApi(path: "blocks", params: { [key: string]: string }): Promise<Block[]>;
-// eslint-disable-next-line no-redeclare
 async function flowApi(path: "events", params: { [key: string]: string }): Promise<BlockEvent[]>;
-// eslint-disable-next-line no-redeclare
 async function flowApi(path: string, params: { [key: string]: string }): Promise<unknown> {
   const response = await axios.get("https://rest-mainnet.onflow.org/v1/" + path, {
     params,
