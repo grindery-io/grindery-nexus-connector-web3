@@ -12,6 +12,7 @@ import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import vaultSigner from "./signer";
 import { AbiItem } from "web3-utils";
+import { TransactionResponse } from "@ethersproject/abstract-provider";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -265,7 +266,23 @@ export async function callSmartContract(
         txConfig.maxFeePerGas = maxFee.toHexString();
         txConfig.maxPriorityFeePerGas = maxTip.toHexString();
       } else {
-        const gasPrice = (feeData.gasPrice || (await ethersProvider.getGasPrice())).mul(12).div(10);
+        const refPrice1 = BigNumber.from(feeData.gasPrice || (await ethersProvider.getGasPrice()));
+        const refTxes = [] as TransactionResponse[];
+        let blockNumber = await ethersProvider.getBlockNumber();
+        while (refTxes.length < 10) {
+          const block = await ethersProvider.getBlockWithTransactions(blockNumber);
+          refTxes.push(...block.transactions);
+          blockNumber--;
+        }
+        refTxes.sort((a, b) =>
+          BigNumber.from(a.gasPrice || 0)
+            .sub(b.gasPrice || 0)
+            .toNumber()
+        );
+        const refPrice2 = refTxes[refTxes.length >> 1].gasPrice || 0;
+        const gasPrice = BigNumber.from(refPrice1.gt(refPrice2) ? refPrice1 : refPrice2)
+          .mul(12)
+          .div(10);
         txConfig.gasPrice = gasPrice.toHexString();
         minFee = gasPrice.mul(txConfig.gas);
       }
