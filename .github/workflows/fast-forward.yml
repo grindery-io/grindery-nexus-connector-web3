@@ -9,8 +9,6 @@ jobs:
     name: Fast Forward
     if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/fast-forward')   
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
       - uses: actions-cool/check-user-permission@a0668c9aec87f3875fc56170b6452a453e9dd819
         with:
