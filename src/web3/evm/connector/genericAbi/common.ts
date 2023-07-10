@@ -60,10 +60,9 @@ function getFunctionSuffix(abiItem: AbiItem) {
   if (abiItem.payable) {
     items.push("payable");
   }
-  if (abiItem.constant) {
+  if (abiItem.constant || abiItem.stateMutability === "view") {
     items.push("view");
-  }
-  if (abiItem.stateMutability === "pure") {
+  } else if (abiItem.stateMutability === "pure") {
     items.push("pure");
   }
   if (abiItem.outputs?.length) {
