@@ -1,5 +1,5 @@
 import { ConnectorInput, ConnectorOutput } from "grindery-nexus-common-utils/dist/connector";
-import { TransactionConfig } from "web3-core";
+import { TransactionConfig, TransactionReceipt } from "web3-core";
 import { getUserAddress, parseFunctionDeclaration, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import { encodeExecTransaction, execTransactionAbi } from "./gnosisSafe";
@@ -105,6 +105,7 @@ export async function callSmartContract(
   if (!user) {
     throw new Error("User token is invalid");
   }
+  console.log(`[${input.fields.chain}] ${input.fields.functionDeclaration} -> ${input.fields.contractAddress}`);
   const address = await vaultSigner.getAddress();
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
@@ -251,7 +252,10 @@ export async function callSmartContract(
         minFee = BigNumber.from(txConfig.maxFeePerGas);
       } else if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
         minFee = (feeData.lastBaseFeePerGas || feeData.maxFeePerGas.div(2)).mul(15).div(10);
-        const maxTip = BigNumber.from(input.fields.maxPriorityFeePerGas || minFee.div(2));
+        const maxTip = BigNumber.from(
+          input.fields.maxPriorityFeePerGas ||
+            (feeData.maxPriorityFeePerGas || minFee.div(2)).add(web3.utils.toWei("10", "gwei"))
+        );
         const maxFee = input.fields.gasLimit
           ? BigNumber.from(input.fields.gasLimit).div(txConfig.gas)
           : feeData.maxFeePerGas.add(maxTip);
@@ -294,28 +298,72 @@ export async function callSmartContract(
           minFee: minFee.toString(),
         };
       } else {
-        const receipt = await web3.eth.sendSignedTransaction(
-          await vaultSigner.signTransaction({
-            from: txConfig.from?.toString(),
-            to: txConfig.to,
-            data: txConfig.data,
-            value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
-            nonce: txConfig.nonce,
-            chainId: await web3.eth.getChainId(),
-            gasLimit: txConfig.gas ? BigNumber.from(txConfig.gas).toHexString() : undefined,
-            ...(txConfig.maxFeePerGas
-              ? {
-                  type: 2,
-                  maxFeePerGas: txConfig.maxFeePerGas ? BigNumber.from(txConfig.maxFeePerGas).toHexString() : undefined,
-                  maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas
-                    ? BigNumber.from(txConfig.maxPriorityFeePerGas).toHexString()
-                    : undefined,
-                }
-              : {
-                  gasPrice: txConfig.gasPrice ? BigNumber.from(txConfig.gasPrice).toHexString() : undefined,
-                }),
-          })
-        );
+        const maxFee = input.fields.gasLimit
+          ? BigNumber.from(input.fields.gasLimit)
+          : BigNumber.from(txConfig.gasPrice || txConfig.maxFeePerGas).mul(5);
+        web3.eth.transactionPollingTimeout = 45;
+        let receipt: TransactionReceipt;
+        for (;;) {
+          try {
+            receipt = await web3.eth.sendSignedTransaction(
+              await vaultSigner.signTransaction({
+                from: txConfig.from?.toString(),
+                to: txConfig.to,
+                data: txConfig.data,
+                value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
+                nonce: txConfig.nonce,
+                chainId: await web3.eth.getChainId(),
+                gasLimit: txConfig.gas ? BigNumber.from(txConfig.gas).toHexString() : undefined,
+                ...(txConfig.maxFeePerGas
+                  ? {
+                      type: 2,
+                      maxFeePerGas: txConfig.maxFeePerGas
+                        ? BigNumber.from(txConfig.maxFeePerGas).toHexString()
+                        : undefined,
+                      maxPriorityFeePerGas: txConfig.maxPriorityFeePerGas
+                        ? BigNumber.from(txConfig.maxPriorityFeePerGas).toHexString()
+                        : undefined,
+                    }
+                  : {
+                      gasPrice: txConfig.gasPrice ? BigNumber.from(txConfig.gasPrice).toHexString() : undefined,
+                    }),
+              })
+            );
+            break;
+          } catch (e) {
+            const errorStr: string = e.toString();
+            if (!errorStr.includes("Transaction was not mined within") && !errorStr.includes("underprice")) {
+              throw e;
+            }
+            if (
+              BigNumber.from(txConfig.gasPrice || 0).eq(0) &&
+              (BigNumber.from(txConfig.maxFeePerGas || 0).eq(0) ||
+                BigNumber.from(txConfig.maxPriorityFeePerGas || 0).eq(0))
+            ) {
+              throw e;
+            }
+            console.log(
+              `Bumping price (from: ${[txConfig.gasPrice, txConfig.maxFeePerGas, txConfig.maxPriorityFeePerGas].join(
+                " / "
+              )})`
+            );
+            if (txConfig.gasPrice) {
+              txConfig.gasPrice = BigNumber.from(txConfig.gasPrice).mul(12).div(10).toHexString();
+            }
+            if (txConfig.maxFeePerGas) {
+              txConfig.maxFeePerGas = BigNumber.from(txConfig.maxFeePerGas).mul(12).div(10).toHexString();
+            }
+            if (txConfig.maxPriorityFeePerGas) {
+              txConfig.maxPriorityFeePerGas = BigNumber.from(txConfig.maxPriorityFeePerGas)
+                .mul(12)
+                .div(10)
+                .toHexString();
+            }
+            if (BigNumber.from(txConfig.gasPrice || txConfig.maxFeePerGas).gt(maxFee)) {
+              throw new Error("Can't submit tx within fee limit");
+            }
+          }
+        }
         releaseLock(); // Block less time
         result = receipt;
         if (process.env.GAS_DEBIT_WEBHOOK) {
