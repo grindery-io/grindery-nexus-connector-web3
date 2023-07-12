@@ -125,6 +125,7 @@ export const getCDS = (ABI: string) => {
           ...x,
           name: x.name || "param" + i,
         })),
+        _isViewFunction: x.constant || ["pure", "view"].includes(x.stateMutability || ""),
       }))
       .map((x) => ({
         key: x.name + "Action",
@@ -134,26 +135,32 @@ export const getCDS = (ABI: string) => {
             .map((inp) => `${inp.type} ${inp.name}`)
             .join(", ")})${getFunctionSuffix(x)}`,
           inputFields: x.inputs.map(abiInputToField).map((x) => ({ ...x, required: true })),
-          outputFields:
-            (x.constant || x.stateMutability === "pure") && x.outputs?.length === 1
-              ? ([
-                  {
-                    key: "returnValue",
-                    label: "Return value of " + x.name,
-                    type: mapType(x.outputs?.[0].type),
-                  },
+          outputFields: (x.outputs?.length === 1
+            ? [
+                {
+                  key: "returnValue",
+                  label: "Return value of " + x.name,
+                  type: mapType(x.outputs?.[0].type),
+                },
+              ]
+            : []
+          ).concat(
+            x._isViewFunction
+              ? []
+              : [
                   { key: "transactionHash", label: "Transaction hash", type: "string" },
                   { key: "contractAddress", label: "Contract address", type: "string" },
-                ] as FieldSchema[])
-              : [],
-          sample:
-            (x.constant || x.stateMutability === "pure") && x.outputs?.length === 1
-              ? {
-                  returnValue: getSampleValue(x.outputs?.[0].type || "string"),
+                ]
+          ) as FieldSchema[],
+          sample: Object.assign(
+            x.outputs?.length === 1 ? { returnValue: getSampleValue(x.outputs?.[0].type || "string") } : {},
+            x._isViewFunction
+              ? {}
+              : {
                   transactionHash: "0x19bbca58d22d704e98da94f0fade1c9be9bffa9a222539ba6b7f6ae193e4ef5a",
                   contractAddress: "0x88ec574e2ef0ecf9043373139099f7e535f94dbc",
                 }
-              : {},
+          ),
         },
       })),
   };
