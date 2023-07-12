@@ -296,6 +296,12 @@ export async function callSmartContract(
           returnValue: callResultDecoded,
           estimatedGas: gas.toString(),
           minFee: minFee.toString(),
+          ...(isPureFunction
+            ? {}
+            : {
+                transactionHash: "0x1122334455667788990011223344556677889900112233445566778899001122",
+              }),
+          contractAddress: input.fields.contractAddress,
         };
       } else {
         const maxFee = input.fields.gasLimit

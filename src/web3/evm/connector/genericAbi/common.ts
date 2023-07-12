@@ -111,7 +111,7 @@ export const getCDS = (ABI: string) => {
             { key: "_grinderyChainId", label: "Chain ID", type: "string" },
           ]),
           sample: {
-            _grinderyTransactionHash: "0x19bbca58d22d704e98da94f0fade1c9be9bffa9a222539ba6b7f6ae193e4ef5a",
+            _grinderyTransactionHash: "0x1122334455667788990011223344556677889900112233445566778899001122",
             _grinderyChainId: "5",
             ...Object.fromEntries(x.inputs.map((inp) => [inp.name, getSampleValue(inp.type)])),
           },
@@ -144,22 +144,19 @@ export const getCDS = (ABI: string) => {
                 },
               ]
             : []
-          ).concat(
-            x._isViewFunction
-              ? []
-              : [
-                  { key: "transactionHash", label: "Transaction hash", type: "string" },
-                  { key: "contractAddress", label: "Contract address", type: "string" },
-                ]
-          ) as FieldSchema[],
+          )
+            .concat([{ key: "contractAddress", label: "Contract address", type: "string" }])
+            .concat(
+              x._isViewFunction ? [] : [{ key: "transactionHash", label: "Transaction hash", type: "string" }]
+            ) as FieldSchema[],
           sample: Object.assign(
             x.outputs?.length === 1 ? { returnValue: getSampleValue(x.outputs?.[0].type || "string") } : {},
             x._isViewFunction
               ? {}
-              : {
-                  transactionHash: "0x19bbca58d22d704e98da94f0fade1c9be9bffa9a222539ba6b7f6ae193e4ef5a",
-                  contractAddress: "0x88ec574e2ef0ecf9043373139099f7e535f94dbc",
-                }
+              : { transactionHash: "0x1122334455667788990011223344556677889900112233445566778899001122" },
+            {
+              contractAddress: "0x88ec574e2ef0ecf9043373139099f7e535f94dbc",
+            }
           ),
         },
       })),
