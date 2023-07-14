@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [ "master", "staging" ]
+  workflow_dispatch:
 
 jobs:
   call-deployer:
@@ -28,6 +29,6 @@ jobs:
               inputs: {
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                ref: process.env.GITHUB_REF_NAME,
+                ref: process.env.GITHUB_REF_NAME || "master",
               },
             });
