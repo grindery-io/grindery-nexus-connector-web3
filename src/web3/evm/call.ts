@@ -242,7 +242,9 @@ export async function callSmartContract(
         }
       }
 
-      const gas = BigNumber.from(await web3.eth.estimateGas(txConfig));
+      const gas = BigNumber.from(
+        await web3.eth.estimateGas({ gas: BigNumber.from(8000000).toHexString(), gasPrice: "0x0", ...txConfig })
+      );
       txConfig.gas = gas.mul(11).div(10).add(50000).toHexString();
       let minFee: BigNumber;
       if (input.fields.chain === "eip155:42161") {
