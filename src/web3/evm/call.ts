@@ -12,8 +12,10 @@ import GrinderyNexusDrone from "./abi/GrinderyNexusDrone.json";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import vaultSigner from "./signer";
 import { AbiItem } from "web3-utils";
+import AbiCoder from "web3-eth-abi";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 
+const SEND_TRANSACTION_OUTPUTS = GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [];
 const hubAvailability = new Map<string, boolean>();
 
 function onlyOnce(fn: () => void): () => void {
@@ -43,6 +45,9 @@ async function isHubAvailable(chain: string, web3: Web3) {
     hubAvailability.set(chain, hasHub);
   }
   return hubAvailability.get(chain) as boolean;
+}
+function decodeDroneCallResult(callResult: string) {
+  return AbiCoder.decodeParameters(SEND_TRANSACTION_OUTPUTS, callResult);
 }
 
 async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | TransactionConfig>(
@@ -106,14 +111,14 @@ export async function callSmartContract(
     throw new Error("User token is invalid");
   }
   console.log(`[${input.fields.chain}] ${input.fields.functionDeclaration} -> ${input.fields.contractAddress}`);
-  const address = await vaultSigner.getAddress();
+  const fromAddress = await vaultSigner.getAddress();
   const { web3, close, ethersProvider } = getWeb3(input.fields.chain);
   try {
     const userAddress = await getUserAddress(user);
     web3.eth.transactionConfirmationBlocks = 1;
     if (!web3.defaultAccount) {
-      web3.eth.defaultAccount = address;
-      web3.defaultAccount = address;
+      web3.eth.defaultAccount = fromAddress;
+      web3.defaultAccount = fromAddress;
     }
 
     let callData: string;
@@ -174,7 +179,7 @@ export async function callSmartContract(
     }
 
     const rawTxConfig: TransactionConfig = {
-      from: address,
+      from: fromAddress,
       to: input.fields.contractAddress,
       data: callData,
     };
@@ -200,10 +205,7 @@ export async function callSmartContract(
       try {
         const callResult = await web3.eth.call(txConfig);
         if (droneAddress) {
-          const decoded = web3.eth.abi.decodeParameters(
-            GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
-            callResult
-          );
+          const decoded = decodeDroneCallResult(callResult);
           if (!decoded.success) {
             await web3.eth.call({ ...rawTxConfig, from: droneAddress });
             throw new Error("Transaction failed with unknown error");
@@ -234,7 +236,7 @@ export async function callSmartContract(
           },
         };
       }
-      txConfig.nonce = await web3.eth.getTransactionCount(web3.defaultAccount);
+      txConfig.nonce = await web3.eth.getTransactionCount(fromAddress);
       let result: unknown;
       for (const key of ["gasLimit", "maxFeePerGas", "maxPriorityFeePerGas"]) {
         if (key in input.fields && typeof input.fields[key] === "string") {
@@ -242,9 +244,46 @@ export async function callSmartContract(
         }
       }
 
-      const gas = BigNumber.from(
+      let gas = BigNumber.from(
         await web3.eth.estimateGas({ gas: BigNumber.from(8000000).toHexString(), gasPrice: "0x0", ...txConfig })
       );
+      let minGas = gas;
+      // eslint-disable-next-line no-inner-declarations
+      async function probeGas(gas: BigNumber) {
+        txConfig.nonce = await web3.eth.getTransactionCount(fromAddress);
+        const result = await web3.eth.call({ gas: gas.toHexString(), gasPrice: "0x0", ...txConfig });
+        if (droneAddress) {
+          const decoded = decodeDroneCallResult(result);
+          if (!decoded.success) {
+            throw new Error("Incorrect gas, bump up");
+          }
+        }
+      }
+      for (;;) {
+        if (gas.gt("30000000")) {
+          throw new Error("Unable to estimate gas");
+        }
+        try {
+          await probeGas(gas);
+          break;
+        } catch (e) {
+          minGas = gas;
+          gas = gas.mul(15).div(10);
+        }
+      }
+      for (;;) {
+        const diff = gas.sub(minGas);
+        if (diff.lte(10000)) {
+          break;
+        }
+        const downGas = gas.sub(diff.div(2));
+        try {
+          await probeGas(downGas);
+          gas = downGas;
+        } catch (e) {
+          minGas = downGas;
+        }
+      }
       txConfig.gas = gas.mul(11).div(10).add(50000).toHexString();
       let minFee: BigNumber;
       if (input.fields.chain === "eip155:42161") {
