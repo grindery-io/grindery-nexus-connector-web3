@@ -284,7 +284,7 @@ export async function callSmartContract(
           minGas = downGas;
         }
       }
-      txConfig.gas = gas.mul(11).div(10).add(50000).toHexString();
+      txConfig.gas = gas.mul(11).div(10).toHexString();
       let minFee: BigNumber;
       if (input.fields.chain === "eip155:42161") {
         // Arbitrum, fixed fee
@@ -360,7 +360,7 @@ export async function callSmartContract(
                 value: txConfig.value ? BigNumber.from(txConfig.value).toHexString() : undefined,
                 nonce: txConfig.nonce,
                 chainId: await web3.eth.getChainId(),
-                gasLimit: txConfig.gas ? BigNumber.from(3).mul(txConfig.gas).toHexString() : undefined,
+                gasLimit: txConfig.gas ? BigNumber.from(txConfig.gas).toHexString() : undefined,
                 ...(txConfig.maxFeePerGas
                   ? {
                       type: 2,
