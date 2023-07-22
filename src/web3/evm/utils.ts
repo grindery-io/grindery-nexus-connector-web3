@@ -56,69 +56,78 @@ export function onNewBlockMultiChain(
     cleanUpFunctions.splice(0, cleanUpFunctions.length);
   };
 }
+
 export function isSameAddress(a: string | null, b: string | null): boolean {
   return !!a && !!b && (/^0x/.test(a) && /^0x/.test(b) ? a.toLowerCase() === b.toLowerCase() : a === b);
 }
+
+/**
+ * Parses an event declaration and extracts relevant information.
+ * @param eventDeclaration - The event declaration string to parse.
+ * @returns An object representing the parsed event declaration (AbiItem).
+ * @throws Error if the event declaration is invalid or contains invalid parameters.
+ */
 export function parseEventDeclaration(eventDeclaration: string): AbiItem {
-  const m = /^\s*(event +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(eventDeclaration);
-  if (!m) {
+  const eventParts = /^\s*(event +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(eventDeclaration);
+  if (!eventParts) {
     throw new Error("Invalid event declaration");
   }
-  const name = m[2];
-  const inputs = m[3].split(",").map((p) => {
-    const parts = p.trim().split(/\s+/);
-    if (parts.length !== 2 && parts.length !== 3) {
-      throw new Error("Invalid event declaration: Invalid parameter " + p);
-    }
-    if (parts.length === 3 && parts[1] !== "indexed") {
-      throw new Error("Invalid event declaration: Invalid parameter " + p);
-    }
-    return {
-      indexed: parts.length === 3,
-      type: parts[0],
-      name: parts[parts.length - 1],
-    };
-  });
+
   return {
-    name,
-    inputs,
+    name: eventParts[2],
+    inputs: eventParts[3].split(",").map((p) => {
+      const inputParts = p.trim().split(/\s+/);
+      if (
+        (inputParts.length !== 2 && inputParts.length !== 3) ||
+        (inputParts.length === 3 && inputParts[1] !== "indexed")
+      ) {
+        throw new Error("Invalid event declaration: Invalid parameter " + p);
+      }
+      return { indexed: inputParts.length === 3, type: inputParts[0], name: inputParts[inputParts.length - 1] };
+    }),
     type: "event",
     anonymous: false,
   };
 }
+
+/**
+ * Parses a function declaration and extracts relevant information.
+ * @param functionDeclaration - The function declaration string to parse.
+ * @returns An object representing the parsed function declaration (AbiItem).
+ * @throws Error if the function declaration is invalid or contains invalid parameters.
+ */
 export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
-  const m = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)?\)\s*(.*)$/.exec(functionDeclaration);
-  if (!m) {
+  const functionParts = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)?\)\s*(.*)$/.exec(functionDeclaration);
+  if (!functionParts) {
     throw new Error("Invalid function declaration");
   }
-  const name = m[2];
-  const inputs = m[3]
-    ? m[3].split(",").map((p) => {
-        const parts = p.trim().split(/\s+/);
-        if (parts.length < 2) {
-          throw new Error("Invalid function declaration: Invalid parameter " + p);
-        }
-        return {
-          type: parts[0],
-          name: parts[parts.length - 1],
-        };
-      })
-    : [];
-  const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(m[4]) || /\breturns\s+([^\s]+)/.exec(m[4]);
-  const outputs = returnMatch
-    ? returnMatch[1].split(",").map((p, index) => {
-        const parts = p.trim().split(/\s+/);
-        return {
-          type: parts[0],
-          name: parts[1] || `return${index}`,
-        };
-      })
-    : [];
-  const suffixes = m[4].trim().split(/\s+/);
+
+  const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(functionParts[4]) || /\breturns\s+([^\s]+)/.exec(functionParts[4]);
+  const suffixes = functionParts[4].trim().split(/\s+/);
+
   return {
-    name,
-    inputs,
-    outputs,
+    name: functionParts[2],
+    inputs: functionParts[3]
+      ? functionParts[3].split(",").map((p) => {
+          const inputParts = p.trim().split(/\s+/);
+          if (inputParts.length < 2) {
+            throw new Error("Invalid function declaration: Invalid parameter " + p);
+          }
+          return {
+            type: inputParts[0],
+            name: inputParts[inputParts.length - 1],
+          };
+        })
+      : [],
+    outputs: returnMatch
+      ? returnMatch[1].split(",").map((p, index) => {
+          const outputParts = p.trim().split(/\s+/);
+          return {
+            type: outputParts[0],
+            name: outputParts[1] || `return${index}`,
+          };
+        })
+      : [],
     constant: suffixes.includes("view"),
     payable: suffixes.includes("payable"),
     stateMutability: suffixes.includes("pure")
