@@ -21,7 +21,7 @@ describe("EVM utils tests", async function () {
     });
 
     it("Should return false if address A is null", async function () {
-      chai.expect(isSameAddress(null, "0x71FA225B8F9Aeb50B44F96743275837F8EB7694E")).to.be.false;
+      chai.expect(isSameAddress(null, "0x71fa225b8f9aeb50b44f96743275837f8eb7694e")).to.be.false;
     });
 
     it("Should return false if address B is null", async function () {
