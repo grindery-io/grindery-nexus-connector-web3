@@ -10,7 +10,7 @@ describe("EVM utils tests", async function () {
   describe("isSameAddress (address A and address B)", async function () {
     it("Should return true if both two addresses are egal (case sensitive)", async function () {
       chai.expect(
-        isSameAddress("0x71FA225B8F9Aeb50B44F96743275837F8EB7694E", "0x71FA225B8F9Aeb50B44F96743275837F8EB7694E")
+        isSameAddress("0x71Fa225B8f9AEB50B44f96743275837f8Eb7694E", "0x71Fa225B8f9AEB50B44f96743275837f8Eb7694E")
       ).to.be.true;
     });
 
