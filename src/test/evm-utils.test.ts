@@ -34,7 +34,7 @@ describe("EVM utils tests", async function () {
   });
 
   describe("parseFunctionDeclaration", async function () {
-    it("Should throw error if name does not appear at the beginning", async function () {
+    it("Should throw error if function name does not appear at the beginning", async function () {
       chai
         .expect(() => parseFunctionDeclaration("(bytes32 args, bytes32 r, bytes32 s) external"))
         .to.throw(Error)
@@ -50,16 +50,7 @@ describe("EVM utils tests", async function () {
         .with.property("message", "Invalid function declaration");
     });
 
-    it("Should throw error if parenthesis is missing after argument declaration", async function () {
-      chai
-        .expect(() =>
-          parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32 r, bytes32 s external")
-        )
-        .to.throw(Error)
-        .with.property("message", "Invalid function declaration");
-    });
-
-    it("Should throw error if parenthesis is missing after argument declaration", async function () {
+    it("Should throw error if parenthesis is missing after argument declarations", async function () {
       chai
         .expect(() =>
           parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32 r, bytes32 s external")
@@ -70,16 +61,18 @@ describe("EVM utils tests", async function () {
 
     it("Should throw error if one argument name is missing", async function () {
       chai
-        .expect(() => parseFunctionDeclaration("function supplyWithPermit (bytes32, bytes32 r, bytes32 s) external;"))
+        .expect(() =>
+          parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32, bytes32 s) external;")
+        )
         .to.throw(Error)
         .with.property("message", "Invalid function declaration: Invalid parameter bytes32");
     });
 
     it("Should throw error if one argument type is missing", async function () {
       chai
-        .expect(() => parseFunctionDeclaration("function supplyWithPermit (args, bytes32 r, bytes32 s) external;"))
+        .expect(() => parseFunctionDeclaration("function supplyWithPermit (bytes32 args, r, bytes32 s) external;"))
         .to.throw(Error)
-        .with.property("message", "Invalid function declaration: Invalid parameter args");
+        .with.property("message", "Invalid function declaration: Invalid parameter r");
     });
 
     it("Should render correct function parsing for function with ; at the end", async function () {
