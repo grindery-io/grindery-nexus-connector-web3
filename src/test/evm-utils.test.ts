@@ -118,6 +118,28 @@ describe("EVM utils tests", async function () {
         });
     });
 
+    it("Should render correct function parsing with random spaces", async function () {
+      chai
+        .expect(
+          parseFunctionDeclaration(
+            "function     supplyWithPermit    (  bytes32 args  ,  bytes32 r, bytes32 s  ) external"
+          )
+        )
+        .to.deep.equal({
+          name: "supplyWithPermit",
+          inputs: [
+            { type: "bytes32", name: "args" },
+            { type: "bytes32", name: "r" },
+            { type: "bytes32", name: "s" },
+          ],
+          outputs: [],
+          constant: false,
+          payable: false,
+          stateMutability: "nonpayable",
+          type: "function",
+        });
+    });
+
     it("Should handle outputs properly", async function () {
       chai
         .expect(parseFunctionDeclaration("function getSiloedBorrowingState() public view returns (bool[], address)"))
@@ -135,7 +157,7 @@ describe("EVM utils tests", async function () {
         });
     });
 
-    it("Should render correct function parsing for function calldata/memory arguments", async function () {
+    it("Should render correct function parsing for function calldata arguments", async function () {
       chai
         .expect(
           parseFunctionDeclaration(
@@ -152,6 +174,28 @@ describe("EVM utils tests", async function () {
           constant: false,
           payable: false,
           stateMutability: "nonpayable",
+          type: "function",
+        });
+    });
+
+    it("Should render correct function parsing for function memory arguments", async function () {
+      chai
+        .expect(
+          parseFunctionDeclaration(
+            "function calculateInterestRates(DataTypes.CalculateInterestRatesParams memory params) external view returns (uint256, uint256, uint256)"
+          )
+        )
+        .to.deep.equal({
+          name: "calculateInterestRates",
+          inputs: [{ type: "DataTypes.CalculateInterestRatesParams", name: "params" }],
+          outputs: [
+            { type: "uint256", name: "return0" },
+            { type: "uint256", name: "return1" },
+            { type: "uint256", name: "return2" },
+          ],
+          constant: true,
+          payable: false,
+          stateMutability: "view",
           type: "function",
         });
     });
