@@ -41,6 +41,20 @@ describe("EVM utils tests", async function () {
         .with.property("message", "Invalid event declaration");
     });
 
+    it("Should throw error if parenthesis does not appear after event name", async function () {
+      chai
+        .expect(() => parseEventDeclaration("event AdminChanged address previousAdmin, address newAdmin);"))
+        .to.throw(Error)
+        .with.property("message", "Invalid event declaration");
+    });
+
+    it("Should throw error if parenthesis does not appear at the end", async function () {
+      chai
+        .expect(() => parseEventDeclaration("event AdminChanged (address previousAdmin, address newAdmin"))
+        .to.throw(Error)
+        .with.property("message", "Invalid event declaration");
+    });
+
     it("Should render correct event parsing for classical events with ; at the end", async function () {
       chai.expect(parseEventDeclaration("event AdminChanged(address previousAdmin, address newAdmin);")).to.deep.equal({
         name: "AdminChanged",
