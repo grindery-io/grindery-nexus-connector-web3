@@ -15,9 +15,15 @@ import { AbiItem } from "web3-utils";
 import AbiCoder from "web3-eth-abi";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 
-const SEND_TRANSACTION_OUTPUTS = GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [];
 const hubAvailability = new Map<string, boolean>();
 
+/**
+ * Wraps a given function so that it can only be executed once. Subsequent calls to the returned function
+ * will have no effect.
+ *
+ * @param {Function} fn - The function to be wrapped and executed only once.
+ * @returns {Function} - A new function that can only be executed once.
+ */
 function onlyOnce(fn: () => void): () => void {
   let called = false;
   return () => {
@@ -28,6 +34,11 @@ function onlyOnce(fn: () => void): () => void {
     fn();
   };
 }
+
+/**
+ * Creates a mutex (mutual exclusion) function that ensures only one asynchronous operation
+ * can be executed at a time. It uses the `mutexify` library to create the mutex.
+ */
 const safeMutexify = () => {
   const mutex = mutexify();
   return async () => onlyOnce(await mutex());
@@ -37,7 +48,14 @@ const transactionMutexes: {
   [contractAddress: string]: () => Promise<() => void>;
 } = {};
 
-async function isHubAvailable(chain: string, web3: Web3) {
+/**
+ * Checks if the Grindery Nexus Hub is available on the specified chain.
+ *
+ * @param {string} chain - The chain identifier.
+ * @param {Web3} web3 - The Web3 instance to interact with the blockchain.
+ * @returns {Promise<boolean>} - A Promise that resolves to a boolean value indicating whether the Grindery Nexus Hub is available on the specified chain.
+ */
+async function isHubAvailable(chain: string, web3: Web3): Promise<boolean> {
   if (!hubAvailability.has(chain)) {
     const code = await web3.eth.getCode(HUB_ADDRESS).catch(() => "");
     const hasHub = !!code && code !== "0x";
@@ -46,10 +64,31 @@ async function isHubAvailable(chain: string, web3: Web3) {
   }
   return hubAvailability.get(chain) as boolean;
 }
+
+/**
+ * Decodes the call result of a drone contract's `sendTransaction` function call.
+ *
+ * @param {string} callResult - The result of the `sendTransaction` function call as a hexadecimal string.
+ * @returns {any[]} - An array containing the decoded parameters from the call result.
+ */
 function decodeDroneCallResult(callResult: string) {
-  return AbiCoder.decodeParameters(SEND_TRANSACTION_OUTPUTS, callResult);
+  return AbiCoder.decodeParameters(
+    GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
+    callResult
+  );
 }
 
+/**
+ * Prepares a routed transaction based on the provided parameters.
+ *
+ * @template T - Type of the transaction config.
+ * @param {T} tx - The transaction config object. It should include `to`, `from`, and `data` properties.
+ * @param {string} userAddress - The user's Ethereum address.
+ * @param {string} chain - The chain identifier.
+ * @param {Web3} web3 - The Web3 instance to interact with the blockchain.
+ * @returns {Promise<{ tx: T; droneAddress: string | null }>} - A Promise that resolves to an object containing the prepared transaction (`tx`) and the drone address (`droneAddress`).
+ * @throws {Error} - If `userAddress` is not a valid Ethereum address or if the `tx` object is invalid.
+ */
 async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | TransactionConfig>(
   tx: T,
   userAddress: string,
@@ -69,24 +108,29 @@ async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | T
   const droneAddress = await hubContract.methods.getUserDroneAddress(userAddress).call();
   const code = await web3.eth.getCode(droneAddress).catch(() => "");
   const hasDrone = !!code && code !== "0x";
-  let nonce = 0;
   const droneContract = new web3.eth.Contract(GrinderyNexusDrone as AbiItem[], droneAddress);
-  if (hasDrone) {
-    nonce = await droneContract.methods.getNextNonce().call();
-  }
-  const transactionHash = await hubContract.methods.getTransactionHash(droneAddress, tx.to, nonce, tx.data).call();
-  const signature = await vaultSigner.signMessage(transactionHash);
-  tx = { ...tx };
-  if (hasDrone) {
-    tx.data = droneContract.methods.sendTransaction(tx.to, nonce, tx.data, signature).encodeABI();
-    tx.to = droneAddress;
-  } else {
-    tx.data = hubContract.methods.deployDroneAndSendTransaction(userAddress, tx.to, tx.data, signature).encodeABI();
-    tx.to = HUB_ADDRESS;
-  }
-  return { tx, droneAddress };
+  const nonce = hasDrone ? await droneContract.methods.getNextNonce().call() : 0;
+  const signature = await vaultSigner.signMessage(
+    await hubContract.methods.getTransactionHash(droneAddress, tx.to, nonce, tx.data).call()
+  );
+  return {
+    tx: {
+      ...tx,
+      data: hasDrone
+        ? droneContract.methods.sendTransaction(tx.to, nonce, tx.data, signature).encodeABI()
+        : hubContract.methods.deployDroneAndSendTransaction(userAddress, tx.to, tx.data, signature).encodeABI(),
+      to: hasDrone ? droneAddress : HUB_ADDRESS,
+    },
+    droneAddress,
+  };
 }
 
+/**
+ * Calls a smart contract function on the specified chain with the given input parameters.
+ *
+ * @param {ConnectorInput} input - An object containing input parameters for the smart contract call.
+ * @returns {Promise<ConnectorOutput>} - A Promise that resolves to an object containing the result of the smart contract call.
+ */
 export async function callSmartContract(
   input: ConnectorInput<{
     chain: string;
