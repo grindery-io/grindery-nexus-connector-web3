@@ -1,6 +1,6 @@
 import chai from "chai";
 import chaiHttp from "chai-http";
-import { isSameAddress } from "../web3/evm/utils";
+import { isSameAddress, parseFunctionDeclaration } from "../web3/evm/utils";
 
 /* eslint-disable no-unused-expressions */
 
@@ -30,6 +30,172 @@ describe("EVM utils tests", async function () {
 
     it("Should return false if address A and address B are null", async function () {
       chai.expect(isSameAddress(null, null)).to.be.false;
+    });
+  });
+
+  describe("parseFunctionDeclaration", async function () {
+    it("Should throw error if name does not appear at the beginning", async function () {
+      chai
+        .expect(() => parseFunctionDeclaration("(bytes32 args, bytes32 r, bytes32 s) external"))
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration");
+    });
+
+    it("Should throw error if parenthesis is missing after function name", async function () {
+      chai
+        .expect(() =>
+          parseFunctionDeclaration("function supplyWithPermit bytes32 args, bytes32 r, bytes32 s) external")
+        )
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration");
+    });
+
+    it("Should throw error if parenthesis is missing after argument declaration", async function () {
+      chai
+        .expect(() =>
+          parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32 r, bytes32 s external")
+        )
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration");
+    });
+
+    it("Should throw error if parenthesis is missing after argument declaration", async function () {
+      chai
+        .expect(() =>
+          parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32 r, bytes32 s external")
+        )
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration");
+    });
+
+    it("Should throw error if one argument name is missing", async function () {
+      chai
+        .expect(() => parseFunctionDeclaration("function supplyWithPermit (bytes32, bytes32 r, bytes32 s) external;"))
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration: Invalid parameter bytes32");
+    });
+
+    it("Should throw error if one argument type is missing", async function () {
+      chai
+        .expect(() => parseFunctionDeclaration("function supplyWithPermit (args, bytes32 r, bytes32 s) external;"))
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration: Invalid parameter args");
+    });
+
+    it("Should render correct function parsing for function with ; at the end", async function () {
+      chai
+        .expect(parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32 r, bytes32 s) external;"))
+        .to.deep.equal({
+          name: "supplyWithPermit",
+          inputs: [
+            { type: "bytes32", name: "args" },
+            { type: "bytes32", name: "r" },
+            { type: "bytes32", name: "s" },
+          ],
+          outputs: [],
+          constant: false,
+          payable: false,
+          stateMutability: "nonpayable",
+          type: "function",
+        });
+    });
+
+    it("Should render correct function parsing for function without ; at the end", async function () {
+      chai
+        .expect(parseFunctionDeclaration("function supplyWithPermit (bytes32 args, bytes32 r, bytes32 s) external"))
+        .to.deep.equal({
+          name: "supplyWithPermit",
+          inputs: [
+            { type: "bytes32", name: "args" },
+            { type: "bytes32", name: "r" },
+            { type: "bytes32", name: "s" },
+          ],
+          outputs: [],
+          constant: false,
+          payable: false,
+          stateMutability: "nonpayable",
+          type: "function",
+        });
+    });
+
+    it("Should handle outputs properly", async function () {
+      chai
+        .expect(parseFunctionDeclaration("function getSiloedBorrowingState() public view returns (bool[], address)"))
+        .to.deep.equal({
+          name: "getSiloedBorrowingState",
+          inputs: [],
+          outputs: [
+            { type: "bool[]", name: "return0" },
+            { type: "address", name: "return1" },
+          ],
+          constant: true,
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        });
+    });
+
+    it("Should render correct function parsing for function calldata/memory arguments", async function () {
+      chai
+        .expect(
+          parseFunctionDeclaration(
+            "function setAssetSources(address[] calldata assets, address[] calldata sources) external override onlyAssetListingOrPoolAdmins"
+          )
+        )
+        .to.deep.equal({
+          name: "setAssetSources",
+          inputs: [
+            { type: "address[]", name: "assets" },
+            { type: "address[]", name: "sources" },
+          ],
+          outputs: [],
+          constant: false,
+          payable: false,
+          stateMutability: "nonpayable",
+          type: "function",
+        });
+    });
+
+    it("Should handle payable function", async function () {
+      chai
+        .expect(parseFunctionDeclaration("function destroyAndTransfer(address payable to) external payable"))
+        .to.deep.equal({
+          name: "destroyAndTransfer",
+          inputs: [{ type: "address", name: "to" }],
+          outputs: [],
+          constant: false,
+          payable: true,
+          stateMutability: "payable",
+          type: "function",
+        });
+    });
+
+    it("Should handle view function", async function () {
+      chai
+        .expect(parseFunctionDeclaration("function ASSET_LISTING_ADMIN_ROLE() external view returns (bytes32)"))
+        .to.deep.equal({
+          name: "ASSET_LISTING_ADMIN_ROLE",
+          inputs: [],
+          outputs: [{ type: "bytes32", name: "return0" }],
+          constant: true,
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        });
+    });
+
+    it("Should handle pure function", async function () {
+      chai
+        .expect(parseFunctionDeclaration("function getRevision() internal pure override returns (uint256)"))
+        .to.deep.equal({
+          name: "getRevision",
+          inputs: [],
+          outputs: [{ type: "uint256", name: "return0" }],
+          constant: false,
+          payable: false,
+          stateMutability: "pure",
+          type: "function",
+        });
     });
   });
 });
