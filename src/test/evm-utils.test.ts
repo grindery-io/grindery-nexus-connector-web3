@@ -140,7 +140,7 @@ describe("EVM utils tests", async function () {
 
     it("Should throw error if one parameter type is missing", async function () {
       chai
-        .expect(() => parseEventDeclaration("event AdminChanged(previousAdmin, address newAdmin)"))
+        .expect(() => parseEventDeclaration("event AdminChanged(   previousAdmin, address newAdmin)"))
         .to.throw(Error)
         .with.property("message", "Invalid event declaration: Invalid parameter previousAdmin");
     });
