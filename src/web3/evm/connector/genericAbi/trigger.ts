@@ -1,8 +1,15 @@
-import { ConnectorInput, InputProviderInput, InputProviderOutput, TriggerBase } from "grindery-nexus-common-utils";
+import {
+  ConnectorInput,
+  InputProviderInput,
+  InputProviderOutput,
+  TriggerBase,
+  TriggerInit,
+} from "grindery-nexus-common-utils";
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { NewEventTrigger } from "../../triggers";
 import { sanitizeParameters } from "../../../../utils";
 import { prepareOutput, CommonFields } from "./common";
+import { TriggerBasePayload, TriggerBaseState } from "../../../utils";
 
 type Fields = CommonFields & {
   _grinderyEvent?: string;
@@ -43,7 +50,7 @@ export async function genericAbiTriggerInputProvider(
 export async function genericAbiTrigger(input: ConnectorInput<unknown>): Promise<TriggerBase> {
   const fields = input.fields as Fields;
   return new NewEventTrigger(
-    await sanitizeParameters({
+    (await sanitizeParameters({
       ...input,
       fields: {
         ...fields,
@@ -52,6 +59,6 @@ export async function genericAbiTrigger(input: ConnectorInput<unknown>): Promise
         eventDeclaration: fields._grinderyEvent || "INVALID",
         parameterFilters: fields,
       },
-    })
+    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
   );
 }

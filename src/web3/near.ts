@@ -9,6 +9,14 @@ import { v4 as uuidv4 } from "uuid";
 import BN from "bn.js";
 import { connect, transactions, keyStores, utils, KeyPair } from "near-api-js";
 import { normalizeAddress, receiptIdFromTx } from "./near/utils";
+import {
+  NewEventInput,
+  NewTransactionInput,
+  TriggerBaseEventConstructor,
+  TriggerBasePayload,
+  TriggerBaseState,
+  TriggerBaseTxConstructor,
+} from "./utils";
 
 type Receipt = {
   predecessor_id: string;
@@ -292,11 +300,7 @@ const SUBSCRIBER = new ReceiptSubscriber();
 
 /* It subscribes to the `SUBSCRIBER` and sends a notification to the user when a transaction is
 received */
-class NewTransactionTrigger extends TriggerBase<{
-  chain: string | string[];
-  from?: string;
-  to?: string;
-}> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
@@ -345,12 +349,7 @@ class NewTransactionTrigger extends TriggerBase<{
 }
 
 /* It subscribes to the blockchain and sends a notification whenever a contract emits an event */
-class NewEventTrigger extends TriggerBase<{
-  chain: string | string[];
-  contractAddress?: string;
-  eventDeclaration: string | string[];
-  parameterFilters: { [key: string]: unknown };
-}> {
+class NewEventTrigger extends TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState> {
   async main() {
     console.log(
       `[${this.sessionId}] NewEventTrigger:`,
@@ -431,11 +430,11 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-// eslint-disable-next-line func-call-spacing
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
-Triggers.set("newTransaction", NewTransactionTrigger);
-Triggers.set("newTransactionAsset", NewTransactionTrigger);
-Triggers.set("newEvent", NewEventTrigger);
+export const Triggers = new Map<string, TriggerBaseTxConstructor | TriggerBaseEventConstructor>([
+  ["newTransaction", NewTransactionTrigger],
+  ["newTransactionAsset", NewTransactionTrigger],
+  ["newEvent", NewEventTrigger],
+]);
 
 const networkId = "mainnet";
 const CONTRACT_NAME = "nft.grindery.near";

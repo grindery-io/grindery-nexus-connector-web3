@@ -1,4 +1,35 @@
 import algosdk from "algosdk";
+import { TriggerBase, TriggerInit } from "grindery-nexus-common-utils";
+
+export type NewTransactionInput = { chain: string | string[]; from?: string; to?: string };
+export type NewEventInput = {
+  chain: string | string[];
+  contractAddress?: string;
+  eventDeclaration: string | string[];
+  parameterFilters: { [key: string]: unknown };
+};
+
+export type NewTransactionFlowInput = {
+  chain: string;
+  contract: string;
+  eventDeclaration: string;
+  from?: string;
+  to?: string;
+};
+
+export type TriggerBasePayload = Record<string, unknown>;
+export type TriggerBaseState = Record<string, unknown>;
+
+export type TriggerBaseTxConstructor = new (
+  params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
+) => TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState>;
+export type TriggerBaseEventConstructor = new (
+  params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
+) => TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState>;
+
+export type TriggerBaseTxFlowConstructor = new (
+  params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
+) => TriggerBase<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>;
 
 export async function getNetworkId(chain: string): Promise<string> {
   return chain.split(":")[1];

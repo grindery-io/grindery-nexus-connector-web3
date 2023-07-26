@@ -1,24 +1,26 @@
 import axios from "axios";
-import { ConnectorInput, TriggerBase } from "grindery-nexus-common-utils";
+import { ConnectorInput, TriggerBase, TriggerInit } from "grindery-nexus-common-utils";
 import { sanitizeParameters } from "../../../../../utils";
 import * as evm from "../../../triggers";
 import { API_BASE, processSafeTxInfo } from "../common";
+import { TriggerBasePayload, TriggerBaseState } from "../../../../utils";
 
 export async function safeTransactionExecuted(
   input: ConnectorInput,
   predicate = (_payload: Record<string, unknown>) => true
 ): Promise<TriggerBase> {
   const ret = new evm.NewEventTrigger(
-    await sanitizeParameters({
+    (await sanitizeParameters({
       ...input,
       fields: {
         ...(input.fields as object),
         eventDeclaration: "ExecutionSuccess(bytes32 txHash, uint256 payment)",
         parameterFilters: {},
       },
-    })
+    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
   );
-  ret.on("processSignal", async (payload) => {
+
+  ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
     const resp = await axios
       .get(
         `${API_BASE}v1/chains/${payload._grinderyChainId}/transactions/multisig_${payload._grinderyContractAddress}_${payload.txHash}`
@@ -52,7 +54,7 @@ export async function safeTransactionExecuted(
     if (!predicate(payload)) {
       return false;
     }
-  });
+  };
   return ret;
 }
 

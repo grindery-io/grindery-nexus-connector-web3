@@ -1,33 +1,34 @@
 import axios from "axios";
 import { ethers } from "ethers";
-import { ConnectorInput, TriggerBase } from "grindery-nexus-common-utils";
+import { ConnectorInput, TriggerBase, TriggerInit } from "grindery-nexus-common-utils";
 import { sanitizeParameters } from "../../../../../utils";
 import * as evm from "../../../triggers";
 import { API_BASE } from "../common";
+import { TriggerBasePayload, TriggerBaseState } from "../../../../utils";
 
 export async function safeDepositReceivedNative(input: ConnectorInput): Promise<TriggerBase> {
   const ret = new evm.NewEventTrigger(
-    await sanitizeParameters({
+    (await sanitizeParameters({
       ...input,
       fields: {
         ...(input.fields as object),
         eventDeclaration: "SafeReceived(address indexed sender, uint256 value)",
         parameterFilters: {},
       },
-    })
+    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
   );
-  ret.on("processSignal", async (payload) => {
+  ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
     if (String(payload.value) === "0") {
       return false;
     }
     payload.valueFormatted = ethers.utils.formatUnits(payload.value as string, "ether");
-  });
+  };
   return ret;
 }
 export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<TriggerBase> {
   input = await sanitizeParameters(input);
   const ret = new evm.NewEventTrigger(
-    await sanitizeParameters({
+    (await sanitizeParameters({
       ...input,
       fields: {
         ...(input.fields as object),
@@ -38,9 +39,9 @@ export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<T
         ],
         parameterFilters: { to: (input.fields as Record<string, unknown>).contractAddress },
       },
-    })
+    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
   );
-  ret.on("processSignal", async (payload) => {
+  ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
     if (String(payload.value) === "0") {
       return false;
     }
@@ -60,6 +61,6 @@ export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<T
     }
     Object.assign(payload, transferInfo);
     payload.valueFormatted = ethers.utils.formatUnits(payload.value as string, transferInfo.decimals || "ether");
-  });
+  };
   return ret;
 }
