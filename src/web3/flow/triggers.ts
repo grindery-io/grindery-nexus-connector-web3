@@ -372,7 +372,7 @@ function getSubscriber(contractAddress: string): ContractSubscriber {
 }
 /* It subscribes to the `TokensDeposited` and `TokensWithdrawn` events of the `FlowToken` contract, and
 sends a notification for each event that matches the `from` and `to` parameters */
-class NewTransactionTrigger extends TriggerBase<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionFlowInput> {
   async main() {
     if (!this.fields.from && !this.fields.to && this.key === "newTransaction") {
       throw new InvalidParamsError("from or to is required");
@@ -414,7 +414,7 @@ class NewTransactionTrigger extends TriggerBase<NewTransactionFlowInput, Trigger
   }
 }
 /* It subscribes to a contract event, and sends a notification whenever the event is triggered */
-class NewEventTrigger extends TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState> {
+class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     if (!this.fields.contractAddress) {
       throw new InvalidParamsError("Missing contract address");

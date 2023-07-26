@@ -183,7 +183,7 @@ class TransactionSubscriber extends EventEmitter {
 
 const SUBSCRIBER = new TransactionSubscriber();
 
-class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
@@ -259,7 +259,7 @@ class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBase
   }
 }
 
-class NewEventTrigger extends TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState> {
+class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     console.log(
       `[${this.sessionId}] NewEventTrigger:`,

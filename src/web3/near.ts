@@ -300,7 +300,7 @@ const SUBSCRIBER = new ReceiptSubscriber();
 
 /* It subscribes to the `SUBSCRIBER` and sends a notification to the user when a transaction is
 received */
-class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
@@ -349,7 +349,7 @@ class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBase
 }
 
 /* It subscribes to the blockchain and sends a notification whenever a contract emits an event */
-class NewEventTrigger extends TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState> {
+class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     console.log(
       `[${this.sessionId}] NewEventTrigger:`,

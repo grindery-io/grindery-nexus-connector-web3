@@ -22,10 +22,10 @@ export type TriggerBaseState = Record<string, unknown>;
 
 export type TriggerBaseTxConstructor = new (
   params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-) => TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState>;
+) => TriggerBase<NewTransactionInput>;
 export type TriggerBaseEventConstructor = new (
   params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-) => TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState>;
+) => TriggerBase<NewEventInput>;
 
 export type TriggerBaseTxFlowConstructor = new (
   params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>

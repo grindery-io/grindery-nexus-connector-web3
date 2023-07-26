@@ -215,7 +215,7 @@ function normalizeAddress<T>(address: T): T {
   return base58_to_binary(m[1]).toString("hex");
 }
 
-class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
@@ -262,7 +262,7 @@ class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBase
   }
 }
 
-class NewEventTrigger extends TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState> {
+class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     console.log(
       `[${this.sessionId}] NewEventTrigger:`,

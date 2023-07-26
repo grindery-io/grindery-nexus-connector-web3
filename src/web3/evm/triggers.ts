@@ -8,7 +8,7 @@ import { backOff } from "exponential-backoff";
 import { ethers } from "ethers";
 import { NewEventInput, NewTransactionInput, TriggerBasePayload, TriggerBaseState } from "../utils";
 
-export class NewTransactionTrigger extends TriggerBase<NewTransactionInput, TriggerBasePayload, TriggerBaseState> {
+export class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
     const fromAddress = this.fields.from ? ethers.utils.getAddress(this.fields.from) : null;
     const toAddress = this.fields.to ? ethers.utils.getAddress(this.fields.to) : null;
@@ -91,7 +91,7 @@ export class NewTransactionTrigger extends TriggerBase<NewTransactionInput, Trig
   }
 }
 
-export class NewEventTrigger extends TriggerBase<NewEventInput, TriggerBasePayload, TriggerBaseState> {
+export class NewEventTrigger extends TriggerBase<NewEventInput> {
   public async executeProcessSignal(payload: TriggerBasePayload): Promise<boolean | void> {
     if (!(await this.processSignal(payload))) {
       return false;
