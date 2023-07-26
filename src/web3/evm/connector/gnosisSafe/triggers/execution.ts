@@ -3,7 +3,7 @@ import { ConnectorInput, TriggerBase, TriggerInit } from "grindery-nexus-common-
 import { sanitizeParameters } from "../../../../../utils";
 import * as evm from "../../../triggers";
 import { API_BASE, processSafeTxInfo } from "../common";
-import { TriggerBasePayload, TriggerBaseState } from "../../../../utils";
+import { NewEventInput, TriggerBasePayload, TriggerBaseState } from "../../../../utils";
 
 export async function safeTransactionExecuted(
   input: ConnectorInput,
@@ -17,7 +17,7 @@ export async function safeTransactionExecuted(
         eventDeclaration: "ExecutionSuccess(bytes32 txHash, uint256 payment)",
         parameterFilters: {},
       },
-    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
+    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
   );
 
   ret.executeProcessSignal = async (payload: TriggerBasePayload) => {

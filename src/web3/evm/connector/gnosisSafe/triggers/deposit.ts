@@ -4,7 +4,7 @@ import { ConnectorInput, TriggerBase, TriggerInit } from "grindery-nexus-common-
 import { sanitizeParameters } from "../../../../../utils";
 import * as evm from "../../../triggers";
 import { API_BASE } from "../common";
-import { TriggerBasePayload, TriggerBaseState } from "../../../../utils";
+import { NewEventInput, TriggerBasePayload, TriggerBaseState } from "../../../../utils";
 
 export async function safeDepositReceivedNative(input: ConnectorInput): Promise<TriggerBase> {
   const ret = new evm.NewEventTrigger(
@@ -15,7 +15,7 @@ export async function safeDepositReceivedNative(input: ConnectorInput): Promise<
         eventDeclaration: "SafeReceived(address indexed sender, uint256 value)",
         parameterFilters: {},
       },
-    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
+    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
   );
   ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
     if (String(payload.value) === "0") {
@@ -39,7 +39,7 @@ export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<T
         ],
         parameterFilters: { to: (input.fields as Record<string, unknown>).contractAddress },
       },
-    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
+    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
   );
   ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
     if (String(payload.value) === "0") {

@@ -9,7 +9,7 @@ import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { NewEventTrigger } from "../../triggers";
 import { sanitizeParameters } from "../../../../utils";
 import { prepareOutput, CommonFields } from "./common";
-import { TriggerBasePayload, TriggerBaseState } from "../../../utils";
+import { NewEventInput, TriggerBasePayload, TriggerBaseState } from "../../../utils";
 
 type Fields = CommonFields & {
   _grinderyEvent?: string;
@@ -59,6 +59,6 @@ export async function genericAbiTrigger(input: ConnectorInput<unknown>): Promise
         eventDeclaration: fields._grinderyEvent || "INVALID",
         parameterFilters: fields,
       },
-    })) as TriggerInit<any, TriggerBasePayload, TriggerBaseState>
+    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
   );
 }
