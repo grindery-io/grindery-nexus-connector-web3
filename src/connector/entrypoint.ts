@@ -6,6 +6,7 @@ import {
   NewEventInput,
   NewTransactionFlowInput,
   NewTransactionInput,
+  TriggerBaseConstructor,
   TriggerBasePayload,
   TriggerBaseState,
 } from "../web3/utils";
@@ -22,7 +23,7 @@ export async function setupSignal(
   }
   const Trigger = getTriggerClass(params);
   if (Trigger) {
-    return new Trigger(params);
+    return new Trigger(params as TriggerBaseConstructor<typeof Trigger>);
   } else {
     throw new Error(`Invalid trigger: ${params.key}`);
   }

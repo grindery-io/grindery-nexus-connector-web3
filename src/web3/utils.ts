@@ -31,6 +31,14 @@ export type TriggerBaseTxFlowConstructor = new (
   params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
 ) => TriggerBase<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>;
 
+export type TriggerBaseConstructor<T> = T extends TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
+  ? TriggerBaseEventConstructor
+  : T extends TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
+  ? TriggerBaseTxConstructor
+  : T extends TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
+  ? TriggerBaseTxFlowConstructor
+  : never;
+
 export async function getNetworkId(chain: string): Promise<string> {
   return chain.split(":")[1];
 }

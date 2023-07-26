@@ -9,6 +9,7 @@ import {
   NewEventInput,
   NewTransactionFlowInput,
   NewTransactionInput,
+  TriggerBaseConstructor,
   TriggerBaseEventConstructor,
   TriggerBasePayload,
   TriggerBaseState,
@@ -40,30 +41,18 @@ export const CHAINS: {
   "algorand:testnet": algorandtest,
 };
 
-export function getTriggerClass(
-  params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseEventConstructor;
-
-export function getTriggerClass(
-  params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseTxConstructor;
-
-export function getTriggerClass(
-  params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseTxFlowConstructor;
-
-export function getTriggerClass(
-  params:
+export function getTriggerClass<
+  T extends
     | TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
     | TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
     | TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseEventConstructor | TriggerBaseTxConstructor | TriggerBaseTxFlowConstructor {
+>(params: T): TriggerBaseConstructor<T> {
   const module = typeof params.fields.chain === "string" ? (CHAINS[params.fields.chain] || evm).Triggers : evm.Triggers;
   const trigger = module.get(params.key);
   if (!trigger) {
     throw new InvalidParamsError(`Unknown trigger type: ${params.key}`);
   }
-  return trigger;
+  return trigger as TriggerBaseConstructor<T>;
 }
 
 export async function callSmartContract(
