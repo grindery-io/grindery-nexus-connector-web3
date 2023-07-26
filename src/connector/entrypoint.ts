@@ -10,20 +10,6 @@ import {
   TriggerBaseState,
 } from "../web3/utils";
 
-// Overloads for setupSignal based on trigger types
-export async function setupSignal(
-  params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-): Promise<TriggerBase<NewEventInput>>;
-
-export async function setupSignal(
-  params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-): Promise<TriggerBase<NewTransactionInput>>;
-
-export async function setupSignal(
-  params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-): Promise<TriggerBase<NewTransactionFlowInput>>;
-
-// Implementation of setupSignal function
 export async function setupSignal(
   params:
     | TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>

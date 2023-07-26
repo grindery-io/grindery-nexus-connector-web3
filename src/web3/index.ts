@@ -40,17 +40,17 @@ export const CHAINS: {
   "algorand:testnet": algorandtest,
 };
 
-export function getTriggerClass(
-  params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseEventConstructor;
+// export function getTriggerClass(
+//   params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
+// ): TriggerBaseEventConstructor;
 
-export function getTriggerClass(
-  params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseTxConstructor;
+// export function getTriggerClass(
+//   params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
+// ): TriggerBaseTxConstructor;
 
-export function getTriggerClass(
-  params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-): TriggerBaseTxFlowConstructor;
+// export function getTriggerClass(
+//   params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
+// ): TriggerBaseTxFlowConstructor;
 
 export function getTriggerClass(
   params:
