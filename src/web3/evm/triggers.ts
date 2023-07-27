@@ -6,7 +6,7 @@ import blockingTracer from "../../blockingTracer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { backOff } from "exponential-backoff";
 import { ethers } from "ethers";
-import { NewEventInput, NewTransactionInput, TriggerBasePayload, TriggerBaseState } from "../utils";
+import { NewEventInput, NewTransactionInput } from "../utils";
 
 export class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
@@ -92,12 +92,6 @@ export class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
 }
 
 export class NewEventTrigger extends TriggerBase<NewEventInput> {
-  public async executeProcessSignal(payload: TriggerBasePayload): Promise<boolean | void> {
-    if (!(await this.processSignal(payload))) {
-      return false;
-    }
-  }
-
   async main() {
     if (!this.fields.chain || !this.fields.chain.length) {
       throw new InvalidParamsError("chain is required");

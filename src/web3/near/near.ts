@@ -14,11 +14,8 @@ import {
   DepayActions,
   NearDepayActions,
   NewTransactionInput,
-  TriggerBasePayload,
-  TriggerBaseState,
   NewEventInput,
-  TriggerBaseTxConstructor,
-  TriggerBaseEventConstructor,
+  TriggerConstructor,
 } from "../utils";
 import nacl from "tweetnacl";
 import BN from "bn.js";
@@ -343,7 +340,7 @@ class NewEventTrigger extends TriggerBase<NewEventInput> {
   }
 }
 
-export const Triggers = new Map<string, TriggerBaseTxConstructor | TriggerBaseEventConstructor>([
+export const Triggers = new Map<string, TriggerConstructor>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
   ["newEvent", NewEventTrigger],

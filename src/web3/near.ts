@@ -9,14 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import BN from "bn.js";
 import { connect, transactions, keyStores, utils, KeyPair } from "near-api-js";
 import { normalizeAddress, receiptIdFromTx } from "./near/utils";
-import {
-  NewEventInput,
-  NewTransactionInput,
-  TriggerBaseEventConstructor,
-  TriggerBasePayload,
-  TriggerBaseState,
-  TriggerBaseTxConstructor,
-} from "./utils";
+import { NewEventInput, NewTransactionInput, TriggerConstructor } from "./utils";
 
 type Receipt = {
   predecessor_id: string;
@@ -430,7 +423,7 @@ class NewEventTrigger extends TriggerBase<NewEventInput> {
   }
 }
 
-export const Triggers = new Map<string, TriggerBaseTxConstructor | TriggerBaseEventConstructor>([
+export const Triggers = new Map<string, TriggerConstructor>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
   ["newEvent", NewEventTrigger],

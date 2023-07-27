@@ -4,11 +4,11 @@ import { getUserAddress, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import { AbiItem } from "web3-utils";
-import { TriggerBaseEventConstructor, TriggerBaseTxConstructor } from "../utils";
+import { TriggerConstructor } from "../utils";
 
 export { callSmartContract } from "./call";
 
-export const Triggers = new Map<string, TriggerBaseTxConstructor | TriggerBaseEventConstructor>([
+export const Triggers = new Map<string, TriggerConstructor>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
   ["newEvent", NewEventTrigger],

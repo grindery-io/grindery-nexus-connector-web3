@@ -1,47 +1,35 @@
 import axios from "axios";
 import { ethers } from "ethers";
-import { ConnectorInput, TriggerBase, TriggerInit } from "grindery-nexus-common-utils";
+import { ITriggerInstance, TriggerInit } from "grindery-nexus-common-utils";
 import { sanitizeParameters } from "../../../../../utils";
 import * as evm from "../../../triggers";
 import { API_BASE } from "../common";
-import { NewEventInput, TriggerBasePayload, TriggerBaseState } from "../../../../utils";
+import { NewEventInput } from "../../../../utils";
 
-export async function safeDepositReceivedNative(input: ConnectorInput): Promise<TriggerBase> {
-  const ret = new evm.NewEventTrigger(
-    (await sanitizeParameters({
+class DepositReceivedNative extends evm.NewEventTrigger {
+  protected async processSignal(payload: Record<string, unknown>): Promise<boolean> {
+    if (String(payload.value) === "0") {
+      return false;
+    }
+    payload.valueFormatted = ethers.utils.formatUnits(payload.value as string, "ether");
+    return true;
+  }
+}
+export async function safeDepositReceivedNative(input: TriggerInit): Promise<ITriggerInstance> {
+  const ret = new DepositReceivedNative(
+    await sanitizeParameters({
       ...input,
       fields: {
         ...(input.fields as object),
         eventDeclaration: "SafeReceived(address indexed sender, uint256 value)",
         parameterFilters: {},
-      },
-    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
+      } as NewEventInput,
+    })
   );
-  ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
-    if (String(payload.value) === "0") {
-      return false;
-    }
-    payload.valueFormatted = ethers.utils.formatUnits(payload.value as string, "ether");
-  };
   return ret;
 }
-export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<TriggerBase> {
-  input = await sanitizeParameters(input);
-  const ret = new evm.NewEventTrigger(
-    (await sanitizeParameters({
-      ...input,
-      fields: {
-        ...(input.fields as object),
-        contractAddress: "0x0",
-        eventDeclaration: [
-          "Transfer(address indexed sender, address indexed to, uint256 value)",
-          "Transfer(address indexed sender, address indexed to, uint256 value, bytes data)",
-        ],
-        parameterFilters: { to: (input.fields as Record<string, unknown>).contractAddress },
-      },
-    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-  );
-  ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
+class DepositReceivedERC20 extends evm.NewEventTrigger {
+  protected async processSignal(payload: Record<string, unknown>): Promise<boolean> {
     if (String(payload.value) === "0") {
       return false;
     }
@@ -61,6 +49,24 @@ export async function safeDepositReceivedERC20(input: ConnectorInput): Promise<T
     }
     Object.assign(payload, transferInfo);
     payload.valueFormatted = ethers.utils.formatUnits(payload.value as string, transferInfo.decimals || "ether");
-  };
+    return true;
+  }
+}
+export async function safeDepositReceivedERC20(input: TriggerInit): Promise<ITriggerInstance> {
+  input = await sanitizeParameters(input);
+  const ret = new DepositReceivedERC20(
+    await sanitizeParameters({
+      ...input,
+      fields: {
+        ...(input.fields as object),
+        contractAddress: "0x0",
+        eventDeclaration: [
+          "Transfer(address indexed sender, address indexed to, uint256 value)",
+          "Transfer(address indexed sender, address indexed to, uint256 value, bytes data)",
+        ],
+        parameterFilters: { to: (input.fields as Record<string, unknown>).contractAddress },
+      } as unknown as NewEventInput,
+    })
+  );
   return ret;
 }

@@ -1,26 +1,14 @@
 import axios from "axios";
-import { ConnectorInput, TriggerBase, TriggerInit } from "grindery-nexus-common-utils";
+import { ITriggerInstance, TriggerInit } from "grindery-nexus-common-utils";
 import { sanitizeParameters } from "../../../../../utils";
 import * as evm from "../../../triggers";
 import { API_BASE, processSafeTxInfo } from "../common";
-import { NewEventInput, TriggerBasePayload, TriggerBaseState } from "../../../../utils";
+import { NewEventInput } from "../../../../utils";
 
-export async function safeTransactionExecuted(
-  input: ConnectorInput,
-  predicate = (_payload: Record<string, unknown>) => true
-): Promise<TriggerBase> {
-  const ret = new evm.NewEventTrigger(
-    (await sanitizeParameters({
-      ...input,
-      fields: {
-        ...(input.fields as object),
-        eventDeclaration: "ExecutionSuccess(bytes32 txHash, uint256 payment)",
-        parameterFilters: {},
-      },
-    })) as TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-  );
+class NewEventTrigger extends evm.NewEventTrigger {
+  predicate = (_payload: Record<string, unknown>) => true;
 
-  ret.executeProcessSignal = async (payload: TriggerBasePayload) => {
+  protected async processSignal(payload: Record<string, unknown>): Promise<boolean> {
     const resp = await axios
       .get(
         `${API_BASE}v1/chains/${payload._grinderyChainId}/transactions/multisig_${payload._grinderyContractAddress}_${payload.txHash}`
@@ -51,23 +39,41 @@ export async function safeTransactionExecuted(
       const type = processSafeTxInfo(safeTxInfo, payload);
       payload.type = type;
     }
-    if (!predicate(payload)) {
+    if (this.predicate(payload)) {
       return false;
     }
-  };
+    return true;
+  }
+}
+
+export async function safeTransactionExecuted(
+  input: TriggerInit,
+  predicate = (_payload: Record<string, unknown>) => true
+): Promise<ITriggerInstance> {
+  const ret = new NewEventTrigger(
+    await sanitizeParameters({
+      ...input,
+      fields: {
+        ...(input.fields as object),
+        eventDeclaration: "ExecutionSuccess(bytes32 txHash, uint256 payment)",
+        parameterFilters: {},
+      } as NewEventInput,
+    })
+  );
+  ret.predicate = predicate;
   return ret;
 }
 
-export const safeTransactionExecutedTransferNative = async (input: ConnectorInput) =>
+export const safeTransactionExecutedTransferNative = async (input: TriggerInit) =>
   safeTransactionExecuted(input, (payload) => payload.type === "transfer_native_coin");
-export const safeTransactionExecutedTransferERC20 = async (input: ConnectorInput) =>
+export const safeTransactionExecutedTransferERC20 = async (input: TriggerInit) =>
   safeTransactionExecuted(input, (payload) => payload.type === "transfer_erc20");
-export const safeTransactionExecutedAddOwner = async (input: ConnectorInput) =>
+export const safeTransactionExecutedAddOwner = async (input: TriggerInit) =>
   safeTransactionExecuted(input, (payload) => payload.type === "add_owner");
-export const safeTransactionExecutedRemoveOwner = async (input: ConnectorInput) =>
+export const safeTransactionExecutedRemoveOwner = async (input: TriggerInit) =>
   safeTransactionExecuted(input, (payload) => payload.type === "remove_owner");
-export const safeTransactionExecutedOther = async (input: ConnectorInput) =>
+export const safeTransactionExecutedOther = async (input: TriggerInit) =>
   safeTransactionExecuted(input, (payload) => payload.type === "other");
 
-export const safeTransactionRejected = async (input: ConnectorInput) =>
+export const safeTransactionRejected = async (input: TriggerInit) =>
   safeTransactionExecuted(input, (payload) => payload.type === "rejection");

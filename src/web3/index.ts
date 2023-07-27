@@ -5,17 +5,7 @@ import * as flow from "./flow";
 import * as algorand from "./algorand/algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { TAccessToken } from "../jwt";
-import {
-  NewEventInput,
-  NewTransactionFlowInput,
-  NewTransactionInput,
-  TriggerBaseConstructor,
-  TriggerBaseEventConstructor,
-  TriggerBasePayload,
-  TriggerBaseState,
-  TriggerBaseTxConstructor,
-  TriggerBaseTxFlowConstructor,
-} from "./utils";
+import { TriggerConstructor } from "./utils";
 
 export * from "./webhook";
 
@@ -26,7 +16,7 @@ export const CHAINS: {
   [key: string]: {
     callSmartContract(input: ConnectorInput<unknown>): Promise<ConnectorOutput>;
     getUserDroneAddress(user: TAccessToken): Promise<string>;
-    Triggers: Map<string, TriggerBaseEventConstructor | TriggerBaseTxConstructor | TriggerBaseTxFlowConstructor>;
+    Triggers: Map<string, TriggerConstructor>;
   };
 } = {
   near,
@@ -41,18 +31,13 @@ export const CHAINS: {
   "algorand:testnet": algorandtest,
 };
 
-export function getTriggerClass<
-  T extends
-    | TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-    | TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-    | TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
->(params: T): TriggerBaseConstructor<T> {
+export function getTriggerClass<T extends { chain: string }>(params: TriggerInit<T>): TriggerConstructor<T> {
   const module = typeof params.fields.chain === "string" ? (CHAINS[params.fields.chain] || evm).Triggers : evm.Triggers;
   const trigger = module.get(params.key);
   if (!trigger) {
     throw new InvalidParamsError(`Unknown trigger type: ${params.key}`);
   }
-  return trigger as TriggerBaseConstructor<T>;
+  return trigger as TriggerConstructor<T>;
 }
 
 export async function callSmartContract(

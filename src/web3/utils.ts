@@ -1,5 +1,5 @@
 import algosdk from "algosdk";
-import { TriggerBase, TriggerInit } from "grindery-nexus-common-utils";
+import { ITriggerInstance, TriggerInit } from "grindery-nexus-common-utils";
 
 export type NewTransactionInput = { chain: string | string[]; from?: string; to?: string };
 export type NewEventInput = {
@@ -17,27 +17,7 @@ export type NewTransactionFlowInput = {
   to?: string;
 };
 
-export type TriggerBasePayload = Record<string, unknown>;
-export type TriggerBaseState = Record<string, unknown>;
-
-export type TriggerBaseTxConstructor = new (
-  params: TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-) => TriggerBase<NewTransactionInput>;
-export type TriggerBaseEventConstructor = new (
-  params: TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-) => TriggerBase<NewEventInput>;
-
-export type TriggerBaseTxFlowConstructor = new (
-  params: TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-) => TriggerBase<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>;
-
-export type TriggerBaseConstructor<T> = T extends TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-  ? TriggerBaseEventConstructor
-  : T extends TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-  ? TriggerBaseTxConstructor
-  : T extends TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-  ? TriggerBaseTxFlowConstructor
-  : never;
+export type TriggerConstructor<T = any> = new (input: TriggerInit<T>) => ITriggerInstance;
 
 export async function getNetworkId(chain: string): Promise<string> {
   return chain.split(":")[1];

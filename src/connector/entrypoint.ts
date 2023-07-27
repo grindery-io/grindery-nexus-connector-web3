@@ -1,29 +1,16 @@
-import { ConnectorInput, ConnectorOutput, TriggerBase, TriggerInit } from "grindery-nexus-common-utils/dist/connector";
+import { ConnectorInput, ConnectorOutput, ITriggerInstance, TriggerInit } from "grindery-nexus-common-utils";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { callSmartContract as _callSmartContract, getTriggerClass } from "../web3";
 import { sanitizeParameters } from "../utils";
-import {
-  NewEventInput,
-  NewTransactionFlowInput,
-  NewTransactionInput,
-  TriggerBaseConstructor,
-  TriggerBasePayload,
-  TriggerBaseState,
-} from "../web3/utils";
 
-export async function setupSignal(
-  params:
-    | TriggerInit<NewEventInput, TriggerBasePayload, TriggerBaseState>
-    | TriggerInit<NewTransactionInput, TriggerBasePayload, TriggerBaseState>
-    | TriggerInit<NewTransactionFlowInput, TriggerBasePayload, TriggerBaseState>
-): Promise<TriggerBase> {
+export async function setupSignal(params: TriggerInit<{ chain: string }>): Promise<ITriggerInstance> {
   await sanitizeParameters(params);
-  if (!("chain" in (params.fields as Record<string, unknown>))) {
+  if (!("chain" in params.fields)) {
     throw new InvalidParamsError("Missing chain parameter");
   }
   const Trigger = getTriggerClass(params);
   if (Trigger) {
-    return new Trigger(params as TriggerBaseConstructor<typeof Trigger>);
+    return new Trigger(params);
   } else {
     throw new Error(`Invalid trigger: ${params.key}`);
   }

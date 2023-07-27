@@ -11,7 +11,7 @@ export async function InformationERC20TokenAction(input: ConnectorInput<unknown>
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function symbol() view returns (string)",
         parameters: {},
       },
@@ -22,7 +22,7 @@ export async function InformationERC20TokenAction(input: ConnectorInput<unknown>
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function decimals() view returns (uint256)",
         parameters: {},
       },
@@ -33,7 +33,7 @@ export async function InformationERC20TokenAction(input: ConnectorInput<unknown>
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function name() view returns (string)",
         parameters: {},
       },

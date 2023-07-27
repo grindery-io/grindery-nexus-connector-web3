@@ -7,16 +7,7 @@ import { parseUserAccessToken, TAccessToken } from "../../jwt";
 import algosdk from "algosdk";
 import { getUserAccountAlgorand, getAlgodClient, SignedTransactionWithAD } from "./utils";
 import { SendTransactionAction } from "../actions";
-import {
-  DepayActions,
-  AlgorandDepayActions,
-  NewTransactionInput,
-  TriggerBasePayload,
-  TriggerBaseState,
-  NewEventInput,
-  TriggerBaseTxConstructor,
-  TriggerBaseEventConstructor,
-} from "../utils";
+import { DepayActions, AlgorandDepayActions, NewTransactionInput, NewEventInput, TriggerConstructor } from "../utils";
 import BigNumber from "bignumber.js";
 
 type Status = {
@@ -324,7 +315,7 @@ class NewEventTrigger extends TriggerBase<NewEventInput> {
   }
 }
 
-export const Triggers = new Map<string, TriggerBaseTxConstructor | TriggerBaseEventConstructor>([
+export const Triggers = new Map<string, TriggerConstructor>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
   ["newEvent", NewEventTrigger],

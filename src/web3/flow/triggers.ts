@@ -3,14 +3,7 @@ import axios from "axios";
 import { TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import blockingTracer from "../../blockingTracer";
-import {
-  NewEventInput,
-  NewTransactionFlowInput,
-  TriggerBaseEventConstructor,
-  TriggerBasePayload,
-  TriggerBaseState,
-  TriggerBaseTxFlowConstructor,
-} from "../utils";
+import { NewEventInput, NewTransactionFlowInput, TriggerConstructor } from "../utils";
 
 type Block = {
   header: {
@@ -453,7 +446,7 @@ class NewEventTrigger extends TriggerBase<NewEventInput> {
   }
 }
 
-export const Triggers = new Map<string, TriggerBaseTxFlowConstructor | TriggerBaseEventConstructor>([
+export const Triggers = new Map<string, TriggerConstructor>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
   ["newTransactionToken", NewTransactionTrigger],
