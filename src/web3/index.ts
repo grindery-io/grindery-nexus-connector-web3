@@ -37,7 +37,7 @@ export function getTriggerClass<T extends { chain: string }>(params: TriggerInit
   if (!trigger) {
     throw new InvalidParamsError(`Unknown trigger type: ${params.key}`);
   }
-  return trigger as TriggerConstructor<T>;
+  return trigger;
 }
 
 export async function callSmartContract(
