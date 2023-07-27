@@ -97,7 +97,7 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
  * @throws Error if the function declaration is invalid or contains invalid parameters.
  */
 export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
-  const functionParts = /^\s*(function +)?([a-zA-Z0-9_]+)\s*\(([^)]+)?\)\s*(.*)$/.exec(functionDeclaration);
+  const functionParts = /^\s*function\s+([a-zA-Z0-9_]+)\s*\(([^)]+)?\)\s*(.*)$/.exec(functionDeclaration);
   if (!functionParts) {
     throw new Error("Invalid function declaration");
   }
