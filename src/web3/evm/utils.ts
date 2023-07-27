@@ -68,7 +68,7 @@ export function isSameAddress(a: string | null, b: string | null): boolean {
  * @throws Error if the event declaration is invalid or contains invalid parameters.
  */
 export function parseEventDeclaration(eventDeclaration: string): AbiItem {
-  const eventParts = /^\s*(event +)?([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(eventDeclaration);
+  const eventParts = /^\s*event\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*;?\s*$/.exec(eventDeclaration);
   if (!eventParts) {
     throw new Error("Invalid event declaration");
   }
