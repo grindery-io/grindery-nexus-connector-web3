@@ -1,8 +1,9 @@
 import { EventEmitter } from "node:events";
 import axios from "axios";
-import { ConnectorInput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
+import { TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import blockingTracer from "../../blockingTracer";
+import { NewEventInput, NewTransactionFlowInput, TriggerConstructor } from "../utils";
 
 type Block = {
   header: {
@@ -364,13 +365,7 @@ function getSubscriber(contractAddress: string): ContractSubscriber {
 }
 /* It subscribes to the `TokensDeposited` and `TokensWithdrawn` events of the `FlowToken` contract, and
 sends a notification for each event that matches the `from` and `to` parameters */
-class NewTransactionTrigger extends TriggerBase<{
-  chain: string;
-  contract: string;
-  eventDeclaration: string;
-  from?: string;
-  to?: string;
-}> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionFlowInput> {
   async main() {
     if (!this.fields.from && !this.fields.to && this.key === "newTransaction") {
       throw new InvalidParamsError("from or to is required");
@@ -412,12 +407,7 @@ class NewTransactionTrigger extends TriggerBase<{
   }
 }
 /* It subscribes to a contract event, and sends a notification whenever the event is triggered */
-class NewEventTrigger extends TriggerBase<{
-  chain: string;
-  contractAddress: string;
-  eventDeclaration: string | string[];
-  parameterFilters: { [key: string]: unknown };
-}> {
+class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     if (!this.fields.contractAddress) {
       throw new InvalidParamsError("Missing contract address");
@@ -456,10 +446,10 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-// eslint-disable-next-line func-call-spacing
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
-Triggers.set("newTransaction", NewTransactionTrigger);
-Triggers.set("newTransactionAsset", NewTransactionTrigger);
-Triggers.set("newTransactionToken", NewTransactionTrigger);
-Triggers.set("newTransactionNFT", NewTransactionTrigger);
-Triggers.set("newEvent", NewEventTrigger);
+export const Triggers = new Map<string, TriggerConstructor>([
+  ["newTransaction", NewTransactionTrigger],
+  ["newTransactionAsset", NewTransactionTrigger],
+  ["newTransactionToken", NewTransactionTrigger],
+  ["newTransactionNFT", NewTransactionTrigger],
+  ["newEvent", NewEventTrigger],
+]);

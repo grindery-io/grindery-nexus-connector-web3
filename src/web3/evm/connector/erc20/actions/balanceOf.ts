@@ -12,7 +12,7 @@ export async function balanceOfActionERC20(input: ConnectorInput<unknown>): Prom
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function balanceOf(address account) view returns (uint256)",
         parameters: {
           account: (
@@ -29,7 +29,7 @@ export async function balanceOfActionERC20(input: ConnectorInput<unknown>): Prom
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function decimals() view returns (uint256)",
         parameters: {},
       },

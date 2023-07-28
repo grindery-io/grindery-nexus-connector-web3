@@ -5,25 +5,29 @@ import { isSameAddress, onNewBlockMultiChain, parseEventDeclaration } from "./ut
 import blockingTracer from "../../blockingTracer";
 import { BigNumber } from "@ethersproject/bignumber";
 import { backOff } from "exponential-backoff";
+import { ethers } from "ethers";
+import { NewEventInput, NewTransactionInput } from "../utils";
 
-export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[]; from?: string; to?: string }> {
+export class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
+    const fromAddress = this.fields.from ? ethers.utils.getAddress(this.fields.from) : null;
+    const toAddress = this.fields.to ? ethers.utils.getAddress(this.fields.to) : null;
     if (!this.fields.chain || !this.fields.chain.length) {
       throw new InvalidParamsError("chain is required");
     }
-    if (!this.fields.from && !this.fields.to) {
+    if (!fromAddress && !toAddress) {
       throw new InvalidParamsError("from or to is required");
     }
-    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, this.fields.from, this.fields.to);
+    console.log(`[${this.sessionId}] NewTransactionTrigger:`, this.fields.chain, fromAddress, toAddress);
     const unsubscribe = onNewBlockMultiChain(
       this.fields.chain,
       async ({ block, chain, memoCall, ethersProvider }) => {
         blockingTracer.tag("evm.NewTransactionTrigger");
         for (const transaction of block.transactions) {
-          if (this.fields.from && !isSameAddress(transaction.from, this.fields.from)) {
+          if (fromAddress && !isSameAddress(transaction.from, fromAddress)) {
             continue;
           }
-          if (this.fields.to && !isSameAddress(transaction.to, this.fields.to)) {
+          if (toAddress && !isSameAddress(transaction.to, toAddress)) {
             continue;
           }
           const timestamp = Date.now();
@@ -86,12 +90,8 @@ export class NewTransactionTrigger extends TriggerBase<{ chain: string | string[
     }
   }
 }
-export class NewEventTrigger extends TriggerBase<{
-  chain: string | string[];
-  contractAddress?: string;
-  eventDeclaration: string | string[];
-  parameterFilters: { [key: string]: unknown };
-}> {
+
+export class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     if (!this.fields.chain || !this.fields.chain.length) {
       throw new InvalidParamsError("chain is required");
@@ -119,7 +119,9 @@ export class NewEventTrigger extends TriggerBase<{
       topics.pop();
     }
     const contractAddress =
-      this.fields.contractAddress && this.fields.contractAddress !== "0x0" ? this.fields.contractAddress : undefined;
+      this.fields.contractAddress && this.fields.contractAddress !== "0x0"
+        ? ethers.utils.getAddress(this.fields.contractAddress)
+        : undefined;
     if (topics.length <= 1 && !contractAddress) {
       throw new InvalidParamsError("No topics to filter on");
     }

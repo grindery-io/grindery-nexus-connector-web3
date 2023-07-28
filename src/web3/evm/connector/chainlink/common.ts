@@ -3,7 +3,7 @@ import { FieldSchema, FieldChoiceSchema } from "grindery-nexus-common-utils/dist
 import axios from "axios";
 
 export type clkFields = {
-  _grinderyChain?: string;
+  _grinderyChain: string;
   _getChainlinkPriceFeed?: string;
 };
 

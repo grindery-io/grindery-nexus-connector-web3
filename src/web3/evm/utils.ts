@@ -81,7 +81,7 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
         (inputParts.length !== 2 && inputParts.length !== 3) ||
         (inputParts.length === 3 && inputParts[1] !== "indexed")
       ) {
-        throw new Error("Invalid event declaration: Invalid parameter " + p);
+        throw new Error("Invalid event declaration: Invalid parameter " + p.trim());
       }
       return { indexed: inputParts.length === 3, type: inputParts[0], name: inputParts[inputParts.length - 1] };
     }),
