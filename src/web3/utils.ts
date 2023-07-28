@@ -1,4 +1,23 @@
 import algosdk from "algosdk";
+import { ITriggerInstance, TriggerInit } from "grindery-nexus-common-utils";
+
+export type NewTransactionInput = { chain: string | string[]; from?: string; to?: string };
+export type NewEventInput = {
+  chain: string | string[];
+  contractAddress?: string;
+  eventDeclaration: string | string[];
+  parameterFilters: { [key: string]: unknown };
+};
+
+export type NewTransactionFlowInput = {
+  chain: string;
+  contract: string;
+  eventDeclaration: string;
+  from?: string;
+  to?: string;
+};
+
+export type TriggerConstructor<T = any> = new (input: TriggerInit<T>) => ITriggerInstance;
 
 export async function getNetworkId(chain: string): Promise<string> {
   return chain.split(":")[1];

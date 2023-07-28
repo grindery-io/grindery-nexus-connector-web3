@@ -9,7 +9,14 @@ import { base58_to_binary } from "base58-js";
 import { base_encode } from "./serialize";
 import { nearGetAccount } from "./utils";
 import { SendTransactionAction } from "../actions";
-import { getNetworkId, DepayActions, NearDepayActions } from "../utils";
+import {
+  getNetworkId,
+  DepayActions,
+  NearDepayActions,
+  NewTransactionInput,
+  NewEventInput,
+  TriggerConstructor,
+} from "../utils";
 import nacl from "tweetnacl";
 import BN from "bn.js";
 
@@ -205,11 +212,7 @@ function normalizeAddress<T>(address: T): T {
   return base58_to_binary(m[1]).toString("hex");
 }
 
-class NewTransactionTrigger extends TriggerBase<{
-  chain: string | string[];
-  from?: string;
-  to?: string;
-}> {
+class NewTransactionTrigger extends TriggerBase<NewTransactionInput> {
   async main() {
     if (!this.fields.from && !this.fields.to) {
       throw new InvalidParamsError("from or to is required");
@@ -255,12 +258,8 @@ class NewTransactionTrigger extends TriggerBase<{
     }
   }
 }
-class NewEventTrigger extends TriggerBase<{
-  chain: string | string[];
-  contractAddress?: string;
-  eventDeclaration: string | string[];
-  parameterFilters: { [key: string]: unknown };
-}> {
+
+class NewEventTrigger extends TriggerBase<NewEventInput> {
   async main() {
     console.log(
       `[${this.sessionId}] NewEventTrigger:`,
@@ -341,11 +340,11 @@ class NewEventTrigger extends TriggerBase<{
   }
 }
 
-// eslint-disable-next-line func-call-spacing
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>();
-Triggers.set("newTransaction", NewTransactionTrigger);
-Triggers.set("newTransactionAsset", NewTransactionTrigger);
-Triggers.set("newEvent", NewEventTrigger);
+export const Triggers = new Map<string, TriggerConstructor>([
+  ["newTransaction", NewTransactionTrigger],
+  ["newTransactionAsset", NewTransactionTrigger],
+  ["newEvent", NewEventTrigger],
+]);
 
 export async function callSmartContract(
   input: ConnectorInput<{
