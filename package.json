@@ -34,6 +34,7 @@
     "base58-js": "^1.0.4",
     "bignumber.js": "^9.1.1",
     "chai": "^4.3.7",
+    "chai-as-promised": "^7.1.1",
     "chai-http": "^4.4.0",
     "console-log-json": "github:SAPikachu/console-log-json",
     "core-js": "^3.22",
@@ -61,6 +62,7 @@
   "devDependencies": {
     "@onflow/types": "^1.0.2",
     "@tsconfig/node16": "^1.0.2",
+    "@types/chai-as-promised": "^7.1.5",
     "@types/lodash": "^4.14.182",
     "@types/mocha": "^10.0.1",
     "@types/mutexify": "^1.2.0",

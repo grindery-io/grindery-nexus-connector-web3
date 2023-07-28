@@ -141,24 +141,29 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
   };
 }
 
-export async function getUserAddress(user: TAccessToken) {
-  let userAddress: string;
+/**
+ * Retrieves the user address based on the given `TAccessToken`.
+ *
+ * @param user - The user's access token.
+ * @returns A Promise resolving to the user's address as a string.
+ * @throws An error with the message "Unexpected eip155 user ID format" if the user's access token
+ * does not match the expected format.
+ */
+export async function getUserAddress(user: TAccessToken): Promise<string> {
+  const getAddressHmac = async (key: string) => {
+    return Web3.utils.toChecksumAddress("0x" + (await hmac(key)).subarray(0, 20).toString("hex"));
+  };
+
   if ("workspace" in user) {
-    userAddress = Web3.utils.toChecksumAddress(
-      "0x" + (await hmac("grindery-web3-address-workspace/" + user.workspace)).subarray(0, 20).toString("hex")
-    );
-  } else {
-    const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
-    if (addressMatch) {
-      userAddress = addressMatch[1];
-      if (!Web3.utils.isAddress(userAddress)) {
-        throw new Error("Unexpected eip155 user ID format");
-      }
-    } else {
-      userAddress = Web3.utils.toChecksumAddress(
-        "0x" + (await hmac("grindery-web3-address-sub/" + user.sub)).subarray(0, 20).toString("hex")
-      );
-    }
+    return await getAddressHmac("grindery-web3-address-workspace/" + user.workspace);
   }
-  return userAddress;
+
+  const addressMatch = /^eip155:\d+:(0x.+)$/.exec(user.sub || "");
+  return addressMatch
+    ? Web3.utils.isAddress(addressMatch[1])
+      ? addressMatch[1]
+      : (() => {
+          throw new Error("Unexpected eip155 user ID format");
+        })()
+    : await getAddressHmac("grindery-web3-address-sub/" + user.sub);
 }
