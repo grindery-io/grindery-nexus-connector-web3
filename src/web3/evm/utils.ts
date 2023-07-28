@@ -111,7 +111,7 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
       ? functionParts[3].split(",").map((p) => {
           const inputParts = p.trim().split(/\s+/);
           if (inputParts.length < 2) {
-            throw new Error("Invalid function declaration: Invalid parameter " + p);
+            throw new Error("Invalid function declaration: Invalid parameter " + p.trim());
           }
           return {
             type: inputParts[0],
