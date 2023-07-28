@@ -233,6 +233,9 @@ describe("EVM utils tests", async function () {
           stateMutability: "pure",
           type: "function",
         });
+    });
+  });
+
   describe("parseEventDeclaration", async function () {
     it("Should throw error if name does not appear at the beginning", async function () {
       chai
