@@ -1,4 +1,4 @@
-import { ConnectorInput, InputProviderInput, InputProviderOutput, TriggerBase } from "grindery-nexus-common-utils";
+import { ITriggerInstance, InputProviderInput, InputProviderOutput, TriggerInit } from "grindery-nexus-common-utils";
 import { FieldSchema } from "grindery-nexus-common-utils/dist/types";
 import { NewEventTrigger } from "../../triggers";
 import { sanitizeParameters } from "../../../../utils";
@@ -40,7 +40,7 @@ export async function genericAbiTriggerInputProvider(
   return ret;
 }
 
-export async function genericAbiTrigger(input: ConnectorInput<unknown>): Promise<TriggerBase> {
+export async function genericAbiTrigger(input: TriggerInit<unknown>): Promise<ITriggerInstance> {
   const fields = input.fields as Fields;
   return new NewEventTrigger(
     await sanitizeParameters({

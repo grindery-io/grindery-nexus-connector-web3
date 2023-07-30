@@ -12,7 +12,7 @@ export async function InformationInvestmentClub(input: ConnectorInput<unknown>):
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function owner() view returns (address)",
         parameters: {},
       },
@@ -23,7 +23,7 @@ export async function InformationInvestmentClub(input: ConnectorInput<unknown>):
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function name() view returns (string)",
         parameters: {},
       },
@@ -34,7 +34,7 @@ export async function InformationInvestmentClub(input: ConnectorInput<unknown>):
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function symbol() view returns (string)",
         parameters: {},
       },
@@ -45,7 +45,7 @@ export async function InformationInvestmentClub(input: ConnectorInput<unknown>):
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function totalSupply() view returns (uint256)",
         parameters: {},
       },
