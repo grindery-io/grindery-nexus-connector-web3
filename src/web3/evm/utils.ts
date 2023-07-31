@@ -81,7 +81,7 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
         (inputParts.length !== 2 && inputParts.length !== 3) ||
         (inputParts.length === 3 && inputParts[1] !== "indexed")
       ) {
-        throw new Error("Invalid event declaration: Invalid parameter " + p);
+        throw new Error("Invalid event declaration: Invalid parameter " + p.trim());
       }
       return { indexed: inputParts.length === 3, type: inputParts[0], name: inputParts[inputParts.length - 1] };
     }),
@@ -111,7 +111,7 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
       ? functionParts[3].split(",").map((p) => {
           const inputParts = p.trim().split(/\s+/);
           if (inputParts.length < 2) {
-            throw new Error("Invalid function declaration: Invalid parameter " + p);
+            throw new Error("Invalid function declaration: Invalid parameter " + p.trim());
           }
           return {
             type: inputParts[0],

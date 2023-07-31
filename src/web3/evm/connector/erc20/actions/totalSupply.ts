@@ -12,7 +12,7 @@ export async function totalSupplyAction(input: ConnectorInput<unknown>): Promise
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function totalSupply() view returns (uint256)",
         parameters: {},
       },
@@ -23,7 +23,7 @@ export async function totalSupplyAction(input: ConnectorInput<unknown>): Promise
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function decimals() view returns (uint256)",
         parameters: {},
       },

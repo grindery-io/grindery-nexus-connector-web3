@@ -4,18 +4,25 @@ import { convert } from "./web3/evm/unitConverter";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sanitizeObject(parameters: Record<string, unknown>, input: ConnectorInput<any>) {
   for (const key of Object.keys(parameters)) {
-    if (parameters[key] === "!!GRINDERY!!UNDEFINED!!") {
-      parameters[key] = undefined;
-    }
-    const unitConversionMode = parameters["_grinderyUnitConversion_" + key];
-    if (unitConversionMode) {
-      parameters[key] = await convert(parameters[key], unitConversionMode as string, input.fields, parameters);
-    }
+    parameters[key] =
+      parameters[key] === "!!GRINDERY!!UNDEFINED!!"
+        ? undefined
+        : parameters["_grinderyUnitConversion_" + key]
+        ? await convert(
+            parameters[key],
+            parameters["_grinderyUnitConversion_" + key] as string,
+            input.fields,
+            parameters
+          )
+        : parameters[key];
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function sanitizeParameters(input: ConnectorInput<any>, paramKeys = ["parameterFilters", "parameters"]) {
+export async function sanitizeParameters<T extends ConnectorInput<any>>(
+  input: T,
+  paramKeys = ["parameterFilters", "parameters"]
+) {
   if ("_grinderyContractAddress" in input.fields) {
     input.fields.contractAddress = input.fields._grinderyContractAddress;
     delete input.fields._grinderyContractAddress;

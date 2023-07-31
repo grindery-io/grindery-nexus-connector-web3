@@ -12,7 +12,7 @@ export async function allowanceAction(input: ConnectorInput<unknown>): Promise<A
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function allowance(address owner, address spender) view returns (uint256)",
       },
     })
@@ -22,7 +22,7 @@ export async function allowanceAction(input: ConnectorInput<unknown>): Promise<A
     await sanitizeParameters({
       ...input,
       fields: {
-        ...fields,
+        ...(fields as any),
         functionDeclaration: "function decimals() view returns (uint256)",
         parameters: {},
       },

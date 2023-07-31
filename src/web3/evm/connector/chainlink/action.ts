@@ -23,6 +23,9 @@ export async function clkPriceFeedActionInputProvider(
  */
 export async function clkPriceFeedAction(input: ConnectorInput<unknown>): Promise<ActionOutput> {
   const fields = input.fields as clkFields;
+  if (!fields._grinderyChain) {
+    throw new Error("Chain is not specified");
+  }
   const contractAddr = await extractAddressFromPair(fields._getChainlinkPriceFeed);
   /* Calling the smart contract to get the decimals of the token. */
   const getDecimals = await callSmartContract(

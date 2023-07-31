@@ -1,15 +1,14 @@
-import { ConnectorInput, TriggerBase } from "grindery-nexus-common-utils/dist/connector";
 import { TAccessToken } from "../../jwt";
 import { NewTransactionTrigger, NewEventTrigger } from "./triggers";
 import { getUserAddress, HUB_ADDRESS } from "./utils";
 import { getWeb3 } from "./web3";
 import GrinderyNexusHub from "./abi/GrinderyNexusHub.json";
 import { AbiItem } from "web3-utils";
+import { TriggerConstructor } from "../utils";
 
 export { callSmartContract } from "./call";
 
-// eslint-disable-next-line func-call-spacing
-export const Triggers = new Map<string, new (params: ConnectorInput) => TriggerBase>([
+export const Triggers = new Map<string, TriggerConstructor>([
   ["newTransaction", NewTransactionTrigger],
   ["newTransactionAsset", NewTransactionTrigger],
   ["newEvent", NewEventTrigger],
