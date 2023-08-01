@@ -73,6 +73,11 @@ export function parseEventDeclaration(eventDeclaration: string): AbiItem {
     throw new Error("Invalid event declaration");
   }
 
+  const eventName = eventParts[2]?.trim();
+  if (eventName === "event") {
+    throw new Error("Invalid event declaration");
+  }
+
   return {
     name: eventParts[2],
     inputs: eventParts[3].split(",").map((p) => {

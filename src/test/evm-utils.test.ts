@@ -237,6 +237,13 @@ describe("EVM utils tests", async function () {
   });
 
   describe("parseEventDeclaration", async function () {
+    it("Should throw error if event prefix does not follow event name at the beginning", async function () {
+      chai
+        .expect(() => parseEventDeclaration("event (address previousAdmin, address newAdmin);"))
+        .to.throw(Error)
+        .with.property("message", "Invalid event declaration");
+    });
+
     it("Should throw error if name does not appear at the beginning", async function () {
       chai
         .expect(() => parseEventDeclaration("(address previousAdmin, address newAdmin);"))
@@ -256,6 +263,18 @@ describe("EVM utils tests", async function () {
         .expect(() => parseEventDeclaration("event AdminChanged (address previousAdmin, address newAdmin"))
         .to.throw(Error)
         .with.property("message", "Invalid event declaration");
+    });
+
+    it("Should render correct event parsing for event without event prefix", async function () {
+      chai.expect(parseEventDeclaration("AdminChanged(address previousAdmin, address newAdmin);")).to.deep.equal({
+        name: "AdminChanged",
+        inputs: [
+          { indexed: false, type: "address", name: "previousAdmin" },
+          { indexed: false, type: "address", name: "newAdmin" },
+        ],
+        type: "event",
+        anonymous: false,
+      });
     });
 
     it("Should render correct event parsing for classical events with ; at the end", async function () {
