@@ -107,6 +107,11 @@ export function parseFunctionDeclaration(functionDeclaration: string): AbiItem {
     throw new Error("Invalid function declaration");
   }
 
+  const functionName = functionParts[2]?.trim();
+  if (functionName === "function") {
+    throw new Error("Invalid function declaration");
+  }
+
   const returnMatch = /\breturns\s+\(([^)]+)\)/.exec(functionParts[4]) || /\breturns\s+([^\s]+)/.exec(functionParts[4]);
   const suffixes = functionParts[4].trim().split(/\s+/);
 

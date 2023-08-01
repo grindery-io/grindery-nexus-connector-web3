@@ -34,6 +34,13 @@ describe("EVM utils tests", async function () {
   });
 
   describe("parseFunctionDeclaration", async function () {
+    it("Should throw error if function prefix does not follow function name at the beginning", async function () {
+      chai
+        .expect(() => parseFunctionDeclaration("function (bytes32 args, bytes32 r, bytes32 s) external"))
+        .to.throw(Error)
+        .with.property("message", "Invalid function declaration");
+    });
+
     it("Should throw error if function name does not appear at the beginning", async function () {
       chai
         .expect(() => parseFunctionDeclaration("(bytes32 args, bytes32 r, bytes32 s) external"))
@@ -73,6 +80,24 @@ describe("EVM utils tests", async function () {
         .expect(() => parseFunctionDeclaration("function supplyWithPermit (bytes32 args, r, bytes32 s) external;"))
         .to.throw(Error)
         .with.property("message", "Invalid function declaration: Invalid parameter r");
+    });
+
+    it("Should render correct function parsing for function without function prefix", async function () {
+      chai
+        .expect(parseFunctionDeclaration("supplyWithPermit (bytes32 args, bytes32 r, bytes32 s) external;"))
+        .to.deep.equal({
+          name: "supplyWithPermit",
+          inputs: [
+            { type: "bytes32", name: "args" },
+            { type: "bytes32", name: "r" },
+            { type: "bytes32", name: "s" },
+          ],
+          outputs: [],
+          constant: false,
+          payable: false,
+          stateMutability: "nonpayable",
+          type: "function",
+        });
     });
 
     it("Should render correct function parsing for function with ; at the end", async function () {
