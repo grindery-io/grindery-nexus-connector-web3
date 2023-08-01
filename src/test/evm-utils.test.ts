@@ -1,10 +1,13 @@
 import chai from "chai";
 import chaiHttp from "chai-http";
-import { isSameAddress, parseFunctionDeclaration, parseEventDeclaration } from "../web3/evm/utils";
+import { isSameAddress, parseFunctionDeclaration, parseEventDeclaration, getUserAddress } from "../web3/evm/utils";
+import { mockedTAccessToken } from "./utils";
+import chaiAsPromised from "chai-as-promised";
 
 /* eslint-disable no-unused-expressions */
 
 chai.use(chaiHttp);
+chai.use(chaiAsPromised);
 
 describe("EVM utils tests", async function () {
   describe("isSameAddress (address A and address B)", async function () {
@@ -404,6 +407,62 @@ describe("EVM utils tests", async function () {
         .expect(() => parseEventDeclaration("event AdminChanged(address not_indexed previousAdmin, address newAdmin)"))
         .to.throw(Error)
         .with.property("message", "Invalid event declaration: Invalid parameter address not_indexed previousAdmin");
+    });
+  });
+
+  describe("getUserAddress", async function () {
+    it("Should return correct output user address with lower case input (lower case output)", async function () {
+      chai
+        .expect(
+          await getUserAddress({ ...mockedTAccessToken, sub: "eip155:1:0x71fa225b8f9aeb50b44f96743275837f8eb7694e" })
+        )
+        .to.equal("0x71fa225b8f9aeb50b44f96743275837f8eb7694e");
+    });
+
+    it("Should return correct output user address with upper case input (upper case output)", async function () {
+      chai
+        .expect(
+          await getUserAddress({ ...mockedTAccessToken, sub: "eip155:1:0x71Fa225B8f9AEB50B44f96743275837f8Eb7694E" })
+        )
+        .to.equal("0x71Fa225B8f9AEB50B44f96743275837f8Eb7694E");
+    });
+
+    it("Should return an error if sub input address has a wrong checksum", async function () {
+      await chai
+        .expect(getUserAddress({ ...mockedTAccessToken, sub: "eip155:1:0xC1912fEE45d61C87Cc5EA59DaE31190FFFFf232d" }))
+        .to.eventually.be.rejected.and.be.an.instanceOf(Error)
+        .and.have.property("message", "Unexpected eip155 user ID format");
+    });
+
+    it("Should return an error if number of elements in address is wrong", async function () {
+      await chai
+        .expect(getUserAddress({ ...mockedTAccessToken, sub: "eip155:1:0x71fa225b8f9aeb50b44f96743275837f8eb7694" }))
+        .to.eventually.be.rejected.and.be.an.instanceOf(Error)
+        .and.have.property("message", "Unexpected eip155 user ID format");
+    });
+
+    it("Should return hmac custom address if result of regex on sub is null", async function () {
+      chai
+        .expect(await getUserAddress({ ...mockedTAccessToken, sub: "87Cc5EA59DaE31190FFFFf232d" }))
+        .to.equal("0x3f2ec2a36aB9AFCe37CAD374358F89d221974528");
+    });
+
+    it("Should return hmac custom address if there is a workspace field in access token input", async function () {
+      chai
+        .expect(await getUserAddress({ ...mockedTAccessToken, workspace: "3275837f8eb7694" }))
+        .to.equal("0xD3C27521548007CC5E3a6F29f37206a90F2CD090");
+    });
+
+    it("Should return hmac custom address if access token sub is empty string", async function () {
+      chai
+        .expect(await getUserAddress({ ...mockedTAccessToken, sub: "" }))
+        .to.equal("0x6242359149968c71184a643f5b905CdbaB37a442");
+    });
+
+    it("Should return hmac custom address if access token sub is undefined", async function () {
+      chai
+        .expect(await getUserAddress({ ...mockedTAccessToken, sub: undefined }))
+        .to.equal("0x6AB495913768f9D0F51fe19030Ba16a237E1E55E");
     });
   });
 });
