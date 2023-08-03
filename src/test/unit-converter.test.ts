@@ -1,5 +1,10 @@
 import chai from "chai";
-import { numberToString, scaleDecimals } from "../web3/evm/unitConverter";
+import chaiHttp from "chai-http";
+import { UNIT_CONVERTERS, numberToString, scaleDecimals } from "../web3/evm/unitConverter";
+import sinon from "sinon";
+import * as web3 from "../web3/evm/web3";
+
+chai.use(chaiHttp);
 
 describe("numberToString", async function () {
   it("Should convert a valid string number to string", async function () {
@@ -135,5 +140,40 @@ describe("scaleDecimals", async function () {
         Error,
         "while converting number to string, invalid number value '1a2b3c4d', should be a number matching (^-?[0-9.]+)"
       );
+  });
+});
+
+describe("UNIT_CONVERTERS", async () => {
+  it("should convert ERC20 token value to scaled decimals", async () => {
+    const contractStub = {
+      methods: {
+        decimals: sinon.stub().resolves("18"),
+      },
+    };
+
+    const getWeb3 = (chain: string) => {
+      const web3Stub = {
+        eth: {
+          Contract: sinon.stub().returns(contractStub),
+        },
+      };
+
+      const closeStub = sinon.stub();
+
+      return {
+        web3: web3Stub,
+        close: closeStub,
+      };
+    };
+
+    sinon.stub(web3, "getWeb3").callsFake(getWeb3);
+
+    contractStub.methods.decimals = sinon.stub().returns({
+      call: sinon.stub().resolves("18"),
+    });
+
+    // code
+
+    sinon.restore();
   });
 });
