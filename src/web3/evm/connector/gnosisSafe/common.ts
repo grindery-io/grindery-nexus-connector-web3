@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export const API_BASE = "https://safe-client.gnosis.io/";
+export const API_BASE = "https://safe-client.safe.global/";
 function fillTransferInfo(payload: Record<string, unknown>, safeTxInfo) {
   if (safeTxInfo.txInfo?.transferInfo?.value) {
     payload.value = safeTxInfo.txInfo?.transferInfo?.value;
