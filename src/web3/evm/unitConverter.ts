@@ -7,7 +7,7 @@ import { AbiItem } from "web3-utils";
 const ERC20_DECIMALS_ABI = ERC20.find((item) => item.name === "decimals");
 
 // trunk-ignore(eslint/@typescript-eslint/no-explicit-any)
-function numberToString(arg: any) {
+export function numberToString(arg: any) {
   if (typeof arg === "string") {
     if (!arg.match(/^-?[0-9.]+$/)) {
       throw new Error(
@@ -23,7 +23,7 @@ function numberToString(arg: any) {
   throw new Error(`while converting number to string, invalid number value '${arg}' type ${typeof arg}.`);
 }
 
-function scaleDecimals(etherInput: string, decimals: number) {
+export function scaleDecimals(etherInput: string, decimals: number) {
   let ether = numberToString(etherInput);
   const base = new BN(10).pow(new BN(decimals));
   const baseLength = base.toString(10).length - 1;
@@ -41,6 +41,7 @@ function scaleDecimals(etherInput: string, decimals: number) {
   // Split it into a whole and fractional part
   const comps = ether.split(".");
   if (comps.length > 2) {
+    // ok
     throw new Error(`[ethjs-unit] while converting number ${etherInput} to wei,  too many decimal points`);
   }
 
@@ -71,7 +72,7 @@ function scaleDecimals(etherInput: string, decimals: number) {
 
   return wei.toString(10);
 }
-const UNIT_CONVERTERS: [
+export const UNIT_CONVERTERS: [
   RegExp,
   (
     value: unknown,
