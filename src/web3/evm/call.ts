@@ -518,7 +518,6 @@ export async function callSmartContract(
               contractAddress: input.fields.contractAddress,
               _grinderyAccounting: BigNumber.from(receipt.gasUsed || txConfig.gas)
                 .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
-                .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain]))
                 .toString(),
             };
           } else {

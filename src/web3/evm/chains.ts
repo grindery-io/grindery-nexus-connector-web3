@@ -56,7 +56,7 @@ export const CHAIN_MAPPING_ACCOUNTING: { [key: string]: string } = {
   "eip155:43114": "1",
   "eip155:56": "1",
   "eip155:250": "1",
-  "eip155:1666600000": "4",
+  "eip155:1666600000": "1",
   "eip155:25": "1",
   "eip155:1101": "1",
   "eip155:1284": "1",
@@ -67,6 +67,6 @@ export const CHAIN_MAPPING_ACCOUNTING: { [key: string]: string } = {
   "eip155:4002": "1",
   "eip155:1442": "1",
   "eip155:338": "1",
-  "eip155:44787": "3",
+  "eip155:44787": "1",
   "eip155:9000": "1",
 };
