@@ -1,6 +1,8 @@
 import { ConnectorInput } from "grindery-nexus-common-utils/dist/connector";
 import { convert } from "./web3/evm/unitConverter";
 
+export const GRINDERY_ACCOUNTING_ACTIONS = 0;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sanitizeObject(parameters: Record<string, unknown>, input: ConnectorInput<any>) {
   for (const key of Object.keys(parameters)) {

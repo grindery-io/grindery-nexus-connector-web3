@@ -14,6 +14,7 @@ import vaultSigner from "./signer";
 import { AbiItem } from "web3-utils";
 import AbiCoder from "web3-eth-abi";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { GRINDERY_ACCOUNTING_ACTIONS } from "../../utils";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -181,7 +182,7 @@ export async function callSmartContract(
         return {
           key: input.key,
           sessionId: input.sessionId,
-          payload: result,
+          payload: { ...result, _grinderyAccounting: GRINDERY_ACCOUNTING_ACTIONS },
         };
       }
     } else {
