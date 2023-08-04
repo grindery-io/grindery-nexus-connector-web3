@@ -7,6 +7,7 @@ import vaultSigner from "./signer";
 import { SignTypedDataVersion } from "@metamask/eth-sig-util";
 import ABI from "./abi/GnosisSafe.json";
 import ERC20 from "./abi/ERC20.json";
+import { API_BASE } from "./connector/gnosisSafe/common";
 
 export const execTransactionAbi: AbiItem = ABI.find((x) => x.name === "execTransaction") as AbiItem;
 
@@ -40,7 +41,7 @@ export async function encodeExecTransaction({
       if (threshold > 1) {
         try {
           const nonceResp = await axios.post(
-            `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
+            `${API_BASE}v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
             { value: "0", operation: 0, to: parameters.to, data: "0x" }
           );
           nonce = nonceResp.data.recommendedNonce;
@@ -131,16 +132,13 @@ export async function encodeExecTransaction({
         };
       }
       try {
-        const resp = await axios.post(
-          `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
-          {
-            origin: "Grindery Nexus",
-            safeTxHash: txHash,
-            signature,
-            sender: await vaultSigner.getAddress(),
-            ...message,
-          }
-        );
+        const resp = await axios.post(`${API_BASE}v1/chains/${chainId}/transactions/${contractAddress}/propose`, {
+          origin: "Grindery Nexus",
+          safeTxHash: txHash,
+          signature,
+          sender: await vaultSigner.getAddress(),
+          ...message,
+        });
         return resp.data;
       } catch (e) {
         console.error("Failed to send transaction to Gnosis Safe: ", e, e.response?.data, message);
