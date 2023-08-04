@@ -1,14 +1,43 @@
 import chai from "chai";
-import chaiHttp from "chai-http";
 import { UNIT_CONVERTERS, numberToString, scaleDecimals } from "../web3/evm/unitConverter";
 import sinon from "sinon";
 import * as web3 from "../web3/evm/web3";
-import chaiAsPromised from "chai-as-promised";
-
-chai.use(chaiHttp);
-chai.use(chaiAsPromised);
 
 describe("Unit Converter", async function () {
+  let contractStub: { methods: { decimals: object } };
+  let getWeb3: object;
+  let sandbox;
+
+  beforeEach(function () {
+    sandbox = sinon.createSandbox();
+
+    contractStub = {
+      methods: {
+        decimals: sandbox.stub().resolves("18"),
+      },
+    };
+    getWeb3 = (chain: string) => {
+      const web3Stub = {
+        eth: {
+          Contract: sandbox.stub().returns(contractStub),
+        },
+      };
+      const closeStub = sandbox.stub();
+      return {
+        web3: web3Stub,
+        close: closeStub,
+      };
+    };
+    sandbox.stub(web3, "getWeb3").callsFake(getWeb3);
+    contractStub.methods.decimals = sandbox.stub().returns({
+      call: sandbox.stub().resolves("18"),
+    });
+  });
+
+  afterEach(function () {
+    sandbox.restore();
+  });
+
   describe("numberToString", async function () {
     it("Should convert a valid string number to string", async function () {
       chai.expect(numberToString("42")).to.equal("42");
@@ -150,42 +179,6 @@ describe("Unit Converter", async function () {
   });
 
   describe("UNIT_CONVERTERS", async () => {
-    let contractStub: { methods: { decimals: object } };
-    let getWeb3: object;
-
-    before(function () {
-      contractStub = {
-        methods: {
-          decimals: sinon.stub().resolves("18"),
-        },
-      };
-
-      getWeb3 = (chain: string) => {
-        const web3Stub = {
-          eth: {
-            Contract: sinon.stub().returns(contractStub),
-          },
-        };
-
-        const closeStub = sinon.stub();
-
-        return {
-          web3: web3Stub,
-          close: closeStub,
-        };
-      };
-
-      sinon.stub(web3, "getWeb3").callsFake(getWeb3);
-
-      contractStub.methods.decimals = sinon.stub().returns({
-        call: sinon.stub().resolves("18"),
-      });
-    });
-
-    after(function () {
-      sinon.restore();
-    });
-
     it("Should return the correct value for valid contract address and valid input format with commas", async () => {
       // Test case for a contract address with valid input format (with commas)
       const value = "123,456.78";
