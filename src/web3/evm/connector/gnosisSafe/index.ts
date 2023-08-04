@@ -16,12 +16,19 @@ import { API_BASE } from "./common";
 const ERC20_TRANSFER = ERC20.find((item) => item.name === "transfer");
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
-async function sanitizeInput(input: ConnectorInput<unknown>) {
+/**
+ * Sanitizes the input fields in the provided ConnectorInput object.
+ *
+ * @param input - The ConnectorInput object containing the input fields to sanitize.
+ * @throws {Error} Throws an error if authentication is required but not provided
+ */
+export async function sanitizeInput(input: ConnectorInput<unknown>) {
   const parameters = input.fields as { [key: string]: string };
   const m = /^eip155:(\d+)$/.exec(parameters._grinderyChain || "");
   if (m) {
     parameters.chainId = m[1];
   }
+  delete parameters._grinderyChain;
   parameters.contractAddress = parameters.contractAddress || parameters._grinderyContractAddress;
   if (!["chainId", "contractAddress"].every((x) => parameters[x])) {
     if (!input.authentication) {
@@ -39,8 +46,7 @@ async function sanitizeInput(input: ConnectorInput<unknown>) {
         },
       }
     );
-    const chainId = authResp.data.chainId;
-    parameters.chainId = chainId;
+    parameters.chainId = authResp.data.chainId;
     parameters.contractAddress = authResp.data.safe;
   }
   parameters.chain = `eip155:${parameters.chainId}`;
