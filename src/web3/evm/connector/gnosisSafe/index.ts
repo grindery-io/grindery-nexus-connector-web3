@@ -11,16 +11,24 @@ import { getWeb3 } from "../../web3";
 import { sanitizeParameters } from "../../../../utils";
 import AbiCoder from "web3-eth-abi";
 import Web3 from "web3";
+import { API_BASE } from "./common";
 
 const ERC20_TRANSFER = ERC20.find((item) => item.name === "transfer");
 const nonceMutexes: { [contractAddress: string]: () => Promise<() => void> } = {};
 
-async function sanitizeInput(input: ConnectorInput<unknown>) {
+/**
+ * Sanitizes the input fields in the provided ConnectorInput object.
+ *
+ * @param input - The ConnectorInput object containing the input fields to sanitize.
+ * @throws {Error} Throws an error if authentication is required but not provided
+ */
+export async function sanitizeInput(input: ConnectorInput<unknown>) {
   const parameters = input.fields as { [key: string]: string };
   const m = /^eip155:(\d+)$/.exec(parameters._grinderyChain || "");
   if (m) {
     parameters.chainId = m[1];
   }
+  delete parameters._grinderyChain;
   parameters.contractAddress = parameters.contractAddress || parameters._grinderyContractAddress;
   if (!["chainId", "contractAddress"].every((x) => parameters[x])) {
     if (!input.authentication) {
@@ -38,8 +46,7 @@ async function sanitizeInput(input: ConnectorInput<unknown>) {
         },
       }
     );
-    const chainId = authResp.data.chainId;
-    parameters.chainId = chainId;
+    parameters.chainId = authResp.data.chainId;
     parameters.contractAddress = authResp.data.safe;
   }
   parameters.chain = `eip155:${parameters.chainId}`;
@@ -61,7 +68,7 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
   try {
     try {
       const nonceResp = await axios.post(
-        `https://safe-client.gnosis.io/v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
+        `${API_BASE}v2/chains/${chainId}/safes/${contractAddress}/multisig-transactions/estimations`,
         { value: "0", operation: 0, to: parameters.to, data: parameters.data }
       );
       nonce = nonceResp.data.recommendedNonce;
@@ -144,16 +151,13 @@ async function proposeTransaction(input: ConnectorInput<unknown>): Promise<Actio
       };
     }
     try {
-      const resp = await axios.post(
-        `https://safe-client.gnosis.io/v1/chains/${chainId}/transactions/${contractAddress}/propose`,
-        {
-          origin: "Grindery Flow",
-          safeTxHash: txHash,
-          signature,
-          sender: await NtaSigner.getAddress(),
-          ...message,
-        }
-      );
+      const resp = await axios.post(`${API_BASE}v1/chains/${chainId}/transactions/${contractAddress}/propose`, {
+        origin: "Grindery Flow",
+        safeTxHash: txHash,
+        signature,
+        sender: await NtaSigner.getAddress(),
+        ...message,
+      });
       return { payload: resp.data };
     } catch (e) {
       console.error("Failed to send transaction to Gnosis Safe: ", e, e.response?.data, message);
