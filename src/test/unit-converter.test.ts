@@ -16,7 +16,7 @@ describe("Unit Converter", async function () {
         decimals: sandbox.stub().resolves("18"),
       },
     };
-    getWeb3 = (chain: string) => {
+    getWeb3 = () => {
       const web3Stub = {
         eth: {
           Contract: sandbox.stub().returns(contractStub),
@@ -185,7 +185,7 @@ describe("Unit Converter", async function () {
       const contractAddress = "0x04c496af5321D9E03fd10a67CA6C23474bFc8475";
       const fields: Record<string, unknown> = {
         chain: "eip155:1",
-        contractAddress: contractAddress,
+        contractAddress,
       };
       const parameters: Record<string, unknown> = {
         parameterName: "parameterValue",
@@ -202,7 +202,7 @@ describe("Unit Converter", async function () {
       const contractAddress = "0x04c496af5321D9E03fd10a67CA6C23474bFc8475";
       const fields: Record<string, unknown> = {
         chain: "eip155:1",
-        contractAddress: contractAddress,
+        contractAddress,
       };
       const parameters: Record<string, unknown> = {
         parameterName: "parameterValue",
@@ -215,10 +215,10 @@ describe("Unit Converter", async function () {
 
     it('Should use contractAddress from fields when contractAddress is "@"', async () => {
       const value = "123,456.78";
-      const contractAddressFromFields = "0x1234567890";
+      const contractAddress = "0x1234567890";
       const fields: Record<string, unknown> = {
         chain: "ethereum",
-        contractAddress: contractAddressFromFields,
+        contractAddress,
       };
       const parameters: Record<string, unknown> = {
         parameterName: "parameterValue",
@@ -230,18 +230,18 @@ describe("Unit Converter", async function () {
 
     it("Should throw an error for invalid contract address", async () => {
       const value = "123,456.78";
-      const invalidContractAddress = "invalid-address";
+      const contractAddress = "invalid-address";
       const fields: Record<string, unknown> = {
         chain: "eip155:1",
-        contractAddress: invalidContractAddress,
+        contractAddress,
       };
       const parameters: Record<string, unknown> = {
         parameterName: "parameterValue",
       };
 
       await chai
-        .expect(UNIT_CONVERTERS[0][1](value, ["unused", invalidContractAddress], fields, parameters))
-        .to.be.rejectedWith(Error, `erc20Decimals: Invalid contract address: ${invalidContractAddress}`);
+        .expect(UNIT_CONVERTERS[0][1](value, ["unused", contractAddress], fields, parameters))
+        .to.be.rejectedWith(Error, `erc20Decimals: Invalid contract address: ${contractAddress}`);
     });
   });
 });
