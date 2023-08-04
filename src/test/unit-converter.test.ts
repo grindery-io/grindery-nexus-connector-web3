@@ -180,7 +180,6 @@ describe("Unit Converter", async function () {
 
   describe("UNIT_CONVERTERS", async () => {
     it("Should return the correct value for valid contract address and valid input format with commas", async () => {
-      // Test case for a contract address with valid input format (with commas)
       const value = "123,456.78";
       const contractAddress = "0x04c496af5321D9E03fd10a67CA6C23474bFc8475";
       const fields: Record<string, unknown> = {
