@@ -154,7 +154,7 @@ describe("Unit Converter", async function () {
       const decimals = 18;
       chai
         .expect(() => scaleDecimals("1.2.3", decimals))
-        .to.throw(Error, "[ethjs-unit] while converting number 1.2.3 to wei,  too many decimal points");
+        .to.throw(Error, "[ethjs-unit] while converting number 1.2.3 to wei, too many decimal points");
     });
 
     it("Should throw an error for too many decimal places", async () => {

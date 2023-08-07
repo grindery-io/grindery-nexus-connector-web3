@@ -41,7 +41,7 @@ export function scaleDecimals(etherInput: string, decimals: number) {
   // Split it into a whole and fractional part
   const comps = ether.split(".");
   if (comps.length > 2) {
-    throw new Error(`[ethjs-unit] while converting number ${etherInput} to wei,  too many decimal points`);
+    throw new Error(`[ethjs-unit] while converting number ${etherInput} to wei, too many decimal points`);
   }
 
   let whole = comps[0];
