@@ -150,6 +150,13 @@ describe("Unit Converter", async function () {
       chai.expect(weiValue).to.equal("1234000000000");
     });
 
+    it("Should throw an error for value being only a dot", async () => {
+      const decimals = 18;
+      chai
+        .expect(() => scaleDecimals(".", decimals))
+        .to.throw(Error, "[ethjs-unit] while converting number . to wei, invalid value");
+    });
+
     it("Should throw an error for too many decimal points", async () => {
       const decimals = 18;
       chai
