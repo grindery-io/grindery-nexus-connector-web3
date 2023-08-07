@@ -185,9 +185,12 @@ export async function callSmartContract(
           sessionId: input.sessionId,
           payload: {
             ...result,
-            _grinderyAccounting: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
-              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
-              .toString(),
+            _grinderyAccounting: {
+              result: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
+                .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
+                .toString(),
+              chain: input.fields.chain,
+            },
           },
         };
       }
@@ -284,9 +287,12 @@ export async function callSmartContract(
           payload: {
             _grinderyDryRunError:
               "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
-            _grinderyAccounting: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
-              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
-              .toString(),
+            _grinderyAccounting: {
+              result: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
+                .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
+                .toString(),
+              chain: input.fields.chain,
+            },
           },
         };
       }
@@ -397,9 +403,12 @@ export async function callSmartContract(
                 transactionHash: "0x1122334455667788990011223344556677889900112233445566778899001122",
               }),
           contractAddress: input.fields.contractAddress,
-          _grinderyAccounting: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
-            .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
-            .toString(),
+          _grinderyAccounting: {
+            result: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
+              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
+              .toString(),
+            chain: input.fields.chain,
+          },
         };
       } else {
         const maxFee = input.fields.gasLimit
