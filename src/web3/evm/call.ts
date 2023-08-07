@@ -15,7 +15,7 @@ import { AbiItem } from "web3-utils";
 import AbiCoder from "web3-eth-abi";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { ACCOUNTING_SIMPLE_ACTIONS } from "../../utils";
-import { CHAIN_MAPPING_ACCOUNTING } from "./chains";
+import { CHAIN_MAPPING_ACCOUNTING, DEFAULT_TX_COST_RATE } from "./chains";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -186,7 +186,7 @@ export async function callSmartContract(
           payload: {
             ...result,
             _grinderyAccounting: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
-              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain]))
+              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
               .toString(),
           },
         };
@@ -285,7 +285,7 @@ export async function callSmartContract(
             _grinderyDryRunError:
               "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
             _grinderyAccounting: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
-              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain]))
+              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
               .toString(),
           },
         };
@@ -398,7 +398,7 @@ export async function callSmartContract(
               }),
           contractAddress: input.fields.contractAddress,
           _grinderyAccounting: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
-            .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain]))
+            .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
             .toString(),
         };
       } else {

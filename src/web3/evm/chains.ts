@@ -70,3 +70,5 @@ export const CHAIN_MAPPING_ACCOUNTING: { [key: string]: string } = {
   "eip155:44787": "1",
   "eip155:9000": "1",
 };
+
+export const DEFAULT_TX_COST_RATE = "1";
