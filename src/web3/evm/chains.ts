@@ -46,3 +46,29 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:44787": LAVANET("alfajores/rpc", "alfajores/rpc-http"),
   "eip155:9000": LAVANET("evmost/json-rpc", "evmost/json-rpc-http"),
 };
+
+export const CHAIN_MAPPING_ACCOUNTING: { [key: string]: string } = {
+  "eip155:1": "1",
+  "eip155:42161": "1",
+  "eip155:100": "1",
+  "eip155:137": "1",
+  "eip155:42220": "1",
+  "eip155:43114": "1",
+  "eip155:56": "1",
+  "eip155:250": "1",
+  "eip155:1666600000": "1",
+  "eip155:25": "1",
+  "eip155:1101": "1",
+  "eip155:1284": "1",
+  "eip155:80001": "1",
+  "eip155:5": "1",
+  "eip155:11155111": "1",
+  "eip155:97": "1",
+  "eip155:4002": "1",
+  "eip155:1442": "1",
+  "eip155:338": "1",
+  "eip155:44787": "1",
+  "eip155:9000": "1",
+};
+
+export const DEFAULT_TX_COST_RATE = "1";

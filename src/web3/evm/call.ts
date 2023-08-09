@@ -14,6 +14,8 @@ import vaultSigner from "./signer";
 import { AbiItem } from "web3-utils";
 import AbiCoder from "web3-eth-abi";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { ACCOUNTING_SIMPLE_ACTIONS } from "../../utils";
+import { CHAIN_MAPPING_ACCOUNTING, DEFAULT_TX_COST_RATE } from "./chains";
 
 const hubAvailability = new Map<string, boolean>();
 
@@ -181,7 +183,15 @@ export async function callSmartContract(
         return {
           key: input.key,
           sessionId: input.sessionId,
-          payload: result,
+          payload: {
+            ...result,
+            _grinderyAccounting: {
+              result: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
+                .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
+                .toString(),
+              chain: input.fields.chain,
+            },
+          },
         };
       }
     } else {
@@ -277,6 +287,12 @@ export async function callSmartContract(
           payload: {
             _grinderyDryRunError:
               "Can't confirm that the transaction can be executed due to the following error: " + e.toString(),
+            _grinderyAccounting: {
+              result: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
+                .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
+                .toString(),
+              chain: input.fields.chain,
+            },
           },
         };
       }
@@ -387,6 +403,12 @@ export async function callSmartContract(
                 transactionHash: "0x1122334455667788990011223344556677889900112233445566778899001122",
               }),
           contractAddress: input.fields.contractAddress,
+          _grinderyAccounting: {
+            result: BigNumber.from(ACCOUNTING_SIMPLE_ACTIONS)
+              .mul(BigNumber.from(CHAIN_MAPPING_ACCOUNTING[input.fields.chain] || DEFAULT_TX_COST_RATE))
+              .toString(),
+            chain: input.fields.chain,
+          },
         };
       } else {
         const maxFee = input.fields.gasLimit
@@ -503,6 +525,9 @@ export async function callSmartContract(
               ...receipt,
               returnValue: callResultDecoded,
               contractAddress: input.fields.contractAddress,
+              _grinderyAccounting: BigNumber.from(receipt.gasUsed || txConfig.gas)
+                .mul(BigNumber.from(receipt.effectiveGasPrice || txConfig.gasPrice || txConfig.maxFeePerGas))
+                .toString(),
             };
           } else {
             throw new Error("Unexpected failure: " + resultData.returnData);
