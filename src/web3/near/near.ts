@@ -19,26 +19,7 @@ import {
 } from "../utils";
 import nacl from "tweetnacl";
 import BN from "bn.js";
-
 import { connect, KeyPair, keyStores, utils } from "near-api-js";
-
-// const CREDENTIALS_DIR = ".near-credentials";
-// const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
-// const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
-
-// // type Config = {
-// //   keyStore: keyStores.UnencryptedFileSystemKeyStore;
-// //   networkId: string;
-// //   nodeUrl: string;
-// //   explorerUrl: string;
-// // };
-
-// const config = {
-//   keyStore,
-//   networkId: "testnet",
-//   nodeUrl: "https://rpc.testnet.near.org",
-//   explorerUrl: "https://explorer.testnet.near.org",
-// };
 
 type Receipt = {
   predecessor_id: string;
