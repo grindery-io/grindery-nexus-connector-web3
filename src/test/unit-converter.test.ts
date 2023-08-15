@@ -4,34 +4,28 @@ import sinon from "sinon";
 import * as web3 from "../web3/evm/web3";
 
 describe("Unit Converter", async function () {
-  let contractStub: { methods: { decimals: object } };
-  let getWeb3: object;
-  let sandbox;
+  let contractStub: { methods: { decimals: () => { call: () => Promise<string> } } };
+  let sandbox: sinon.SinonSandbox;
 
   beforeEach(function () {
     sandbox = sinon.createSandbox();
 
     contractStub = {
       methods: {
-        decimals: sandbox.stub().resolves("18"),
+        decimals: () => ({ call: sandbox.stub().resolves("18") }),
       },
     };
-    getWeb3 = () => {
-      const web3Stub = {
+
+    const getWeb3 = () => ({
+      web3: {
         eth: {
           Contract: sandbox.stub().returns(contractStub),
         },
-      };
-      const closeStub = sandbox.stub();
-      return {
-        web3: web3Stub,
-        close: closeStub,
-      };
-    };
-    sandbox.stub(web3, "getWeb3").callsFake(getWeb3);
-    contractStub.methods.decimals = sandbox.stub().returns({
-      call: sandbox.stub().resolves("18"),
+      },
+      close: sandbox.stub(),
     });
+
+    sandbox.stub(web3, "getWeb3").callsFake(getWeb3);
   });
 
   afterEach(function () {
