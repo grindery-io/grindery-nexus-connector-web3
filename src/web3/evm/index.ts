@@ -14,16 +14,25 @@ export const Triggers = new Map<string, TriggerConstructor>([
   ["newEvent", NewEventTrigger],
 ]);
 
-const droneAddressCache = new Map<string, string>();
+export const droneAddressCache = new Map<string, string>();
 
-export async function getUserDroneAddress(user: TAccessToken) {
+/**
+ * Retrieves the drone address associated with a user.
+ *
+ * @param user - The user's access token.
+ * @returns The drone address associated with the user.
+ */
+export async function getUserDroneAddress(user: TAccessToken): Promise<string> {
   const userAddress = await getUserAddress(user);
   if (!droneAddressCache.has(userAddress)) {
     const { web3, close } = getWeb3("eip155:1");
     try {
-      const hubContract = new web3.eth.Contract(GrinderyNexusHub as AbiItem[], HUB_ADDRESS);
-      const droneAddress = await hubContract.methods.getUserDroneAddress(userAddress).call();
-      droneAddressCache.set(userAddress, droneAddress);
+      droneAddressCache.set(
+        userAddress,
+        await new web3.eth.Contract(GrinderyNexusHub as AbiItem[], HUB_ADDRESS).methods
+          .getUserDroneAddress(userAddress)
+          .call()
+      );
     } finally {
       close();
     }
