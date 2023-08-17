@@ -1,5 +1,6 @@
 import { ConnectorInput } from "grindery-nexus-common-utils";
 import { TAccessToken, signJWT } from "../jwt";
+import axios from "axios";
 
 export const mockedTAccessToken: TAccessToken = {
   aud: "urn:grindery:access-token:v1",
@@ -30,3 +31,26 @@ const createMockedConnectorInput = async () => {
 };
 
 export const mockedConnectorInput = createMockedConnectorInput();
+
+async function getAccessToken() {
+  try {
+    const res = await axios.post(
+      "https://orchestrator.grindery.org/oauth/token",
+      {
+        grant_type: "refresh_token",
+        refresh_token: process.env.GRINDERY_NEXUS_REFRESH_TOKEN,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return res.data.access_token;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export const mockedToken = getAccessToken();
