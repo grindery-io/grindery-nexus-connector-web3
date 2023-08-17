@@ -67,7 +67,6 @@
     "@types/lodash": "^4.14.182",
     "@types/mocha": "^10.0.1",
     "@types/mutexify": "^1.2.0",
-    "@types/sinon": "10.0.16",
     "@types/uuid": "^8.3.4",
     "@types/ws": "^8.5.3",
     "@typescript-eslint/eslint-plugin": "^5.19.0",
