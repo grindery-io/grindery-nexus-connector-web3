@@ -1,6 +1,8 @@
 import chai from "chai";
 import chaiHttp from "chai-http";
-import { onlyOnce } from "../../web3/evm/call";
+import { hubAvailability, isHubAvailable, onlyOnce } from "../../web3/evm/call";
+import sinon from "sinon";
+import Web3 from "web3";
 
 /* eslint-disable no-unused-expressions */
 
@@ -46,6 +48,86 @@ describe("EVM call functions", function () {
       wrappedFn();
 
       chai.expect(wasCalled).to.be.true;
+    });
+  });
+
+  describe("isHubAvailable", function () {
+    beforeEach(function () {
+      hubAvailability.clear();
+    });
+
+    it("Should return true if hub is available on the chain", async function () {
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().resolves("0x123456"),
+          },
+        } as Web3)
+      ).to.be.true;
+    });
+
+    it("Should return false if hub code is 0x", async function () {
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().resolves("0x"),
+          },
+        } as Web3)
+      ).to.be.false;
+    });
+
+    it("Should return false if hub code is empty", async function () {
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().resolves(""),
+          },
+        } as Web3)
+      ).to.be.false;
+    });
+
+    it("Should handle errors and return false if an error occurs", async function () {
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().rejects(new Error("Failed to get code")),
+          },
+        } as Web3)
+      ).to.be.false;
+    });
+
+    it("Should cache and reuse hub availability information if same chain in two calls", async function () {
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().resolves("0x"),
+          },
+        } as Web3)
+      ).to.be.false;
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().resolves("0x1324"),
+          },
+        } as Web3)
+      ).to.be.false;
+    });
+
+    it("Should give new hub availability information if different chain in two calls", async function () {
+      chai.expect(
+        await isHubAvailable("mainnet", {
+          eth: {
+            getCode: sinon.stub().resolves("0x"),
+          },
+        } as Web3)
+      ).to.be.false;
+      chai.expect(
+        await isHubAvailable("polygon", {
+          eth: {
+            getCode: sinon.stub().resolves("0x1324"),
+          },
+        } as Web3)
+      ).to.be.true;
     });
   });
 });

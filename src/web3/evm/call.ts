@@ -17,7 +17,7 @@ import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { ACCOUNTING_SIMPLE_ACTIONS } from "../../utils";
 import { CHAIN_MAPPING_ACCOUNTING, DEFAULT_TX_COST_RATE } from "./chains";
 
-const hubAvailability = new Map<string, boolean>();
+export const hubAvailability = new Map<string, boolean>();
 
 /**
  * Wraps a given function so that it can only be executed once. Subsequent calls to the returned function
@@ -57,7 +57,7 @@ const transactionMutexes: {
  * @param {Web3} web3 - The Web3 instance to interact with the blockchain.
  * @returns {Promise<boolean>} - A Promise that resolves to a boolean value indicating whether the Grindery Nexus Hub is available on the specified chain.
  */
-async function isHubAvailable(chain: string, web3: Web3): Promise<boolean> {
+export async function isHubAvailable(chain: string, web3: Web3): Promise<boolean> {
   if (!hubAvailability.has(chain)) {
     const code = await web3.eth.getCode(HUB_ADDRESS).catch(() => "");
     const hasHub = !!code && code !== "0x";
