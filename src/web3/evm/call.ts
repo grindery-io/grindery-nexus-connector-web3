@@ -71,11 +71,9 @@ export async function isHubAvailable(chain: string, web3: Web3): Promise<boolean
  * Decodes the call result of a drone contract's `sendTransaction` function call.
  *
  * @param {string} callResult - The result of the `sendTransaction` function call as a hexadecimal string.
- * @returns {any[]} - An array containing the decoded parameters from the call result.
+ * @returns {Record<string, any>} - An object containing the decoded parameters from the call result.
  */
-export function decodeDroneCallResult(callResult: string): {
-  [key: string]: any;
-} {
+export function decodeDroneCallResult(callResult: string): Record<string, any> {
   return AbiCoder.decodeParameters(
     GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
     callResult
