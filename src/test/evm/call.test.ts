@@ -1,8 +1,9 @@
 import chai from "chai";
 import chaiHttp from "chai-http";
-import { hubAvailability, isHubAvailable, onlyOnce } from "../../web3/evm/call";
+import { decodeDroneCallResult, hubAvailability, isHubAvailable, onlyOnce } from "../../web3/evm/call";
 import sinon from "sinon";
 import Web3 from "web3";
+import GrinderyNexusDrone from "../../web3/evm/abi/GrinderyNexusDrone.json";
 
 /* eslint-disable no-unused-expressions */
 
@@ -128,6 +129,44 @@ describe("EVM call functions", function () {
           },
         } as Web3)
       ).to.be.true;
+    });
+  });
+
+  describe("decodeDroneCallResult", function () {
+    it("Should properly decode parameters from call result", async function () {
+      chai
+        .expect(
+          decodeDroneCallResult(
+            "0x0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000025455000000000000000000000000000000000000000000000000000000000000"
+          )
+        )
+        .to.deep.equal({
+          0: true,
+          1: "0x5455",
+          __length__: 2,
+          success: true,
+          returnData: "0x5455",
+        });
+    });
+
+    it("Should return an error if call result is empty", async function () {
+      chai
+        .expect(() => decodeDroneCallResult(""))
+        .to.throw(Error)
+        .with.property(
+          "message",
+          "Returned values aren't valid, did it run Out of Gas? You might also see this error if you are not using the correct ABI for the contract you are retrieving data from, requesting data from a block number that does not exist, or querying a node which is not fully synced."
+        );
+    });
+
+    it("Should return an error if hex data is invalid", async function () {
+      chai
+        .expect(() => decodeDroneCallResult("invalid"))
+        .to.throw(Error)
+        .with.property(
+          "message",
+          'invalid arrayify value (argument="value", value="0xinvalid", code=INVALID_ARGUMENT, version=bytes/5.7.0)'
+        );
     });
   });
 });
