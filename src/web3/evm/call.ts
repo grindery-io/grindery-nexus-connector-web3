@@ -26,7 +26,7 @@ const hubAvailability = new Map<string, boolean>();
  * @param {Function} fn - The function to be wrapped and executed only once.
  * @returns {Function} - A new function that can only be executed once.
  */
-function onlyOnce(fn: () => void): () => void {
+export function onlyOnce(fn: () => void): () => void {
   let called = false;
   return () => {
     if (called) {
