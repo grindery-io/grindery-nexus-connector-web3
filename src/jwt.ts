@@ -33,10 +33,9 @@ const ORCHESTRATOR_KEY = jose.createRemoteJWKSet(
  * @throws {Error} If the token verification fails or has invalid format.
  */
 export async function parseUserAccessToken(token: string): Promise<TAccessToken> {
-  return (
-    await jose.jwtVerify(token, ORCHESTRATOR_KEY, {
-      issuer: "urn:grindery:orchestrator",
-      audience: "urn:grindery:access-token:v1",
-    })
-  ).payload;
+  const { payload } = await jose.jwtVerify(token, ORCHESTRATOR_KEY, {
+    issuer: "urn:grindery:orchestrator",
+    audience: "urn:grindery:access-token:v1",
+  });
+  return payload;
 }
