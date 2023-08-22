@@ -17,7 +17,7 @@ import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { ACCOUNTING_SIMPLE_ACTIONS } from "../../utils";
 import { CHAIN_MAPPING_ACCOUNTING, DEFAULT_TX_COST_RATE } from "./chains";
 
-const hubAvailability = new Map<string, boolean>();
+export const hubAvailability = new Map<string, boolean>();
 
 /**
  * Wraps a given function so that it can only be executed once. Subsequent calls to the returned function
@@ -26,7 +26,7 @@ const hubAvailability = new Map<string, boolean>();
  * @param {Function} fn - The function to be wrapped and executed only once.
  * @returns {Function} - A new function that can only be executed once.
  */
-function onlyOnce(fn: () => void): () => void {
+export function onlyOnce(fn: () => void): () => void {
   let called = false;
   return () => {
     if (called) {
@@ -57,7 +57,7 @@ const transactionMutexes: {
  * @param {Web3} web3 - The Web3 instance to interact with the blockchain.
  * @returns {Promise<boolean>} - A Promise that resolves to a boolean value indicating whether the Grindery Nexus Hub is available on the specified chain.
  */
-async function isHubAvailable(chain: string, web3: Web3): Promise<boolean> {
+export async function isHubAvailable(chain: string, web3: Web3): Promise<boolean> {
   if (!hubAvailability.has(chain)) {
     const code = await web3.eth.getCode(HUB_ADDRESS).catch(() => "");
     const hasHub = !!code && code !== "0x";
@@ -71,9 +71,9 @@ async function isHubAvailable(chain: string, web3: Web3): Promise<boolean> {
  * Decodes the call result of a drone contract's `sendTransaction` function call.
  *
  * @param {string} callResult - The result of the `sendTransaction` function call as a hexadecimal string.
- * @returns {any[]} - An array containing the decoded parameters from the call result.
+ * @returns {Record<string, any>} - An object containing the decoded parameters from the call result.
  */
-function decodeDroneCallResult(callResult: string) {
+export function decodeDroneCallResult(callResult: string): Record<string, any> {
   return AbiCoder.decodeParameters(
     GrinderyNexusDrone.find((x) => x.name === "sendTransaction")?.outputs || [],
     callResult
