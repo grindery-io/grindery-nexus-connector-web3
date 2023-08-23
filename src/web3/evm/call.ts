@@ -91,13 +91,13 @@ export function decodeDroneCallResult(callResult: string): Record<string, any> {
  * @returns {Promise<{ tx: T; droneAddress: string | null }>} - A Promise that resolves to an object containing the prepared transaction (`tx`) and the drone address (`droneAddress`).
  * @throws {Error} - If `userAddress` is not a valid Ethereum address or if the `tx` object is invalid.
  */
-async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | TransactionConfig>(
+export async function prepareRoutedTransaction<T extends Partial<TransactionConfig> | TransactionConfig>(
   tx: T,
   userAddress: string,
   chain: string,
   web3: Web3
 ): Promise<{ tx: T; droneAddress: string | null }> {
-  if (!web3.utils.isAddress(userAddress)) {
+  if (!Web3.utils.isAddress(userAddress)) {
     throw new Error("userAddress is not an valid address");
   }
   if (!tx.to || !tx.from || !tx.data) {
