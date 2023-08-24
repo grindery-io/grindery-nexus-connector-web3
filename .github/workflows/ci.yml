@@ -25,3 +25,4 @@ jobs:
       - run: npm run test:unit
         env:
           MASTER_KEY: ${{ secrets.MASTER_KEY }}
+          GRINDERY_NEXUS_REFRESH_TOKEN: ${{ secrets.GRINDERY_NEXUS_REFRESH_TOKEN }}

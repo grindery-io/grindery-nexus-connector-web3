@@ -25,6 +25,13 @@ const ORCHESTRATOR_KEY = jose.createRemoteJWKSet(
   new URL(process.env.ORCHESTRATOR_PUBLIC_KEY || "https://orchestrator.grindery.org/oauth/jwks")
 );
 
+/**
+ * Parses a user access token and extracts the payload information.
+ *
+ * @param {string} token - The user access token to be parsed.
+ * @returns {Promise<TAccessToken>} A Promise that resolves to the payload of the parsed token.
+ * @throws {Error} If the token verification fails or has invalid format.
+ */
 export async function parseUserAccessToken(token: string): Promise<TAccessToken> {
   const { payload } = await jose.jwtVerify(token, ORCHESTRATOR_KEY, {
     issuer: "urn:grindery:orchestrator",
