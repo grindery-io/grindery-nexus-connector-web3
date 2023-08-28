@@ -1,7 +1,21 @@
 import algosdk from "algosdk";
 import { ITriggerInstance, TriggerInit } from "grindery-nexus-common-utils";
 
+/**
+ * Represents the input for creating a new transaction.
+ * @property {string | string[]} chain - Blockchain(s) where the transaction will occur.
+ * @property {string} from - Sender's address (optional).
+ * @property {string} to - Recipient's address (optional).
+ */
 export type NewTransactionInput = { chain: string | string[]; from?: string; to?: string };
+
+/**
+ * Represents input parameters for creating a new event.
+ * @property {string | string[]} chain - Blockchain network(s) to listen on.
+ * @property {string} contractAddress - Smart contract's address (optional).
+ * @property {string | string[]} eventDeclaration - Event name(s) to listen for.
+ * @property parameterFilters - Key-value pairs for event parameter filters.
+ */
 export type NewEventInput = {
   chain: string | string[];
   contractAddress?: string;
@@ -9,6 +23,14 @@ export type NewEventInput = {
   parameterFilters: { [key: string]: unknown };
 };
 
+/**
+ * Represents input for a new transaction flow.
+ * @property {string} chain - Blockchain network for the transaction.
+ * @property {string} contract - Smart contract's address.
+ * @property {string} eventDeclaration - Event declaration to listen for.
+ * @property {string} from - Sender's address (optional).
+ * @property {string} to - Recipient's address (optional).
+ */
 export type NewTransactionFlowInput = {
   chain: string;
   contract: string;
@@ -17,37 +39,39 @@ export type NewTransactionFlowInput = {
   to?: string;
 };
 
+/**
+ * Represents a constructor function for creating trigger instances.
+ * @template T - The type of input data for the trigger.
+ * @param {TriggerInit<T>} input - Input data for initializing the trigger instance.
+ * @returns {ITriggerInstance} - An instance of the trigger.
+ */
 export type TriggerConstructor<T = any> = new (input: TriggerInit<T>) => ITriggerInstance;
 
-export async function getNetworkId(chain: string): Promise<string> {
-  return chain.split(":")[1];
-}
-
+/**
+ * Represents an object with fields of type `T`.
+ * @property {T} fields - Fields or properties of an object.
+ */
 export type DepayActions<T = unknown> = {
   fields: T;
 };
 
 /**
- * `NearDepayActions` is an object with two properties, `grinderyAccount` and `userAccount`, both of
- * which are of type `any`.
- * @property {any} grinderyAccount - The grindery account that will be used to send the tokens.
- * @property {any} userAccount - The account that the user is currently logged in as.
+ * Object with `grinderyAccount` and `userAccount` properties.
+ * @property {any} grinderyAccount - Grindery account for token sending.
+ * @property {any} userAccount - User's logged-in account.
  */
 export type NearDepayActions = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   grinderyAccount: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userAccount: any;
 };
 
 /**
- * It's an object with four properties, each of which is a function that takes no arguments and returns
- * nothing.
- * @property comp - The AtomicTransactionComposer object that will be used to create the transaction.
- * @property algodClient - The Algorand client that will be used to send the transaction.
- * @property grinderyAccount - The account that will be used to pay for the transaction fees.
- * @property userAccount - The account that will be used to pay the transaction fee.
- * @property {string} receiver - The address of the user who will receive the funds.
+ * Object with functions and properties for Algorand transactions.
+ * @property comp - AtomicTransactionComposer for creating transactions.
+ * @property algodClient - Algorand client for sending transactions.
+ * @property grinderyAccount - Account for transaction fees.
+ * @property userAccount - Account for transaction fee payment.
+ * @property {string} receiver - Address of fund recipient.
  */
 export type AlgorandDepayActions = {
   comp: algosdk.AtomicTransactionComposer;
@@ -56,3 +80,17 @@ export type AlgorandDepayActions = {
   userAccount: algosdk.Account;
   receiver: string;
 };
+
+/**
+ * Retrieves the network ID from a chain identifier.
+ * @param {string} chain - Chain identifier in various formats, e.g., "network:chain" or "network.chain".
+ * @returns {Promise<string>} - The extracted network ID.
+ * @throws {Error} - Throws an error if the chain identifier format is invalid.
+ */
+export async function getNetworkId(chain: string): Promise<string> {
+  return chain.includes(":")
+    ? chain.split(":")[1]
+    : (() => {
+        throw new Error("Invalid chain identifier format. Use 'network:chain' format.");
+      })();
+}
