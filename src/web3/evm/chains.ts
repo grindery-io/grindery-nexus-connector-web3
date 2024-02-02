@@ -8,9 +8,9 @@ const ALCHEMY = (name: string): [string, string] => [
   `wss://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
   `https://${name}.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
 ];
-const GETBLOCK = (name: string, netType: "mainnet" | "testnet" | string = "mainnet"): [string, string] => [
-  `wss://${name}.getblock.io/${process.env.GETBLOCK_API_KEY}/${netType}/`,
-  `https://${name}.getblock.io/${process.env.GETBLOCK_API_KEY}/${netType}/`,
+const GETBLOCK = (accessTokenWs?: string, accessTokenHttps?: string): [string, string] => [
+  `wss://go.getblock.io/${accessTokenWs}`,
+  `https://go.getblock.io/${accessTokenHttps}`,
 ];
 const LAVANET = (wsPath: string, httpsPath: string): [string, string] => [
   `wss://g.w.lavanet.xyz:443/gateway/${wsPath}/${process.env.LAVANET_API_KEY}`,
@@ -31,7 +31,7 @@ export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
   "eip155:56": ANKR("bsc"),
   "eip155:250": ANKR("fantom"),
   "eip155:1666600000": ANKR("harmony"),
-  "eip155:25": GETBLOCK("cro"),
+  "eip155:25": GETBLOCK(process.env.GETBLOCK_ACCESS_TOKEN_WS, process.env.GETBLOCK_ACCESS_TOKEN_HTTPS),
   "eip155:1101": ANKR("polygon_zkevm"),
   "eip155:1284": ANKR("moonbeam"),
 
