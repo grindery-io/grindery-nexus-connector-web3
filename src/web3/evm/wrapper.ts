@@ -29,28 +29,36 @@ function instrumentProvider<T extends { send: (payload, callback) => void }>(
 export class Web3Wrapper extends EventEmitter {
   private ref = 1;
   public readonly web3: Web3;
-  private readonly web3Full: Web3;
-  private provider: InstanceType<typeof Web3.providers.WebsocketProvider>;
+  private readonly web3Full: Web3 | undefined;
+  private provider: InstanceType<typeof Web3.providers.WebsocketProvider> | undefined;
   private newBlockSubscriber: null | NewBlockSubscriber = null;
   private reconnectTimer: null | ReturnType<typeof setTimeout> = null;
   private reconnectCount = 0;
-  constructor(private url: string, urlHttp = "") {
+  constructor(private url: string | null, private urlHttp: string, private chainId: string) {
     super();
     this.setMaxListeners(1000);
-    console.log(`[${this.redactedUrl()}] Creating web3 wrapper`);
-    this.provider = this.createProvider();
-    this.web3Full = new Web3(this.provider);
-    this.web3 = urlHttp
-      ? new Web3(
-          instrumentProvider(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 }), {
-            url: this.redactedUrl(),
-            type: "http",
-          })
-        )
-      : this.web3Full;
+    console.log(`[${this.logTag()}] Creating web3 wrapper`);
+    if (url) {
+      this.provider = this.createProvider();
+      if (!this.provider) {
+        throw new Error("Unexpected null provider");
+      }
+      this.web3Full = new Web3(this.provider);
+    } else {
+      console.log(`[${this.logTag()}] WebSocket is disabled`);
+    }
+    this.web3 = new Web3(
+      instrumentProvider(new Web3.providers.HttpProvider(urlHttp, { timeout: 15000 }), {
+        chainId: this.chainId,
+        type: "http",
+      })
+    );
   }
 
   private createProvider() {
+    if (!this.url) {
+      return;
+    }
     this.provider = instrumentProvider(
       new Web3.providers.WebsocketProvider(this.url, {
         timeout: 15000,
@@ -62,7 +70,10 @@ export class Web3Wrapper extends EventEmitter {
           maxReceivedMessageSize: 16000000,
         },
       }),
-      { url: this.redactedUrl(), type: "ws" }
+      {
+        chainId: this.chainId,
+        type: "ws",
+      }
     );
     this.provider.on("error", ((e) => {
       console.error("WS provider error", e);
@@ -71,8 +82,8 @@ export class Web3Wrapper extends EventEmitter {
     return this.provider;
   }
 
-  redactedUrl() {
-    return this.url.replace(/([0-9a-f-]{8,}|[0-9a-z_-]{20,})/gi, "***");
+  logTag() {
+    return `${this.chainId}-${this.urlHttp.replace(/([0-9a-f-]{8,}|[0-9a-z_-]{20,})/gi, "***")}`;
   }
 
   close() {
@@ -81,7 +92,7 @@ export class Web3Wrapper extends EventEmitter {
     }
     this.ref--;
     if (this.ref <= 0) {
-      console.log(`[${this.redactedUrl()}] Closing web3 wrapper`);
+      console.log(`[${this.logTag()}] Closing web3 wrapper`);
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
@@ -94,9 +105,9 @@ export class Web3Wrapper extends EventEmitter {
         /* Ignore */
       });
       this.web3.setProvider(null);
-      this.web3Full.setProvider(null);
-      this.provider.reset();
-      this.provider.disconnect();
+      this.web3Full?.setProvider(null);
+      this.provider?.reset();
+      this.provider?.disconnect();
       this.emit("close");
       this.removeAllListeners();
     }
@@ -120,6 +131,12 @@ export class Web3Wrapper extends EventEmitter {
     if (this.reconnectTimer) {
       return;
     }
+    if (!this.url) {
+      return;
+    }
+    if (!this.provider) {
+      throw new Error("Unexpected null provider");
+    }
     this.reconnectCount++;
     const reconnectCount = this.reconnectCount;
     if (this.provider.connection && this.provider.connection.readyState === WebSocket.OPEN) {
@@ -130,6 +147,9 @@ export class Web3Wrapper extends EventEmitter {
         return;
       }
       this.reconnectTimer = null;
+      if (!this.provider) {
+        throw new Error("Unexpected null provider");
+      }
       if (this.provider.connection && this.provider.connection.readyState === WebSocket.OPEN) {
         this.provider.connection.close();
       }
@@ -143,9 +163,12 @@ export class Web3Wrapper extends EventEmitter {
         if (this.isClosed()) {
           return;
         }
+        if (!this.provider) {
+          throw new Error("Unexpected null provider");
+        }
         this.provider.reset();
         this.createProvider();
-        this.web3Full.setProvider(this.provider);
+        this.web3Full?.setProvider(this.provider);
         setTimeout(() => {
           if (this.isClosed()) {
             return;
@@ -166,10 +189,10 @@ export class Web3Wrapper extends EventEmitter {
       this.reconnectCount = 0;
     }
     if (!this.newBlockSubscriber) {
-      this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full, this.redactedUrl());
+      this.newBlockSubscriber = new NewBlockSubscriber(this.web3, this.web3Full || null, this.logTag());
       this.newBlockSubscriber.on("newBlock", (block) => {
         if (this.listenerCount("newBlock") === 0) {
-          console.log(`[${this.redactedUrl()}] No listeners for newBlock, closing subscription`);
+          console.log(`[${this.logTag()}] No listeners for newBlock, closing subscription`);
           this.newBlockSubscriber?.close();
           this.newBlockSubscriber = null;
           return;
@@ -186,11 +209,11 @@ export class Web3Wrapper extends EventEmitter {
         this.emit("newBlock", block, memoCall);
       });
       this.newBlockSubscriber.on("reconnectProvider", () => {
-        console.log(`[${this.redactedUrl()}] Trying to reconnect to WebSocket provider`);
+        console.log(`[${this.logTag()}] Trying to reconnect to WebSocket provider`);
         this.reconnectProvider();
       });
       this.newBlockSubscriber.on("error", (e) => {
-        console.error(`[${this.redactedUrl()}] Error in newBlockSubscriber`, e);
+        console.error(`[${this.logTag()}] Error in newBlockSubscriber`, e);
       });
       this.newBlockSubscriber.on("stop", (e) => {
         this.emit("error", e);

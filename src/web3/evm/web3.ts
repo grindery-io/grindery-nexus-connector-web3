@@ -8,19 +8,19 @@ export function getWeb3(chain = "eip155:1") {
     throw new Error("Invalid chain: " + chain);
   }
   const [url, urlHttp] = CHAIN_MAPPING[chain];
-  let wrapper = web3Cache.get(url);
+  let wrapper = web3Cache.get(urlHttp);
   if (!wrapper || wrapper.isClosed()) {
-    wrapper = new Web3Wrapper(url, urlHttp);
-    web3Cache.set(url, wrapper);
+    wrapper = new Web3Wrapper(url, urlHttp, chain);
+    web3Cache.set(urlHttp, wrapper);
     wrapper.on("close", () => {
-      if (web3Cache.get(url) === wrapper) {
-        web3Cache.delete(url);
+      if (web3Cache.get(urlHttp) === wrapper) {
+        web3Cache.delete(urlHttp);
       }
     });
   } else {
     wrapper.addRef();
   }
-  const ethersProvider = new ethers.providers.StaticJsonRpcProvider(urlHttp || url);
+  const ethersProvider = new ethers.providers.StaticJsonRpcProvider(urlHttp);
   return {
     web3: wrapper.web3,
     ethersProvider,

@@ -14,7 +14,7 @@ export class NewBlockSubscriber extends EventEmitter {
   private resetSubscriptionTimer: null | ReturnType<typeof setTimeout> = null;
   private numPolled = 0;
   private lastNoBlockTimestamp = 0;
-  constructor(private web3: Web3, private web3Full: Web3, private tag: string) {
+  constructor(private web3: Web3, private web3Full: Web3 | null, private tag: string) {
     super();
     this.resetSubscription();
     this.resetPoller();
@@ -63,35 +63,37 @@ export class NewBlockSubscriber extends EventEmitter {
         console.error(`[${this.tag}] Timeout when setting up subscription`);
         this.unsubscribe();
       }, 10000) as ReturnType<typeof setTimeout> | null;
-      this.newBlockSubscription = this.web3Full.eth
-        .subscribe("newBlockHeaders")
-        .on("data", (block) => {
-          if (!block.number || block.number <= this.latestBlock) {
-            return;
-          }
-          this.latestBlock = block.number;
-          this.checkNewBlocks().catch((e) => console.error(`[${this.tag}] Error in checkNewBlocks`, e));
-          this.numPolled = 0;
-          this.resetPoller();
-        })
-        .on("error", (error) => {
-          if (connectTimeout) {
-            clearTimeout(connectTimeout);
-            connectTimeout = null;
-          }
-          if (this.closed) {
-            return;
-          }
-          console.error(error);
-          this.unsubscribe();
-        })
-        .on("connected", () => {
-          if (connectTimeout) {
-            console.log(`[${this.tag}] Connected to subscription`);
-            clearTimeout(connectTimeout);
-            connectTimeout = null;
-          }
-        });
+      if (this.web3Full) {
+        this.newBlockSubscription = this.web3Full.eth
+          .subscribe("newBlockHeaders")
+          .on("data", (block) => {
+            if (!block.number || block.number <= this.latestBlock) {
+              return;
+            }
+            this.latestBlock = block.number;
+            this.checkNewBlocks().catch((e) => console.error(`[${this.tag}] Error in checkNewBlocks`, e));
+            this.numPolled = 0;
+            this.resetPoller();
+          })
+          .on("error", (error) => {
+            if (connectTimeout) {
+              clearTimeout(connectTimeout);
+              connectTimeout = null;
+            }
+            if (this.closed) {
+              return;
+            }
+            console.error(error);
+            this.unsubscribe();
+          })
+          .on("connected", () => {
+            if (connectTimeout) {
+              console.log(`[${this.tag}] Connected to subscription`);
+              clearTimeout(connectTimeout);
+              connectTimeout = null;
+            }
+          });
+      }
     }, 1000);
   }
 
@@ -126,9 +128,11 @@ export class NewBlockSubscriber extends EventEmitter {
       }
       if (latestBlock > this.latestBlock) {
         this.latestBlock = latestBlock;
-        console.log(`[${this.tag}] Got new block from polling: ${latestBlock}`);
+        if (this.web3Full) {
+          console.log(`[${this.tag}] WS is enabled but got new block from polling: ${latestBlock}`);
+        }
         this.checkNewBlocks().catch((e) => console.error("Error in checkNewBlocks", e));
-        if (this.numPolled > 10) {
+        if (this.numPolled > 10 && this.web3Full) {
           this.emit("reconnectProvider");
           this.resetSubscription();
           this.numPolled = 0;
@@ -136,7 +140,7 @@ export class NewBlockSubscriber extends EventEmitter {
       }
     } catch (e) {
       console.error(`[${this.tag}] Error in poll`, e);
-      if (this.numPolled > 10 && this.latestBlock < 0) {
+      if (this.numPolled > 10 && this.latestBlock < 0 && this.web3Full) {
         console.log(`[${this.tag}] Too many errors in poll, stopping`);
         this.emit("stop", e);
         this.close();
@@ -171,7 +175,7 @@ export class NewBlockSubscriber extends EventEmitter {
       return;
     }
     this.checking = true;
-    if (this.latestBlock - this.nextBlock > 500) {
+    if (this.latestBlock - this.nextBlock > 2500) {
       console.log(
         `[${this.tag}] Too many blocks behind, skipping some blocks: ${this.nextBlock} -> ${this.latestBlock}`
       );

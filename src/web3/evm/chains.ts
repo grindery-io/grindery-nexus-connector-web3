@@ -16,12 +16,12 @@ const LAVANET = (wsPath: string, httpsPath: string): [string, string] => [
   `wss://g.w.lavanet.xyz:443/gateway/${wsPath}/${process.env.LAVANET_API_KEY}`,
   `https://g.w.lavanet.xyz:443/gateway/${httpsPath}/${process.env.LAVANET_API_KEY}`,
 ];
-const CHAINSTACK = (nodeId: string, key?: string): [string, string] => [
-  `wss://ws-${nodeId}.p2pify.com/${key || process.env.CHAINSTACK_API_KEY}`,
+const CHAINSTACK = (nodeId: string, key?: string): [null, string] => [
+  null,
   `https://${nodeId}.p2pify.com/${key || process.env.CHAINSTACK_API_KEY}`,
 ];
 
-export const CHAIN_MAPPING: { [key: string]: [string, string] } = {
+export const CHAIN_MAPPING: { [key: string]: [string | null, string] } = {
   "eip155:1": ANKR("eth"),
   "eip155:42161": ANKR("arbitrum"),
   "eip155:100": ANKR("gnosis"),
