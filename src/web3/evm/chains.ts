@@ -36,7 +36,6 @@ export const CHAIN_MAPPING: { [key: string]: [string | null, string] } = {
   "eip155:1284": ANKR("moonbeam"),
 
   // Testnets
-  "eip155:80001": ANKR("polygon_mumbai"),
   "eip155:80002": ANKR("polygon_amoy"),
   "eip155:5": ALCHEMY("eth-goerli"),
   "eip155:11155111": ANKR("eth_sepolia"),
