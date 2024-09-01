@@ -58,12 +58,12 @@ export class NewBlockSubscriber extends EventEmitter {
       if (this.closed) {
         return;
       }
-      let connectTimeout = setTimeout(() => {
-        connectTimeout = null;
-        console.error(`[${this.tag}] Timeout when setting up subscription`);
-        this.unsubscribe();
-      }, 10000) as ReturnType<typeof setTimeout> | null;
       if (this.web3Full) {
+        let connectTimeout = setTimeout(() => {
+          connectTimeout = null;
+          console.error(`[${this.tag}] Timeout when setting up subscription`);
+          this.unsubscribe();
+        }, 10000) as ReturnType<typeof setTimeout> | null;
         this.newBlockSubscription = this.web3Full.eth
           .subscribe("newBlockHeaders")
           .on("data", (block) => {
