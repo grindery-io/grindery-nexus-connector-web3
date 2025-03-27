@@ -26,7 +26,7 @@ export const CHAIN_MAPPING: { [key: string]: [string | null, string] } = {
   "eip155:42161": ANKR("arbitrum"),
   "eip155:100": ANKR("gnosis"),
   "eip155:137": ANKR("polygon"),
-  "eip155:42220": ANKR("celo"),
+  // "eip155:42220": ANKR("celo"),
   "eip155:43114": ANKR("avalanche"),
   "eip155:56": ANKR("bsc"),
   "eip155:250": ANKR("fantom"),
