@@ -2,6 +2,7 @@ import { ConnectorInput, ConnectorOutput, TriggerInit } from "grindery-nexus-com
 import * as evm from "./evm";
 import * as near from "./near";
 import * as flow from "./flow";
+import * as ton from "./ton/ton";
 import * as algorand from "./algorand/algorand";
 import { InvalidParamsError } from "grindery-nexus-common-utils/dist/jsonrpc";
 import { TAccessToken } from "../jwt";
@@ -11,6 +12,7 @@ export * from "./webhook";
 
 const neartest = near;
 const algorandtest = algorand;
+const tontest = ton;
 
 export const CHAINS: {
   [key: string]: {
@@ -29,6 +31,10 @@ export const CHAINS: {
   "algorand:mainnet": algorand,
   algorandtest,
   "algorand:testnet": algorandtest,
+  tontest,
+  "ton:testnet": tontest,
+  ton,
+  "ton:mainnet": ton,
 };
 
 export function getTriggerClass<T extends { chain: string }>(params: TriggerInit<T>): TriggerConstructor<T> {
